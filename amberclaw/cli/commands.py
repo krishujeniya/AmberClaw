@@ -205,7 +205,7 @@ def onboard():
     console.print("  1. Add your API key to [cyan]~/.amberclaw/config.json[/cyan]")
     console.print("     Get one at: https://openrouter.ai/keys")
     console.print("  2. Chat: [cyan]amberclaw agent -m \"Hello!\"[/cyan]")
-    console.print("\n[dim]Want Telegram/WhatsApp? See: https://github.com/HKUDS/AmberClaw#-chat-apps[/dim]")
+    console.print("\n[dim]Want Telegram/WhatsApp? See: https://github.com/krishujeniya/AmberClaw#-chat-apps[/dim]")
 
 
 
