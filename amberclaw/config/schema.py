@@ -19,7 +19,7 @@ class WhatsAppConfig(Base):
 
     enabled: bool = False
     bridge_url: str = "ws://localhost:3001"
-    bridge_token: str = ""  # Shared token for bridge auth (optional, recommended)
+    bridge_token: str = "local-dev-token-please-change"  # Shared token for bridge auth
     allow_from: list[str] = Field(default_factory=list)  # Allowed phone numbers
 
 

@@ -174,7 +174,7 @@ class LiteLLMProvider(LLMProvider):
             return tool_call_id
         if len(tool_call_id) == 9 and tool_call_id.isalnum():
             return tool_call_id
-        return hashlib.sha1(tool_call_id.encode()).hexdigest()[:9]
+        return hashlib.sha256(tool_call_id.encode()).hexdigest()[:9]
 
     @staticmethod
     def _sanitize_messages(messages: list[dict[str, Any]], extra_keys: frozenset[str] = frozenset()) -> list[dict[str, Any]]:

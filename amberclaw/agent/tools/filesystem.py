@@ -15,11 +15,13 @@ def _resolve_path(
     if not p.is_absolute() and workspace:
         p = workspace / p
     resolved = p.resolve()
-    if allowed_dir:
+    
+    enforced_dir = allowed_dir or workspace
+    if enforced_dir:
         try:
-            resolved.relative_to(allowed_dir.resolve())
+            resolved.relative_to(enforced_dir.resolve())
         except ValueError:
-            raise PermissionError(f"Path {path} is outside allowed directory {allowed_dir}")
+            raise PermissionError(f"Path {path} is outside allowed directory {enforced_dir}")
     return resolved
 
 

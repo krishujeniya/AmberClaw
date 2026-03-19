@@ -38,29 +38,28 @@ export class BridgeServer {
       onStatus: (status) => this.broadcast({ type: 'status', status }),
     });
 
+    if (!this.token) {
+      throw new Error("BRIDGE_TOKEN is required for security. Unauthenticated connections are disabled. Please configure bridge_token in your environment or config.");
+    }
+
     // Handle WebSocket connections
     this.wss.on('connection', (ws) => {
-      if (this.token) {
-        // Require auth handshake as first message
-        const timeout = setTimeout(() => ws.close(4001, 'Auth timeout'), 5000);
-        ws.once('message', (data) => {
-          clearTimeout(timeout);
-          try {
-            const msg = JSON.parse(data.toString());
-            if (msg.type === 'auth' && msg.token === this.token) {
-              console.log('🔗 Python client authenticated');
-              this.setupClient(ws);
-            } else {
-              ws.close(4003, 'Invalid token');
-            }
-          } catch {
-            ws.close(4003, 'Invalid auth message');
+      // Require auth handshake as first message
+      const timeout = setTimeout(() => ws.close(4001, 'Auth timeout'), 5000);
+      ws.once('message', (data) => {
+        clearTimeout(timeout);
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.type === 'auth' && msg.token === this.token) {
+            console.log('🔗 Python client authenticated');
+            this.setupClient(ws);
+          } else {
+            ws.close(4003, 'Invalid token');
           }
-        });
-      } else {
-        console.log('🔗 Python client connected');
-        this.setupClient(ws);
-      }
+        } catch {
+          ws.close(4003, 'Invalid auth message');
+        }
+      });
     });
 
     // Connect to WhatsApp
