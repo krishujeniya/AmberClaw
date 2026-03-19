@@ -1,7 +1,7 @@
 [project]
 name = "amberclaw-ai"
 version = "0.1.4.post4"
-description = "A lightweight personal AI assistant framework"
+description = "🐯 AmberClaw - My Personal AI Assistant from Surat (made by AI in Gujarat)"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
@@ -62,7 +62,7 @@ dev = [
 ]
 
 [project.scripts]
-amberclaw = "amberclaw.cli.commands:app"
+amberclaw = "amberclaw.cli:main"
 
 [build-system]
 requires = ["hatchling"]
