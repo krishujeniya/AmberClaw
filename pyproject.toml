@@ -5,7 +5,7 @@ description = "A lightweight personal AI assistant framework"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
-    {name = "amberclaw contributors"}
+    {name = "Krish Ujeniya"}
 ]
 keywords = ["ai", "agent", "chatbot"]
 classifiers = [

@@ -1,6 +1,6 @@
 """Test MemoryStore.consolidate() handles non-string tool call arguments.
 
-Regression test for https://github.com/HKUDS/amberclaw/issues/1042
+Regression test for https://github.com/krishujeniya/amberclaw/issues/1042
 When memory consolidation receives dict values instead of strings from the LLM
 tool call response, it should serialize them to JSON instead of raising TypeError.
 """
