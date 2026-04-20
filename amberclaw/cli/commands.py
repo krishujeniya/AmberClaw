@@ -39,6 +39,22 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
+# ---------------------------------------------------------------------------
+# Integrated Tools: VibeDS (Data Science) and Vemy (Modular Assistant)
+# ---------------------------------------------------------------------------
+try:
+    from amberclaw.vibeds.cli import app as vibeds_app
+    app.add_typer(vibeds_app, name="vibeds")
+except ImportError:
+    pass
+
+try:
+    from amberclaw.cli.vemy import app as vemy_app
+    app.add_typer(vemy_app, name="vemy")
+except ImportError:
+    pass
+
+
 console = Console()
 EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q"}
 
