@@ -18,9 +18,10 @@ class Config:
     BASE_DIR = Path(__file__).resolve().parent.parent.parent
     SRC_DIR = BASE_DIR / "src"
     
-    # Google Gemini
+    # Google Gemini (google-genai SDK prefers GEMINI_API_KEY)
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-    AUTOGEN_MODEL = os.getenv("AUTOGEN_MODEL", "gemini-2.0-flash-exp")
+    AUTOGEN_MODEL = os.getenv("AUTOGEN_MODEL", "gemini-2.5-flash")
     AUTOGEN_TEMPERATURE = float(os.getenv("AUTOGEN_TEMPERATURE", "0.7"))
     
     # MongoDB

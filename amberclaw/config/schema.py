@@ -321,6 +321,26 @@ class MCPServerConfig(Base):
     tool_timeout: int = 30  # seconds before a tool call is cancelled
 
 
+class VemyConfig(Base):
+    """Vemy AI assistant configuration."""
+
+    enabled: bool = True
+    model: str = "gemini-2.5-flash"
+    mongodb_uri: str = "mongodb://localhost:27017"
+    google_api_key: str = ""  # Falls back to GEMINI_API_KEY / GOOGLE_API_KEY env vars
+    system_prompt: str = ""  # Override default Vemy system prompt
+
+
+class VibeDSConfig(Base):
+    """VibeDS data science agents configuration."""
+
+    enabled: bool = True
+    default_model: str = ""  # Empty = use main agent's provider
+    output_dir: str = "./vibeds_output"  # Directory for generated files
+    log_enabled: bool = False
+    log_path: str = "./logs"
+
+
 class ToolsConfig(Base):
     """Tools configuration."""
 
@@ -338,6 +358,8 @@ class Config(BaseSettings):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    vemy: VemyConfig = Field(default_factory=VemyConfig)
+    vibeds: VibeDSConfig = Field(default_factory=VibeDSConfig)
 
     @property
     def workspace_path(self) -> Path:

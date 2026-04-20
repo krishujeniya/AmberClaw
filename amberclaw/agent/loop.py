@@ -130,6 +130,49 @@ class AgentLoop:
         if self.cron_service:
             self.tools.register(CronTool(self.cron_service))
 
+        # --- Vemy tools (require Google API key + MongoDB) ---
+        try:
+            import os
+            api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+            if api_key:
+                from amberclaw.agent.tools.vemy_tool import VemyTool
+                from amberclaw.agent.tools.vemy_rag_tool import VemyRAGSearchTool
+                # Try to pull settings from config file; fall back to env vars
+                try:
+                    from amberclaw.config.loader import load_config
+                    _cfg = load_config()
+                    vemy_cfg = getattr(_cfg, "vemy", None)
+                except Exception:
+                    vemy_cfg = None
+                mongo_uri = getattr(vemy_cfg, "mongodb_uri", None) if vemy_cfg else None
+                model = getattr(vemy_cfg, "model", None) if vemy_cfg else None
+                self.tools.register(VemyTool(api_key=api_key, mongodb_uri=mongo_uri, model=model))
+                self.tools.register(VemyRAGSearchTool(mongodb_uri=mongo_uri))
+                logger.info("Vemy tools registered")
+        except Exception as e:
+            logger.debug("Vemy tools skipped: {}", e)
+
+        # --- VibeDS data science tools (always available) ---
+        try:
+            from amberclaw.agent.tools.vibeds_clean import VibeDataCleanTool
+            from amberclaw.agent.tools.vibeds_viz import VibeDataVizTool
+            from amberclaw.agent.tools.vibeds_sql import VibeSQLTool
+            from amberclaw.agent.tools.vibeds_eda import VibeEDATool
+            try:
+                from amberclaw.config.loader import load_config
+                _cfg = load_config()
+                vibeds_cfg = getattr(_cfg, "vibeds", None)
+            except Exception:
+                vibeds_cfg = None
+            out_dir = getattr(vibeds_cfg, "output_dir", None) if vibeds_cfg else None
+            self.tools.register(VibeDataCleanTool(output_dir=out_dir))
+            self.tools.register(VibeDataVizTool())
+            self.tools.register(VibeSQLTool())
+            self.tools.register(VibeEDATool())
+            logger.info("VibeDS tools registered")
+        except Exception as e:
+            logger.debug("VibeDS tools skipped: {}", e)
+
     async def _connect_mcp(self) -> None:
         """Connect to configured MCP servers (one-time, lazy)."""
         if self._mcp_connected or self._mcp_connecting or not self._mcp_servers:
