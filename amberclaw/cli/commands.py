@@ -40,19 +40,15 @@ app = typer.Typer(
 )
 
 # ---------------------------------------------------------------------------
-# Integrated Tools: VibeDS (Data Science) and Vemy (Modular Assistant)
+# Integrated Modules: Data Intelligence and Personal Assistance
 # ---------------------------------------------------------------------------
 try:
-    from amberclaw.vibeds.cli import app as vibeds_app
-    app.add_typer(vibeds_app, name="vibeds")
+    from amberclaw.data.cli import app as data_app
+    app.add_typer(data_app, name="data")
 except ImportError:
     pass
 
-try:
-    from amberclaw.cli.vemy import app as vemy_app
-    app.add_typer(vemy_app, name="vemy")
-except ImportError:
-    pass
+# No additional sub-apps — all features are wired directly into the agent loop.
 
 
 console = Console()
@@ -861,6 +857,79 @@ def channels_login():
         console.print(f"[red]Bridge failed: {e}[/red]")
     except FileNotFoundError:
         console.print("[red]npm not found. Please install Node.js.[/red]")
+
+
+# ============================================================================
+# Council — multi-model consensus
+# ============================================================================
+
+
+@app.command()
+def council(
+    query: str = typer.Argument(..., help="Question or task to put to the council."),
+    models: list[str] = typer.Option([], "--model", "-m", help="Model IDs (repeat for each). Defaults to primary."),
+    depth: int = typer.Option(1, "--depth", "-d", min=1, max=3, help="Peer-ranking rounds (1-3)."),
+    workspace: str | None = typer.Option(None, "--workspace", "-w"),
+    config: str | None = typer.Option(None, "--config", "-c"),
+):
+    """Run a multi-model council vote on a question and synthesize the best answer."""
+    import asyncio
+    from amberclaw.agent.tools.council import CouncilTool, CouncilArgs
+
+    cfg = _load_runtime_config(config, workspace)
+    provider = _make_provider(cfg)
+    tool = CouncilTool(
+        provider=provider,
+        model=cfg.agents.defaults.model,
+        temperature=cfg.agents.defaults.temperature,
+        max_tokens=min(cfg.agents.defaults.max_tokens, 2048),
+    )
+
+    console.print(f"{__logo__} [bold cyan]Council[/bold cyan] — consulting {len(models) or 1} model(s)...\n")
+
+    async def run():
+        args = CouncilArgs(query=query, models=list(models), depth=depth)
+        return await tool.run(args)
+
+    result = asyncio.run(run())
+    from rich.markdown import Markdown
+    console.print(Markdown(result))
+
+
+# ============================================================================
+# Mythos — recursive deep reasoning
+# ============================================================================
+
+
+@app.command()
+def mythos(
+    query: str = typer.Argument(..., help="Question or problem to reason through deeply."),
+    depth: int = typer.Option(3, "--depth", "-d", min=1, max=5, help="Reasoning depth (1-5)."),
+    workspace: str | None = typer.Option(None, "--workspace", "-w"),
+    config: str | None = typer.Option(None, "--config", "-c"),
+):
+    """Apply multi-layer recursive reasoning to produce a deeply considered answer."""
+    import asyncio
+    from amberclaw.agent.tools.mythos import MythosTool, MythosArgs
+
+    cfg = _load_runtime_config(config, workspace)
+    provider = _make_provider(cfg)
+    tool = MythosTool(
+        provider=provider,
+        model=cfg.agents.defaults.model,
+        temperature=cfg.agents.defaults.temperature,
+        max_tokens=min(cfg.agents.defaults.max_tokens, 2048),
+    )
+
+    console.print(f"{__logo__} [bold magenta]Mythos[/bold magenta] — {depth}-depth reasoning...\n")
+
+    async def run():
+        args = MythosArgs(query=query, depth=depth)
+        return await tool.run(args)
+
+    result = asyncio.run(run())
+    from rich.markdown import Markdown
+    console.print(Markdown(result))
 
 
 # ============================================================================

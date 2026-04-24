@@ -1,7 +1,8 @@
 """Base class for agent tools."""
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Type, TypeVar
+from pydantic import BaseModel, ConfigDict
 
 
 class Tool(ABC):
@@ -179,3 +180,56 @@ class Tool(ABC):
                 "parameters": self.parameters,
             },
         }
+
+
+T = TypeVar("T", bound=BaseModel)
+
+
+class PydanticTool(Tool, ABC):
+    """
+    Tool subclass that uses Pydantic for parameter validation.
+    """
+
+    @property
+    @abstractmethod
+    def args_schema(self) -> Type[BaseModel]:
+        """Pydantic model for tool parameters."""
+        pass
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        """Generate JSON Schema from Pydantic model."""
+        schema = self.args_schema.model_json_schema()
+        # Remove titles as they can confuse some LLMs
+        self._remove_titles(schema)
+        return schema
+
+    def _remove_titles(self, obj: Any) -> None:
+        if isinstance(obj, dict):
+            obj.pop("title", None)
+            for v in obj.values():
+                self._remove_titles(v)
+        elif isinstance(obj, list):
+            for i in obj:
+                self._remove_titles(i)
+
+    def validate_params(self, params: dict[str, Any]) -> list[str]:
+        """Validate params using Pydantic."""
+        try:
+            self.args_schema.model_validate(params)
+            return []
+        except Exception as e:
+            return [str(e)]
+
+    async def execute(self, **kwargs: Any) -> str:
+        """Validate and then execute."""
+        validated = self.args_schema.model_validate(kwargs)
+        return await self.run(validated)
+
+    @abstractmethod
+    async def run(self, args: Any) -> str:
+        """
+        Inner execution logic with validated Pydantic model.
+        """
+        pass
+

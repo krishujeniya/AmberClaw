@@ -1,15 +1,16 @@
 [project]
-name = "amberclaw-ai"
-version = "0.1.4.post4"
-description = "A lightweight personal AI assistant framework"
+name = "amberclaw"
+version = "1.0.0"
+description = "AmberClaw: A production-grade, unified AI agentic framework and product."
+readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
     {name = "Krish Ujeniya"}
 ]
-keywords = ["ai", "agent", "chatbot"]
+keywords = ["ai", "agent", "amberclaw", "intelligent-systems"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
@@ -17,34 +18,33 @@ classifiers = [
 ]
 
 dependencies = [
-    "typer>=0.20.0,<1.0.0",
-    "litellm>=1.81.5,<2.0.0",
-    "pydantic>=2.12.0,<3.0.0",
-    "pydantic-settings>=2.12.0,<3.0.0",
-    "websockets>=16.0,<17.0",
-    "websocket-client>=1.9.0,<2.0.0",
-    "httpx>=0.28.0,<1.0.0",
-    "oauth-cli-kit>=0.1.3,<1.0.0",
-    "loguru>=0.7.3,<1.0.0",
-    "readability-lxml>=0.8.4,<1.0.0",
-    "rich>=14.0.0,<15.0.0",
-    "croniter>=6.0.0,<7.0.0",
-    "dingtalk-stream>=0.24.0,<1.0.0",
-    "python-telegram-bot[socks]>=22.6,<23.0",
-    "lark-oapi>=1.5.0,<2.0.0",
-    "socksio>=1.0.0,<2.0.0",
-    "python-socketio>=5.16.0,<6.0.0",
-    "msgpack>=1.1.0,<2.0.0",
-    "slack-sdk>=3.39.0,<4.0.0",
-    "slackify-markdown>=0.2.0,<1.0.0",
-    "qq-botpy>=1.2.0,<2.0.0",
-    "python-socks[asyncio]>=2.8.0,<3.0.0",
-    "prompt-toolkit>=3.0.50,<4.0.0",
-    "mcp>=1.26.0,<2.0.0",
-    "json-repair>=0.57.0,<1.0.0",
-    "chardet>=3.0.2,<6.0.0",
+    "typer>=0.20.0",
+    "litellm>=1.81.5",
+    "pydantic>=2.12.0",
+    "pydantic-settings>=2.12.0",
+    "websockets>=16.0",
+    "websocket-client>=1.9.0",
+    "httpx>=0.28.0",
+    "oauth-cli-kit>=0.1.3",
+    "loguru>=0.7.3",
+    "readability-lxml>=0.8.4",
+    "rich>=14.0.0",
+    "croniter>=6.0.0",
+    "dingtalk-stream>=0.24.0",
+    "python-telegram-bot[socks]>=22.6",
+    "lark-oapi>=1.5.0",
+    "socksio>=1.0.0",
+    "python-socketio>=5.16.0",
+    "msgpack>=1.1.0",
+    "slack-sdk>=3.39.0",
+    "slackify-markdown>=0.2.0",
+    "qq-botpy>=1.2.0",
+    "python-socks[asyncio]>=2.8.0",
+    "prompt-toolkit>=3.0.50",
+    "mcp>=1.26.0",
+    "json-repair>=0.57.0",
+    "chardet>=3.0.2",
     "openai>=2.8.0",
-    # VibeDS / Vemy additions
     "openpyxl>=3.1.0",
     "langchain>=1.0.0",
     "langchain-community>=0.3.0",
@@ -60,7 +60,6 @@ dependencies = [
     "xgboost>=2.0.0",
     "psutil>=5.9.0",
     "google-genai>=1.0.0",
-    "pymongo>=4.6.0",
     "langchain-google-genai>=2.1.0",
     "google-api-python-client>=2.150.0",
     "google-auth-httplib2>=0.2.0",
@@ -74,16 +73,13 @@ dependencies = [
 [project.optional-dependencies]
 matrix = [
     "matrix-nio[e2e]>=0.25.2",
-    "mistune>=3.0.0,<4.0.0",
-    "nh3>=0.2.17,<1.0.0",
+    "mistune>=3.0.0",
+    "nh3>=0.2.17",
 ]
 dev = [
-    "pytest>=9.0.0,<10.0.0",
-    "pytest-asyncio>=1.3.0,<2.0.0",
+    "pytest>=9.0.0",
+    "pytest-asyncio>=1.3.0",
     "ruff>=0.1.0",
-    "matrix-nio[e2e]>=0.25.2",
-    "mistune>=3.0.0,<4.0.0",
-    "nh3>=0.2.17,<1.0.0",
 ]
 
 [project.scripts]
@@ -96,36 +92,12 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["amberclaw"]
 
-[tool.hatch.build.targets.wheel.sources]
-"amberclaw" = "amberclaw"
-
-# Include non-Python files in skills and templates
-[tool.hatch.build]
-include = [
-    "amberclaw/**/*.py",
-    "amberclaw/templates/**/*.md",
-    "amberclaw/skills/**/*.md",
-    "amberclaw/skills/**/*.sh",
-]
-
-[tool.hatch.build.targets.sdist]
-include = [
-    "amberclaw/",
-    "bridge/",
-    "README.md",
-    "LICENSE",
-]
-
-[tool.hatch.build.targets.wheel.force-include]
-"bridge" = "amberclaw/bridge"
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "N", "W"]
-ignore = ["E501"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -360,7 +360,25 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         strip_model_prefix=False,
         model_overrides=(),
     ),
+    # Ollama: detected when name is "ollama"
+    ProviderSpec(
+        name="ollama",
+        keywords=("ollama",),
+        env_key="OLLAMA_API_KEY", # Usually not needed but keeps pattern
+        display_name="Ollama",
+        litellm_prefix="ollama",  # llama3 → ollama/llama3
+        skip_prefixes=("ollama/",),
+        env_extras=(),
+        is_gateway=False,
+        is_local=True,
+        detect_by_key_prefix="",
+        detect_by_base_keyword="11434", # Default ollama port
+        default_api_base="http://localhost:11434",
+        strip_model_prefix=False,
+        model_overrides=(),
+    ),
     # === Auxiliary (not a primary LLM provider) ============================
+
     # Groq: mainly used for Whisper voice transcription, also usable for LLM.
     # Needs "groq/" prefix for LiteLLM routing. Placed last — it rarely wins fallback.
     ProviderSpec(

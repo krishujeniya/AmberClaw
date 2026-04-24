@@ -7,17 +7,16 @@ import subprocess
 def print_banner():
     banner = """
     ============================================================
-      🚀 A M B E R C L A W   Q U I C K   S E T U P 
+      🔱  A M B E R C L A W   P R O F E S S I O N A L  🔱
     ============================================================
-      Welcome to the 1-Line Interactive Setup for AmberClaw!
-      We will configure your Personal AI Assistant in seconds.
+      Unified AI Architecture - Local First - Production Grade
     ============================================================
     """
-    print(f"\033[1;36m{banner}\033[0m")
+    print(f"\033[1;33m{banner}\033[0m")
 
 def prompt(query, default=None, is_secret=False):
     default_text = f" [{default}]" if default else ""
-    user_input = input(f"\033[1;33m? {query}{default_text}:\033[0m ").strip()
+    user_input = input(f"\033[1;36m? {query}{default_text}:\033[0m ").strip()
     return user_input if user_input else default
 
 def main():
@@ -27,113 +26,93 @@ def main():
     config_dir.mkdir(parents=True, exist_ok=True)
     config_file = config_dir / "config.json"
 
-    # Default base config
+    # Production-grade base config
     config_data = {
-        "channels": {
-            "telegram": {"enabled": False},
-            "whatsapp": {"enabled": False}
+        "agents": {
+            "defaults": {
+                "workspace": str(Path.home() / ".amberclaw" / "workspace"),
+                "model": "gemini-2.0-flash",
+                "provider": "gemini",
+                "temperature": 0.1
+            }
         },
         "providers": {
             "gemini": {"api_key": ""},
-            "openai": {"api_key": ""}
+            "openai": {"api_key": ""},
+            "vllm": {"api_key": "local-dev", "api_base": "http://localhost:11434/v1"}
         },
-        "agents": {
-            "defaults": {
-                "model": "anthropic/claude-opus-4-5",
-                "provider": "auto"
-            }
-        }
+        "assistant": {
+            "enabled": True,
+            "model": "gemini-2.0-flash"
+        },
+        "db_path": str(config_dir / "amberclaw.db")
     }
 
-    # Load existing config if it exists
-    if config_file.exists():
-        try:
-            with open(config_file, "r") as f:
-                existing_data = json.load(f)
-                
-                # Deep update function
-                def update_dict(d, u):
-                    for k, v in u.items():
-                        if isinstance(v, dict):
-                            d[k] = update_dict(d.get(k, {}), v)
-                        else:
-                            d[k] = v
-                    return d
-                
-                config_data = update_dict(existing_data, config_data)
-        except Exception:
-            pass
+    # --- Step 1: Primary Intelligence ---
+    print("\n\033[1;34m[ 🧠 Step 1: Intelligence Core ]\033[0m")
+    print("  1) Google Gemini (Cloud - Recommended)")
+    print("  2) Local Llama / Ollama (100% Local)")
+    print("  3) OpenAI (Cloud)")
+    print("  4) Manual / Skip")
+    
+    choice = prompt("Select your primary AI engine", default="1")
 
-    # --- Step 1: Chat Integration ---
-    print("\n\033[1;34m[ Step 1: Chat Integration ]\033[0m")
-    print("  1) Telegram")
-    print("  2) WhatsApp")
-    print("  3) Skip")
-    chat_choice = prompt("Select an option (1-3)", default="3")
-
-    if chat_choice == "1":
-        config_data["channels"]["telegram"]["enabled"] = True
-        token = prompt("Enter your Telegram Bot Token")
-        if token:
-            config_data["channels"]["telegram"]["token"] = token
-            # Get user ID if possible
-            tg_id = prompt("Enter your Telegram User ID (Numbers only, optional)")
-            if tg_id:
-                config_data["channels"]["telegram"]["allowFrom"] = [tg_id]
-        print("  \033[1;32m✓ Telegram Configured!\033[0m")
-    elif chat_choice == "2":
-        config_data["channels"]["whatsapp"]["enabled"] = True
-        print("  \033[1;32m✓ WhatsApp Configured!\033[0m (Requires 'amberclaw channels login' later)")
-
-    # --- Step 2: AI Provider Selection ---
-    print("\n\033[1;34m[ Step 2: AI Provider Selection ]\033[0m")
-    print("  1) Google Gemini")
-    print("  2) OpenAI")
-    print("  3) Skip")
-    api_choice = prompt("Select an option (1-3)", default="3")
-
-    if api_choice == "1":
-        api_key = prompt("Enter your Google Gemini API Key")
-        if api_key:
-            config_data["providers"]["gemini"]["api_key"] = api_key
+    if choice == "1":
+        key = prompt("Enter Google API Key (GEMINI_API_KEY)")
+        if key:
+            config_data["providers"]["gemini"]["api_key"] = key
             config_data["agents"]["defaults"]["provider"] = "gemini"
-            config_data["agents"]["defaults"]["model"] = "gemini/gemini-2.5-flash"
-        print("  \033[1;32m✓ Google Gemini Configured!\033[0m")
-    elif api_choice == "2":
-        api_key = prompt("Enter your OpenAI API Key")
-        if api_key:
-            config_data["providers"]["openai"]["api_key"] = api_key
+            config_data["agents"]["defaults"]["model"] = "gemini/gemini-1.5-pro"
+            config_data["assistant"]["model"] = "gemini-2.0-flash"
+        print("  \033[1;32m✓ Intelligence: Google Gemini Configured\033[0m")
+    
+    elif choice == "2":
+        url = prompt("Local endpoint URL", default="http://localhost:11434/v1")
+        model = prompt("Local model name", default="llama3:latest")
+        config_data["providers"]["vllm"]["api_base"] = url
+        config_data["agents"]["defaults"]["provider"] = "vllm"
+        config_data["agents"]["defaults"]["model"] = f"vllm/{model}"
+        config_data["assistant"]["model"] = model
+        print("  \033[1;32m✓ Intelligence: Local Llama (vLLM) Configured\033[0m")
+
+    elif choice == "3":
+        key = prompt("Enter OpenAI API Key")
+        if key:
+            config_data["providers"]["openai"]["api_key"] = key
             config_data["agents"]["defaults"]["provider"] = "openai"
             config_data["agents"]["defaults"]["model"] = "gpt-4o"
-        print("  \033[1;32m✓ OpenAI Configured!\033[0m")
+            config_data["assistant"]["model"] = "gpt-4o-mini"
+        print("  \033[1;32m✓ Intelligence: OpenAI Configured\033[0m")
 
+    # --- Step 2: Environment Optimization ---
+    print("\n\033[1;34m[ 📁 Step 2: Workspace & Persistence ]\033[0m")
+    workspace = prompt("AmberClaw Workspace Path", default=config_data["agents"]["defaults"]["workspace"])
+    db_path = prompt("Database Path (Local Store)", default=config_data["db_path"])
+    
+    config_data["agents"]["defaults"]["workspace"] = str(Path(workspace).expanduser())
+    config_data["db_path"] = str(Path(db_path).expanduser())
+
+    # --- Step 3: Deployment ---
+    print("\n\033[1;34m[ 📦 Step 3: Professional Deployment ]\033[0m")
+    
     # Save to config file
     with open(config_file, "w") as f:
         json.dump(config_data, f, indent=2)
     
-    print(f"\n\033[1;32m✓ Settings saved successfully to {config_file}\033[0m")
+    print(f"\n\033[1;32m✓ AmberClaw configuration locked: {config_file}\033[0m")
 
-    # Ask to install/start
-    print("\n\033[1;34m[ Step 3: Start AmberClaw ]\033[0m")
-    run_now = prompt("Do you want to install and start the gateway now? (y/n)", default="y")
-    if run_now.lower() == 'y':
-        print("\033[1;36mInstalling via pip...\033[0m")
-        subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."], check=False)
-        print("\033[1;32mStarting AmberClaw Gateway...\033[0m")
-        try:
-            subprocess.run(["amberclaw", "gateway"])
-        except FileNotFoundError:
-            # Fallback if amberclaw is not in PATH
-            subprocess.run([sys.executable, "-m", "amberclaw.cli", "gateway"])
-    else:
-        print("\n\033[1;32mSetup complete! To run later, use:\033[0m")
-        if chat_choice == '2':
-            print("  amberclaw channels login  # (To link WhatsApp)")
-        print("  amberclaw gateway         # (To start the server)")
+    sync_deps = prompt("Sync local environment with 'uv'? (y/n)", default="y")
+    if sync_deps.lower() == 'y':
+        print("\033[1;36mSyncing via UV...\033[0m")
+        subprocess.run(["uv", "sync"], check=False)
+        print("\033[1;32mLocal environment synchronized.\033[0m")
+
+    print("\n\033[1;32mAmberClaw Professional Setup Complete.\033[0m")
+    print("Run \033[1;34mamberclaw --help\033[0m to explore the terminal interface.")
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\033[1;31mSetup Customization Aborted.\033[0m")
+        print("\n\033[1;31mSetup Aborted.\033[0m")
         sys.exit(0)

@@ -4,13 +4,24 @@ import asyncio
 import os
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
+from pydantic import BaseModel, Field
 
-from amberclaw.agent.tools.base import Tool
+from amberclaw.agent.tools.base import PydanticTool
 
 
-class ExecTool(Tool):
+class ExecArgs(BaseModel):
+    """Arguments for the shell execution tool."""
+    command: str = Field(..., description="The shell command to execute")
+    working_dir: Optional[str] = Field(None, description="Optional working directory for the command")
+
+
+class ExecTool(PydanticTool):
     """Tool to execute shell commands."""
+
+    name = "exec"
+    description = "Execute a shell command and return its output. Use with caution."
+    args_schema = ExecArgs
 
     def __init__(
         self,
@@ -21,6 +32,7 @@ class ExecTool(Tool):
         restrict_to_workspace: bool = False,
         path_append: str = "",
     ):
+        super().__init__()
         self.timeout = timeout
         self.working_dir = working_dir
         self.deny_patterns = deny_patterns if deny_patterns is not None else [
@@ -38,34 +50,9 @@ class ExecTool(Tool):
         self.restrict_to_workspace = restrict_to_workspace
         self.path_append = path_append
 
-    @property
-    def name(self) -> str:
-        return "exec"
-
-    @property
-    def description(self) -> str:
-        return "Execute a shell command and return its output. Use with caution."
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "command": {
-                    "type": "string",
-                    "description": "The shell command to execute"
-                },
-                "working_dir": {
-                    "type": "string",
-                    "description": "Optional working directory for the command"
-                }
-            },
-            "required": ["command"]
-        }
-    
-    async def execute(self, command: str, working_dir: str | None = None, **kwargs: Any) -> str:
-        cwd = working_dir or self.working_dir or os.getcwd()
-        guard_error = self._guard_command(command, cwd)
+    async def run(self, args: ExecArgs) -> str:
+        cwd = args.working_dir or self.working_dir or os.getcwd()
+        guard_error = self._guard_command(args.command, cwd)
         if guard_error:
             return guard_error
         
@@ -75,7 +62,7 @@ class ExecTool(Tool):
 
         try:
             process = await asyncio.create_subprocess_shell(
-                command,
+                args.command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=cwd,
@@ -156,3 +143,4 @@ class ExecTool(Tool):
         win_paths = re.findall(r"[A-Za-z]:\\[^\s\"'|><;]+", command)   # Windows: C:\...
         posix_paths = re.findall(r"(?:^|[\s|>])(/[^\s\"'>]+)", command) # POSIX: /absolute only
         return win_paths + posix_paths
+

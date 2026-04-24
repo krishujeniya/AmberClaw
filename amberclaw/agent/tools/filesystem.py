@@ -2,9 +2,10 @@
 
 import difflib
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
+from pydantic import BaseModel, Field
 
-from amberclaw.agent.tools.base import Tool
+from amberclaw.agent.tools.base import PydanticTool
 
 
 def _resolve_path(
@@ -25,38 +26,32 @@ def _resolve_path(
     return resolved
 
 
-class ReadFileTool(Tool):
+class ReadFileArgs(BaseModel):
+    """Arguments for the read_file tool."""
+    path: str = Field(..., description="The file path to read")
+
+
+class ReadFileTool(PydanticTool):
     """Tool to read file contents."""
 
     _MAX_CHARS = 128_000  # ~128 KB — prevents OOM from reading huge files into LLM context
+    
+    name = "read_file"
+    description = "Read the contents of a file at the given path."
+    args_schema = ReadFileArgs
 
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
+        super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
 
-    @property
-    def name(self) -> str:
-        return "read_file"
-
-    @property
-    def description(self) -> str:
-        return "Read the contents of a file at the given path."
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {"path": {"type": "string", "description": "The file path to read"}},
-            "required": ["path"],
-        }
-
-    async def execute(self, path: str, **kwargs: Any) -> str:
+    async def run(self, args: ReadFileArgs) -> str:
         try:
-            file_path = _resolve_path(path, self._workspace, self._allowed_dir)
+            file_path = _resolve_path(args.path, self._workspace, self._allowed_dir)
             if not file_path.exists():
-                return f"Error: File not found: {path}"
+                return f"Error: File not found: {args.path}"
             if not file_path.is_file():
-                return f"Error: Not a file: {path}"
+                return f"Error: Not a file: {args.path}"
 
             size = file_path.stat().st_size
             if size > self._MAX_CHARS * 4:  # rough upper bound (UTF-8 chars ≤ 4 bytes)
@@ -75,88 +70,72 @@ class ReadFileTool(Tool):
             return f"Error reading file: {str(e)}"
 
 
-class WriteFileTool(Tool):
+class WriteFileArgs(BaseModel):
+    """Arguments for the write_file tool."""
+    path: str = Field(..., description="The file path to write to")
+    content: str = Field(..., description="The content to write")
+
+
+class WriteFileTool(PydanticTool):
     """Tool to write content to a file."""
 
+    name = "write_file"
+    description = "Write content to a file at the given path. Creates parent directories if needed."
+    args_schema = WriteFileArgs
+
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
+        super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
 
-    @property
-    def name(self) -> str:
-        return "write_file"
-
-    @property
-    def description(self) -> str:
-        return "Write content to a file at the given path. Creates parent directories if needed."
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "The file path to write to"},
-                "content": {"type": "string", "description": "The content to write"},
-            },
-            "required": ["path", "content"],
-        }
-
-    async def execute(self, path: str, content: str, **kwargs: Any) -> str:
+    async def run(self, args: WriteFileArgs) -> str:
         try:
-            file_path = _resolve_path(path, self._workspace, self._allowed_dir)
+            file_path = _resolve_path(args.path, self._workspace, self._allowed_dir)
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(content, encoding="utf-8")
-            return f"Successfully wrote {len(content)} bytes to {file_path}"
+            file_path.write_text(args.content, encoding="utf-8")
+            return f"Successfully wrote {len(args.content)} bytes to {file_path}"
         except PermissionError as e:
             return f"Error: {e}"
         except Exception as e:
             return f"Error writing file: {str(e)}"
 
 
-class EditFileTool(Tool):
+class EditFileArgs(BaseModel):
+    """Arguments for the edit_file tool."""
+    path: str = Field(..., description="The file path to edit")
+    old_text: str = Field(..., description="The exact text to find and replace")
+    new_text: str = Field(..., description="The text to replace with")
+
+
+class EditFileTool(PydanticTool):
     """Tool to edit a file by replacing text."""
 
+    name = "edit_file"
+    description = "Edit a file by replacing old_text with new_text. The old_text must exist exactly in the file."
+    args_schema = EditFileArgs
+
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
+        super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
 
-    @property
-    def name(self) -> str:
-        return "edit_file"
-
-    @property
-    def description(self) -> str:
-        return "Edit a file by replacing old_text with new_text. The old_text must exist exactly in the file."
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "path": {"type": "string", "description": "The file path to edit"},
-                "old_text": {"type": "string", "description": "The exact text to find and replace"},
-                "new_text": {"type": "string", "description": "The text to replace with"},
-            },
-            "required": ["path", "old_text", "new_text"],
-        }
-
-    async def execute(self, path: str, old_text: str, new_text: str, **kwargs: Any) -> str:
+    async def run(self, args: EditFileArgs) -> str:
         try:
-            file_path = _resolve_path(path, self._workspace, self._allowed_dir)
+            file_path = _resolve_path(args.path, self._workspace, self._allowed_dir)
             if not file_path.exists():
-                return f"Error: File not found: {path}"
+                return f"Error: File not found: {args.path}"
 
             content = file_path.read_text(encoding="utf-8")
 
-            if old_text not in content:
-                return self._not_found_message(old_text, content, path)
+            if args.old_text not in content:
+                return self._not_found_message(args.old_text, content, args.path)
 
             # Count occurrences
-            count = content.count(old_text)
+            count = content.count(args.old_text)
             if count > 1:
                 return f"Warning: old_text appears {count} times. Please provide more context to make it unique."
 
-            new_content = content.replace(old_text, new_text, 1)
+            new_content = content.replace(args.old_text, args.new_text, 1)
             file_path.write_text(new_content, encoding="utf-8")
 
             return f"Successfully edited {file_path}"
@@ -194,36 +173,30 @@ class EditFileTool(Tool):
         )
 
 
-class ListDirTool(Tool):
+class ListDirArgs(BaseModel):
+    """Arguments for the list_dir tool."""
+    path: str = Field(..., description="The directory path to list")
+
+
+class ListDirTool(PydanticTool):
     """Tool to list directory contents."""
 
+    name = "list_dir"
+    description = "List the contents of a directory."
+    args_schema = ListDirArgs
+
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
+        super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
 
-    @property
-    def name(self) -> str:
-        return "list_dir"
-
-    @property
-    def description(self) -> str:
-        return "List the contents of a directory."
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {"path": {"type": "string", "description": "The directory path to list"}},
-            "required": ["path"],
-        }
-
-    async def execute(self, path: str, **kwargs: Any) -> str:
+    async def run(self, args: ListDirArgs) -> str:
         try:
-            dir_path = _resolve_path(path, self._workspace, self._allowed_dir)
+            dir_path = _resolve_path(args.path, self._workspace, self._allowed_dir)
             if not dir_path.exists():
-                return f"Error: Directory not found: {path}"
+                return f"Error: Directory not found: {args.path}"
             if not dir_path.is_dir():
-                return f"Error: Not a directory: {path}"
+                return f"Error: Not a directory: {args.path}"
 
             items = []
             for item in sorted(dir_path.iterdir()):
@@ -231,10 +204,11 @@ class ListDirTool(Tool):
                 items.append(f"{prefix}{item.name}")
 
             if not items:
-                return f"Directory {path} is empty"
+                return f"Directory {args.path} is empty"
 
             return "\n".join(items)
         except PermissionError as e:
             return f"Error: {e}"
         except Exception as e:
             return f"Error listing directory: {str(e)}"
+

@@ -1,17 +1,35 @@
 """Cron tool for scheduling reminders and tasks."""
 
 from contextvars import ContextVar
-from typing import Any
+from datetime import datetime
+from typing import Any, Optional, Literal
+from pydantic import BaseModel, Field
 
-from amberclaw.agent.tools.base import Tool
+from amberclaw.agent.tools.base import PydanticTool
 from amberclaw.cron.service import CronService
 from amberclaw.cron.types import CronSchedule
 
 
-class CronTool(Tool):
+class CronArgs(BaseModel):
+    """Arguments for the cron tool."""
+    action: Literal["add", "list", "remove"] = Field(..., description="Action to perform")
+    message: Optional[str] = Field(None, description="Reminder message (for add)")
+    every_seconds: Optional[int] = Field(None, description="Interval in seconds (for recurring tasks)")
+    cron_expr: Optional[str] = Field(None, description="Cron expression like '0 9 * * *' (for scheduled tasks)")
+    tz: Optional[str] = Field(None, description="IANA timezone for cron expressions (e.g. 'America/Vancouver')")
+    at: Optional[str] = Field(None, description="ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')")
+    job_id: Optional[str] = Field(None, description="Job ID (for remove)")
+
+
+class CronTool(PydanticTool):
     """Tool to schedule reminders and recurring tasks."""
 
+    name = "cron"
+    description = "Schedule reminders and recurring tasks. Actions: add, list, remove."
+    args_schema = CronArgs
+
     def __init__(self, cron_service: CronService):
+        super().__init__()
         self._cron = cron_service
         self._channel = ""
         self._chat_id = ""
@@ -30,102 +48,42 @@ class CronTool(Tool):
         """Restore previous cron context."""
         self._in_cron_context.reset(token)
 
-    @property
-    def name(self) -> str:
-        return "cron"
-
-    @property
-    def description(self) -> str:
-        return "Schedule reminders and recurring tasks. Actions: add, list, remove."
-
-    @property
-    def parameters(self) -> dict[str, Any]:
-        return {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string",
-                    "enum": ["add", "list", "remove"],
-                    "description": "Action to perform",
-                },
-                "message": {"type": "string", "description": "Reminder message (for add)"},
-                "every_seconds": {
-                    "type": "integer",
-                    "description": "Interval in seconds (for recurring tasks)",
-                },
-                "cron_expr": {
-                    "type": "string",
-                    "description": "Cron expression like '0 9 * * *' (for scheduled tasks)",
-                },
-                "tz": {
-                    "type": "string",
-                    "description": "IANA timezone for cron expressions (e.g. 'America/Vancouver')",
-                },
-                "at": {
-                    "type": "string",
-                    "description": "ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')",
-                },
-                "job_id": {"type": "string", "description": "Job ID (for remove)"},
-            },
-            "required": ["action"],
-        }
-
-    async def execute(
-        self,
-        action: str,
-        message: str = "",
-        every_seconds: int | None = None,
-        cron_expr: str | None = None,
-        tz: str | None = None,
-        at: str | None = None,
-        job_id: str | None = None,
-        **kwargs: Any,
-    ) -> str:
-        if action == "add":
+    async def run(self, args: CronArgs) -> str:
+        if args.action == "add":
             if self._in_cron_context.get():
                 return "Error: cannot schedule new jobs from within a cron job execution"
-            return self._add_job(message, every_seconds, cron_expr, tz, at)
-        elif action == "list":
+            return self._add_job(args)
+        elif args.action == "list":
             return self._list_jobs()
-        elif action == "remove":
-            return self._remove_job(job_id)
-        return f"Unknown action: {action}"
+        elif args.action == "remove":
+            return self._remove_job(args.job_id)
+        return f"Unknown action: {args.action}"
 
-    def _add_job(
-        self,
-        message: str,
-        every_seconds: int | None,
-        cron_expr: str | None,
-        tz: str | None,
-        at: str | None,
-    ) -> str:
-        if not message:
+    def _add_job(self, args: CronArgs) -> str:
+        if not args.message:
             return "Error: message is required for add"
         if not self._channel or not self._chat_id:
             return "Error: no session context (channel/chat_id)"
-        if tz and not cron_expr:
+        if args.tz and not args.cron_expr:
             return "Error: tz can only be used with cron_expr"
-        if tz:
+        if args.tz:
             from zoneinfo import ZoneInfo
-
             try:
-                ZoneInfo(tz)
+                ZoneInfo(args.tz)
             except (KeyError, Exception):
-                return f"Error: unknown timezone '{tz}'"
+                return f"Error: unknown timezone '{args.tz}'"
 
         # Build schedule
         delete_after = False
-        if every_seconds:
-            schedule = CronSchedule(kind="every", every_ms=every_seconds * 1000)
-        elif cron_expr:
-            schedule = CronSchedule(kind="cron", expr=cron_expr, tz=tz)
-        elif at:
-            from datetime import datetime
-
+        if args.every_seconds:
+            schedule = CronSchedule(kind="every", every_ms=args.every_seconds * 1000)
+        elif args.cron_expr:
+            schedule = CronSchedule(kind="cron", expr=args.cron_expr, tz=args.tz)
+        elif args.at:
             try:
-                dt = datetime.fromisoformat(at)
+                dt = datetime.fromisoformat(args.at)
             except ValueError:
-                return f"Error: invalid ISO datetime format '{at}'. Expected format: YYYY-MM-DDTHH:MM:SS"
+                return f"Error: invalid ISO datetime format '{args.at}'. Expected format: YYYY-MM-DDTHH:MM:SS"
             at_ms = int(dt.timestamp() * 1000)
             schedule = CronSchedule(kind="at", at_ms=at_ms)
             delete_after = True
@@ -133,9 +91,9 @@ class CronTool(Tool):
             return "Error: either every_seconds, cron_expr, or at is required"
 
         job = self._cron.add_job(
-            name=message[:30],
+            name=args.message[:30],
             schedule=schedule,
-            message=message,
+            message=args.message,
             deliver=True,
             channel=self._channel,
             to=self._chat_id,

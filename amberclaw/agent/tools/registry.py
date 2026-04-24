@@ -1,8 +1,10 @@
 """Tool registry for dynamic tool management."""
 
-from typing import Any
+from typing import Any, TypeVar
 
-from amberclaw.agent.tools.base import Tool
+from amberclaw.agent.tools.base import Tool, PydanticTool
+
+T = TypeVar("T", bound=Tool)
 
 
 class ToolRegistry:
@@ -44,14 +46,17 @@ class ToolRegistry:
             return f"Error: Tool '{name}' not found. Available: {', '.join(self.tool_names)}"
 
         try:
-            # Attempt to cast parameters to match schema types
-            params = tool.cast_params(params)
-            
-            # Validate parameters
-            errors = tool.validate_params(params)
-            if errors:
-                return f"Error: Invalid parameters for tool '{name}': " + "; ".join(errors) + _HINT
-            result = await tool.execute(**params)
+            # Pydantic tools handle their own internal validation and execution
+            if isinstance(tool, PydanticTool):
+                result = await tool.execute(**params)
+            else:
+                # Legacy path for non-pydantic tools
+                params = tool.cast_params(params)
+                errors = tool.validate_params(params)
+                if errors:
+                    return f"Error: Invalid parameters for tool '{name}': " + "; ".join(errors) + _HINT
+                result = await tool.execute(**params)
+
             if isinstance(result, str) and result.startswith("Error"):
                 return result + _HINT
             return result

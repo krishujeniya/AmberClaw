@@ -261,6 +261,7 @@ class ProvidersConfig(Base):
     zhipu: ProviderConfig = Field(default_factory=ProviderConfig)
     dashscope: ProviderConfig = Field(default_factory=ProviderConfig)  # 阿里云通义千问
     vllm: ProviderConfig = Field(default_factory=ProviderConfig)
+    ollama: ProviderConfig = Field(default_factory=ProviderConfig)
     gemini: ProviderConfig = Field(default_factory=ProviderConfig)
     moonshot: ProviderConfig = Field(default_factory=ProviderConfig)
     minimax: ProviderConfig = Field(default_factory=ProviderConfig)
@@ -284,6 +285,21 @@ class GatewayConfig(Base):
     host: str = "0.0.0.0"
     port: int = 18790
     heartbeat: HeartbeatConfig = Field(default_factory=HeartbeatConfig)
+
+
+class GoogleDriveConfig(Base):
+    \"\"\"Google Drive tool configuration.\"\"\"
+
+    enabled: bool = False
+    credentials_json: str = \"\"\"  # Path to credentials.json
+    token_json: str = \"\"\"  # Path to token.json
+    authorized_users: list[str] = Field(default_factory=list)
+
+
+class KnowledgeConfig(Base):
+    \"\"\"Knowledge base configuration.\"\"\"
+
+    db_path: str = \"~/.amberclaw/amberclaw.db\"
 
 
 class WebSearchConfig(Base):
@@ -321,31 +337,32 @@ class MCPServerConfig(Base):
     tool_timeout: int = 30  # seconds before a tool call is cancelled
 
 
-class VemyConfig(Base):
-    """Vemy AI assistant configuration."""
+class AssistantConfig(Base):
+    """Assistant AI assistant configuration."""
 
     enabled: bool = True
-    model: str = "gemini-2.5-flash"
-    mongodb_uri: str = "mongodb://localhost:27017"
+    model: str = "gemini-2.0-flash"
     google_api_key: str = ""  # Falls back to GEMINI_API_KEY / GOOGLE_API_KEY env vars
-    system_prompt: str = ""  # Override default Vemy system prompt
+    system_prompt: str = ""  # Override default Assistant system prompt
 
 
-class VibeDSConfig(Base):
-    """VibeDS data science agents configuration."""
+class DataAgentConfig(Base):
+    """DataAgent data science agents configuration."""
 
     enabled: bool = True
     default_model: str = ""  # Empty = use main agent's provider
-    output_dir: str = "./vibeds_output"  # Directory for generated files
+    output_dir: str = "./data_output"  # Directory for generated files
     log_enabled: bool = False
     log_path: str = "./logs"
 
 
 class ToolsConfig(Base):
-    """Tools configuration."""
+    \"\"\"Tools configuration.\"\"\"
 
     web: WebToolsConfig = Field(default_factory=WebToolsConfig)
     exec: ExecToolConfig = Field(default_factory=ExecToolConfig)
+    drive: GoogleDriveConfig = Field(default_factory=GoogleDriveConfig)
+    knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
     restrict_to_workspace: bool = False  # If true, restrict all tool access to workspace directory
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
 
@@ -358,8 +375,8 @@ class Config(BaseSettings):
     providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
-    vemy: VemyConfig = Field(default_factory=VemyConfig)
-    vibeds: VibeDSConfig = Field(default_factory=VibeDSConfig)
+    assistant: AssistantConfig = Field(default_factory=AssistantConfig)
+    data: DataAgentConfig = Field(default_factory=DataAgentConfig)
 
     @property
     def workspace_path(self) -> Path:

@@ -22,6 +22,15 @@ from amberclaw.agent.tools.registry import ToolRegistry
 from amberclaw.agent.tools.shell import ExecTool
 from amberclaw.agent.tools.spawn import SpawnTool
 from amberclaw.agent.tools.web import WebFetchTool, WebSearchTool
+from amberclaw.agent.tools.personal_rag import KnowledgeSearchTool, KnowledgeAddTool
+from amberclaw.agent.tools.drive import DriveSearchTool, DriveUploadTool
+from amberclaw.agent.tools.data_clean import DataCleanTool
+from amberclaw.agent.tools.data_viz import DataVizTool
+from amberclaw.agent.tools.data_sql import DataSQLTool
+from amberclaw.agent.tools.data_eda import DataEDATool
+from amberclaw.agent.tools.council import CouncilTool
+from amberclaw.agent.tools.mythos import MythosTool
+from amberclaw.agent.tools.personal_assistant import AssistantTool
 from amberclaw.bus.events import InboundMessage, OutboundMessage
 from amberclaw.bus.queue import MessageBus
 from amberclaw.providers.base import LLMProvider
@@ -113,65 +122,101 @@ class AgentLoop:
         self._register_default_tools()
 
     def _register_default_tools(self) -> None:
-        """Register the default set of tools."""
+        """Register all core tools — every feature is always available from user config."""
+        from amberclaw.config.loader import load_config
+        _cfg = load_config()
+
         allowed_dir = self.workspace if self.restrict_to_workspace else None
+
+        # ── Filesystem ────────────────────────────────────────────────────────
         for cls in (ReadFileTool, WriteFileTool, EditFileTool, ListDirTool):
             self.tools.register(cls(workspace=self.workspace, allowed_dir=allowed_dir))
+
+        # ── Shell ─────────────────────────────────────────────────────────────
         self.tools.register(ExecTool(
             working_dir=str(self.workspace),
             timeout=self.exec_config.timeout,
             restrict_to_workspace=self.restrict_to_workspace,
             path_append=self.exec_config.path_append,
         ))
+
+        # ── Web ───────────────────────────────────────────────────────────────
         self.tools.register(WebSearchTool(api_key=self.brave_api_key, proxy=self.web_proxy))
         self.tools.register(WebFetchTool(proxy=self.web_proxy))
+
+        # ── Messaging / Scheduling ────────────────────────────────────────────
         self.tools.register(MessageTool(send_callback=self.bus.publish_outbound))
         self.tools.register(SpawnTool(manager=self.subagents))
         if self.cron_service:
             self.tools.register(CronTool(self.cron_service))
 
-        # --- Vemy tools (require Google API key + MongoDB) ---
+        # ── Council (multi-model consensus) — always core ─────────────────────
         try:
-            import os
-            api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-            if api_key:
-                from amberclaw.agent.tools.vemy_tool import VemyTool
-                from amberclaw.agent.tools.vemy_rag_tool import VemyRAGSearchTool
-                # Try to pull settings from config file; fall back to env vars
-                try:
-                    from amberclaw.config.loader import load_config
-                    _cfg = load_config()
-                    vemy_cfg = getattr(_cfg, "vemy", None)
-                except Exception:
-                    vemy_cfg = None
-                mongo_uri = getattr(vemy_cfg, "mongodb_uri", None) if vemy_cfg else None
-                model = getattr(vemy_cfg, "model", None) if vemy_cfg else None
-                self.tools.register(VemyTool(api_key=api_key, mongodb_uri=mongo_uri, model=model))
-                self.tools.register(VemyRAGSearchTool(mongodb_uri=mongo_uri))
-                logger.info("Vemy tools registered")
-        except Exception as e:
-            logger.debug("Vemy tools skipped: {}", e)
+            self.tools.register(CouncilTool(
+                provider=self.provider,
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=min(self.max_tokens, 2048),
+            ))
+            logger.info("Council tool registered")
+        except Exception as exc:
+            logger.debug("Council tool skipped: {}", exc)
 
-        # --- VibeDS data science tools (always available) ---
+        # ── Mythos (recursive deep reasoning) — always core ───────────────────
         try:
-            from amberclaw.agent.tools.vibeds_clean import VibeDataCleanTool
-            from amberclaw.agent.tools.vibeds_viz import VibeDataVizTool
-            from amberclaw.agent.tools.vibeds_sql import VibeSQLTool
-            from amberclaw.agent.tools.vibeds_eda import VibeEDATool
-            try:
-                from amberclaw.config.loader import load_config
-                _cfg = load_config()
-                vibeds_cfg = getattr(_cfg, "vibeds", None)
-            except Exception:
-                vibeds_cfg = None
-            out_dir = getattr(vibeds_cfg, "output_dir", None) if vibeds_cfg else None
-            self.tools.register(VibeDataCleanTool(output_dir=out_dir))
-            self.tools.register(VibeDataVizTool())
-            self.tools.register(VibeSQLTool())
-            self.tools.register(VibeEDATool())
-            logger.info("VibeDS tools registered")
-        except Exception as e:
-            logger.debug("VibeDS tools skipped: {}", e)
+            self.tools.register(MythosTool(
+                provider=self.provider,
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=min(self.max_tokens, 2048),
+            ))
+            logger.info("Mythos tool registered")
+        except Exception as exc:
+            logger.debug("Mythos tool skipped: {}", exc)
+
+        # ── Personal Assistant (session-persisted conversation) ───────────────
+        try:
+            system_prompt = getattr(_cfg.assistant, "system_prompt", "") or ""
+            self.tools.register(AssistantTool(
+                provider=self.provider,
+                model=self.model,
+                workspace=self.workspace,
+                temperature=0.7,
+                max_tokens=min(self.max_tokens, 2048),
+                system_prompt=system_prompt,
+            ))
+            logger.info("PersonalAssistant tool registered")
+        except Exception as exc:
+            logger.debug("PersonalAssistant tool skipped: {}", exc)
+
+        # ── Knowledge RAG ─────────────────────────────────────────────────────
+        try:
+            self.tools.register(KnowledgeSearchTool())
+            self.tools.register(KnowledgeAddTool())
+            logger.info("Knowledge RAG tools registered")
+        except Exception as exc:
+            logger.debug("Knowledge RAG skipped: {}", exc)
+
+        # ── Google Drive (optional — enabled in config) ───────────────────────
+        try:
+            if _cfg.tools.drive.enabled:
+                self.tools.register(DriveSearchTool())
+                self.tools.register(DriveUploadTool())
+                logger.info("Drive tools registered")
+        except Exception as exc:
+            logger.debug("Drive tools skipped: {}", exc)
+
+        # ── DataAgent (data science suite) — always core ──────────────────────
+        try:
+            data_cfg = getattr(_cfg, "data", None)
+            out_dir = getattr(data_cfg, "output_dir", None) if data_cfg else None
+            self.tools.register(DataCleanTool(output_dir=out_dir))
+            self.tools.register(DataVizTool())
+            self.tools.register(DataSQLTool())
+            self.tools.register(DataEDATool())
+            logger.info("DataAgent tools registered")
+        except Exception as exc:
+            logger.debug("DataAgent tools skipped: {}", exc)
 
     async def _connect_mcp(self) -> None:
         """Connect to configured MCP servers (one-time, lazy)."""

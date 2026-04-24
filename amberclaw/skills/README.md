@@ -23,5 +23,5 @@ The skill format and metadata structure follow OpenClaw's conventions to maintai
 | `tmux` | Remote-control tmux sessions |
 | `clawhub` | Search and install skills from ClawHub registry |
 | `skill-creator` | Create new skills |
-| `vemy` | RAG-augmented AI assistant powered by Google Gemini |
-| `vibeds` | AI-powered data science team (clean, visualize, query, analyze) |
+| `assistant` | RAG-augmented AI assistant powered by Google Gemini |
+| `data` | AI-powered data science team (clean, visualize, query, analyze) |

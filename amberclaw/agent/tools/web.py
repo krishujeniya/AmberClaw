@@ -4,13 +4,14 @@ import html
 import json
 import os
 import re
-from typing import Any
+from typing import Any, Optional, Literal
 from urllib.parse import urlparse
 
 import httpx
 from loguru import logger
+from pydantic import BaseModel, Field, AliasChoices
 
-from amberclaw.agent.tools.base import Tool
+from amberclaw.agent.tools.base import PydanticTool
 
 # Shared constants
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_2) AppleWebKit/537.36"
@@ -44,21 +45,21 @@ def _validate_url(url: str) -> tuple[bool, str]:
         return False, str(e)
 
 
-class WebSearchTool(Tool):
+class WebSearchArgs(BaseModel):
+    """Arguments for the web_search tool."""
+    query: str = Field(..., description="Search query")
+    count: Optional[int] = Field(None, description="Results (1-10)", ge=1, le=10)
+
+
+class WebSearchTool(PydanticTool):
     """Search the web using Brave Search API."""
 
     name = "web_search"
     description = "Search the web. Returns titles, URLs, and snippets."
-    parameters = {
-        "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Search query"},
-            "count": {"type": "integer", "description": "Results (1-10)", "minimum": 1, "maximum": 10}
-        },
-        "required": ["query"]
-    }
+    args_schema = WebSearchArgs
 
     def __init__(self, api_key: str | None = None, max_results: int = 5, proxy: str | None = None):
+        super().__init__()
         self._init_api_key = api_key
         self.max_results = max_results
         self.proxy = proxy
@@ -68,7 +69,7 @@ class WebSearchTool(Tool):
         """Resolve API key at call time so env/config changes are picked up."""
         return self._init_api_key or os.environ.get("BRAVE_API_KEY", "")
 
-    async def execute(self, query: str, count: int | None = None, **kwargs: Any) -> str:
+    async def run(self, args: WebSearchArgs) -> str:
         if not self.api_key:
             return (
                 "Error: Brave Search API key not configured. Set it in "
@@ -77,12 +78,12 @@ class WebSearchTool(Tool):
             )
 
         try:
-            n = min(max(count or self.max_results, 1), 10)
+            n = args.count or self.max_results
             logger.debug("WebSearch: {}", "proxy enabled" if self.proxy else "direct connection")
             async with httpx.AsyncClient(proxy=self.proxy) as client:
                 r = await client.get(
                     "https://api.search.brave.com/res/v1/web/search",
-                    params={"q": query, "count": n},
+                    params={"q": args.query, "count": n},
                     headers={"Accept": "application/json", "X-Subscription-Token": self.api_key},
                     timeout=10.0
                 )
@@ -90,9 +91,9 @@ class WebSearchTool(Tool):
 
             results = r.json().get("web", {}).get("results", [])[:n]
             if not results:
-                return f"No results for: {query}"
+                return f"No results for: {args.query}"
 
-            lines = [f"Results for: {query}\n"]
+            lines = [f"Results for: {args.query}\n"]
             for i, item in enumerate(results, 1):
                 lines.append(f"{i}. {item.get('title', '')}\n   {item.get('url', '')}")
                 if desc := item.get("description"):
@@ -106,32 +107,41 @@ class WebSearchTool(Tool):
             return f"Error: {e}"
 
 
-class WebFetchTool(Tool):
+class WebFetchArgs(BaseModel):
+    """Arguments for the web_fetch tool."""
+    url: str = Field(..., description="URL to fetch")
+    extract_mode: Literal["markdown", "text"] = Field(
+        "markdown", 
+        description="Extraction mode", 
+        validation_alias=AliasChoices("extract_mode", "extractMode")
+    )
+    max_chars: Optional[int] = Field(
+        None, 
+        ge=100, 
+        description="Max characters to return",
+        validation_alias=AliasChoices("max_chars", "maxChars")
+    )
+
+
+class WebFetchTool(PydanticTool):
     """Fetch and extract content from a URL using Readability."""
 
     name = "web_fetch"
     description = "Fetch URL and extract readable content (HTML → markdown/text)."
-    parameters = {
-        "type": "object",
-        "properties": {
-            "url": {"type": "string", "description": "URL to fetch"},
-            "extractMode": {"type": "string", "enum": ["markdown", "text"], "default": "markdown"},
-            "maxChars": {"type": "integer", "minimum": 100}
-        },
-        "required": ["url"]
-    }
+    args_schema = WebFetchArgs
 
     def __init__(self, max_chars: int = 50000, proxy: str | None = None):
+        super().__init__()
         self.max_chars = max_chars
         self.proxy = proxy
 
-    async def execute(self, url: str, extractMode: str = "markdown", maxChars: int | None = None, **kwargs: Any) -> str:
+    async def run(self, args: WebFetchArgs) -> str:
         from readability import Document
 
-        max_chars = maxChars or self.max_chars
-        is_valid, error_msg = _validate_url(url)
+        max_chars = args.max_chars or self.max_chars
+        is_valid, error_msg = _validate_url(args.url)
         if not is_valid:
-            return json.dumps({"error": f"URL validation failed: {error_msg}", "url": url}, ensure_ascii=False)
+            return json.dumps({"error": f"URL validation failed: {error_msg}", "url": args.url}, ensure_ascii=False)
 
         try:
             logger.debug("WebFetch: {}", "proxy enabled" if self.proxy else "direct connection")
@@ -141,7 +151,7 @@ class WebFetchTool(Tool):
                 timeout=30.0,
                 proxy=self.proxy,
             ) as client:
-                r = await client.get(url, headers={"User-Agent": USER_AGENT})
+                r = await client.get(args.url, headers={"User-Agent": USER_AGENT})
                 r.raise_for_status()
 
             ctype = r.headers.get("content-type", "")
@@ -150,7 +160,7 @@ class WebFetchTool(Tool):
                 text, extractor = json.dumps(r.json(), indent=2, ensure_ascii=False), "json"
             elif "text/html" in ctype or r.text[:256].lower().startswith(("<!doctype", "<html")):
                 doc = Document(r.text)
-                content = self._to_markdown(doc.summary()) if extractMode == "markdown" else _strip_tags(doc.summary())
+                content = self._to_markdown(doc.summary()) if args.extract_mode == "markdown" else _strip_tags(doc.summary())
                 text = f"# {doc.title()}\n\n{content}" if doc.title() else content
                 extractor = "readability"
             else:
@@ -159,14 +169,14 @@ class WebFetchTool(Tool):
             truncated = len(text) > max_chars
             if truncated: text = text[:max_chars]
 
-            return json.dumps({"url": url, "finalUrl": str(r.url), "status": r.status_code,
+            return json.dumps({"url": args.url, "finalUrl": str(r.url), "status": r.status_code,
                               "extractor": extractor, "truncated": truncated, "length": len(text), "text": text}, ensure_ascii=False)
         except httpx.ProxyError as e:
-            logger.error("WebFetch proxy error for {}: {}", url, e)
-            return json.dumps({"error": f"Proxy error: {e}", "url": url}, ensure_ascii=False)
+            logger.error("WebFetch proxy error for {}: {}", args.url, e)
+            return json.dumps({"error": f"Proxy error: {e}", "url": args.url}, ensure_ascii=False)
         except Exception as e:
-            logger.error("WebFetch error for {}: {}", url, e)
-            return json.dumps({"error": str(e), "url": url}, ensure_ascii=False)
+            logger.error("WebFetch error for {}: {}", args.url, e)
+            return json.dumps({"error": str(e), "url": args.url}, ensure_ascii=False)
 
     def _to_markdown(self, html: str) -> str:
         """Convert HTML to markdown."""
@@ -179,3 +189,4 @@ class WebFetchTool(Tool):
         text = re.sub(r'</(p|div|section|article)>', '\n\n', text, flags=re.I)
         text = re.sub(r'<(br|hr)\s*/?>', '\n', text, flags=re.I)
         return _normalize(_strip_tags(text))
+
