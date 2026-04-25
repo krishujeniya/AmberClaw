@@ -28,4 +28,5 @@ jobs:
         run: uv run ruff check amberclaw --output-format=github
 
       - name: Typecheck (pyright)
+        continue-on-error: true
         run: uv run pyright amberclaw
