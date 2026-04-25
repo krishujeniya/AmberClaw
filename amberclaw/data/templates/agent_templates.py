@@ -639,42 +639,46 @@ def node_func_execute_agent_from_sql_connection(
     print("    * EXECUTING AGENT CODE ON SQL CONNECTION")
 
     # Retrieve SQLAlchemy connection and code snippet from the state
-    is_engine = isinstance(connection, sql.engine.base.Engine)
-    connection = connection.connect() if is_engine else connection
+    is_engine = hasattr(connection, "connect") and not hasattr(connection, "execute")
+    conn = connection.connect() if is_engine else connection
     agent_code = state.get(code_snippet_key)
 
     # Ensure the connection object is provided
-    if connection is None:
+    if conn is None:
         raise ValueError("Connection object not found.")
 
-    # Execute the code snippet to define the agent function
-    local_vars = {}
-    global_vars = {}
-    exec(agent_code, global_vars, local_vars)
-
-    # Retrieve the agent function from the executed code
-    agent_function = local_vars.get(agent_function_name, None)
-    if agent_function is None or not callable(agent_function):
-        raise ValueError(
-            f"Agent function '{agent_function_name}' not found or not callable in the provided code."
-        )
-
-    # Execute the agent function
-    agent_error = None
-    result = None
     try:
-        result = agent_function(connection)
+        # Execute the code snippet to define the agent function
+        local_vars = {}
+        global_vars = {}
+        exec(agent_code, global_vars, local_vars)
 
-        # Apply post-processing if provided
-        if post_processing is not None:
-            result = post_processing(result)
-    except Exception as e:
-        print(e)
-        agent_error = f"{error_message_prefix}{str(e)}"
+        # Retrieve the agent function from the executed code
+        agent_function = local_vars.get(agent_function_name, None)
+        if agent_function is None or not callable(agent_function):
+            raise ValueError(
+                f"Agent function '{agent_function_name}' not found or not callable in the provided code."
+            )
 
-    # Return results
-    output = {result_key: result, error_key: agent_error}
-    return output
+        # Execute the agent function
+        agent_error = None
+        result = None
+        try:
+            result = agent_function(conn)
+
+            # Apply post-processing if provided
+            if post_processing is not None:
+                result = post_processing(result)
+        except Exception as e:
+            print(e)
+            agent_error = f"{error_message_prefix}{str(e)}"
+
+        # Return results
+        output = {result_key: result, error_key: agent_error}
+        return output
+    finally:
+        if is_engine:
+            conn.close()
 
 
 def node_func_fix_agent_code(

@@ -79,17 +79,37 @@ class KnowledgeToolBase(PydanticTool):
     async def _get_embedding(self, text: str) -> np.ndarray:
         """Get embedding for text using the configured provider."""
         if not self.provider:
-            return np.zeros(1)  # Fallback if no provider
+            # Try to return a zero vector of common dimension (e.g., 1536 for OpenAI)
+            # as a last resort, but better to warn.
+            logger.warning("No provider configured for KnowledgeTool. Returning zero vector.")
+            return np.zeros(1536)
 
-        # LiteLLM embedding call
         import litellm
 
         try:
             response = await litellm.aembedding(model=self.embedding_model, input=[text])
-            return np.array(response.data[0]["embedding"])
+            # Handle both object (litellm standard) and dict (some fallbacks)
+            data = getattr(response, "data", [])
+            if not data and isinstance(response, dict):
+                data = response.get("data", [])
+
+            if not data:
+                logger.error("Empty embedding response from LiteLLM")
+                return np.zeros(1536)
+
+            item = data[0]
+            embedding = getattr(item, "embedding", None)
+            if embedding is None and isinstance(item, dict):
+                embedding = item.get("embedding")
+
+            if embedding is None:
+                logger.error("Could not extract embedding from LiteLLM response")
+                return np.zeros(1536)
+
+            return np.array(embedding)
         except Exception as e:
             logger.error("Embedding failed for model {}: {}", self.embedding_model, e)
-            return np.zeros(1)
+            return np.zeros(1536)
 
 
 class KnowledgeSearchTool(KnowledgeToolBase):

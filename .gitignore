@@ -49,10 +49,13 @@ botpy.log
 pyright_errors.json
 *.json
 !pyproject.toml
+!package.json
+!tsconfig.json
 !*.json.example
+!**/.planning/*.json
 
 # Project Specific
-.planning/
+# .planning/  <-- Keep in repo for agentic context
 amberclaw.db
 *.db
 mem0_db/

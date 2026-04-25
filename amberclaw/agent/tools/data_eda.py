@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 from pydantic import BaseModel, Field
 
@@ -51,7 +52,9 @@ class DataEDATool(PydanticTool):
             )
 
             agent = EDAToolsAgent(model=self._model)
-            agent.invoke_agent(user_instructions=args.instructions, data_raw=df)
+            await asyncio.to_thread(
+                agent.invoke_agent, user_instructions=args.instructions, data_raw=df
+            )
 
 
             ai_msg = agent.get_ai_message()

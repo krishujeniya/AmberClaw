@@ -1,5 +1,7 @@
 """DataAgent SQL Database tool — natural language SQL queries."""
 
+import asyncio
+
 from typing import Any
 from pydantic import BaseModel, Field
 
@@ -57,20 +59,26 @@ class DataSQLTool(PydanticTool):
                 bypass_recommended_steps=True,
                 bypass_explain_code=True,
             )
-            agent.invoke_agent(user_instructions=args.instructions, max_retries=2)
+            try:
+                await asyncio.to_thread(
+                    agent.invoke_agent, user_instructions=args.instructions, max_retries=2
+                )
 
-            data = agent.get_data_sql()
-            query = agent.get_sql_query_code()
+                data = agent.get_data_sql()
+                query = agent.get_sql_query_code()
 
-            if data is not None:
-                df = pd.DataFrame(data)
-                result = f"SQL Query:\n```sql\n{query}\n```\n\nResults ({len(df)} rows):\n{df.head(20).to_markdown(index=False)}"
-                if len(df) > 20:
-                    result += f"\n\n... and {len(df) - 20} more rows."
-                return result
+                if data is not None:
+                    df = pd.DataFrame(data)
+                    result = f"SQL Query:\n```sql\n{query}\n```\n\nResults ({len(df)} rows):\n{df.head(20).to_markdown(index=False)}"
+                    if len(df) > 20:
+                        result += f"\n\n... and {len(df) - 20} more rows."
+                    return result
 
-            error = (agent.response or {}).get("sql_database_error", "Unknown error")
-            return f"SQL query failed: {error}"
+                error = (agent.response or {}).get("sql_database_error", "Unknown error")
+                return f"SQL query failed: {error}"
+            finally:
+                conn.close()
+                engine.dispose()
         except Exception as e:
             logger.error("DataSQLTool error: {}", e)
             return f"Error: {e}"

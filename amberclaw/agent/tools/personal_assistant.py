@@ -157,10 +157,13 @@ class AssistantTool(PydanticTool):
                 if memories:
                     facts = []
                     for m in memories:
+                        # Mem0 search can return dicts or objects depending on the version/provider
+                        val = None
                         if isinstance(m, dict):
                             val = m.get("memory")
-                        else:
-                            val = getattr(m, "memory", None)
+                        elif hasattr(m, "memory"):
+                            val = getattr(m, "memory")
+
                         if val:
                             facts.append(str(val))
                     if facts:
