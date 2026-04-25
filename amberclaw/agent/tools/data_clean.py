@@ -1,6 +1,5 @@
 """DataAgent Data Cleaning tool — AI-powered dataset cleaning."""
 
-from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 import pandas as pd
@@ -11,6 +10,7 @@ from amberclaw.agent.tools.base import PydanticTool
 
 class CleanArgs(BaseModel):
     """Arguments for the data_clean_data tool."""
+
     file_path: str = Field(..., description="Path to CSV or Excel file to clean.")
     instructions: str = Field("", description="Optional cleaning instructions.")
 
@@ -40,17 +40,25 @@ class DataCleanTool(PydanticTool):
 
     async def run(self, args: CleanArgs) -> str:
         try:
+            import asyncio
             from amberclaw.data.agents import DataCleaningAgent
 
-            df = _load_data(args.file_path)
+            df = await asyncio.to_thread(_load_data, args.file_path)
 
             agent = DataCleaningAgent(bypass_recommended_steps=True, bypass_explain_code=True)
-            agent.invoke_agent(data_raw=df, user_instructions=args.instructions or None, max_retries=2)
+
+            # Offload the heavy AI/Data processing to a thread
+            await asyncio.to_thread(
+                agent.invoke_agent,
+                data_raw=df,
+                user_instructions=args.instructions or None,
+                max_retries=2,
+            )
 
             cleaned = agent.get_data_cleaned()
             if cleaned is not None:
                 out_path = args.file_path.rsplit(".", 1)[0] + "_cleaned.csv"
-                cleaned.to_csv(out_path, index=False)
+                await asyncio.to_thread(cleaned.to_csv, out_path, index=False)
 
                 summary = agent.response.get("data_cleaning_summary", "Cleaning complete.")
                 return f"{summary}\n\nCleaned data saved to: {out_path}\nRows: {len(df)} → {len(cleaned)}"

@@ -15,9 +15,12 @@ from amberclaw.providers.base import LLMProvider, LLMResponse, ToolCallRequest
 from amberclaw.providers.registry import find_by_model, find_gateway
 
 # Standard chat-completion message keys.
-_ALLOWED_MSG_KEYS = frozenset({"role", "content", "tool_calls", "tool_call_id", "name", "reasoning_content"})
+_ALLOWED_MSG_KEYS = frozenset(
+    {"role", "content", "tool_calls", "tool_call_id", "name", "reasoning_content"}
+)
 _ANTHROPIC_EXTRA_KEYS = frozenset({"thinking_blocks"})
 _ALNUM = string.ascii_letters + string.digits
+
 
 def _short_tool_id() -> str:
     """Generate a 9-char alphanumeric ID compatible with all providers (incl. Mistral)."""
@@ -27,7 +30,7 @@ def _short_tool_id() -> str:
 class LiteLLMProvider(LLMProvider):
     """
     LLM provider using LiteLLM for multi-provider support.
-    
+
     Supports OpenRouter, Anthropic, OpenAI, Gemini, MiniMax, and many other providers through
     a unified interface.  Provider-specific logic is driven by the registry
     (see providers/registry.py) — no if-elif chains needed here.
@@ -134,7 +137,9 @@ class LiteLLMProvider(LLMProvider):
             if msg.get("role") == "system":
                 content = msg["content"]
                 if isinstance(content, str):
-                    new_content = [{"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}]
+                    new_content = [
+                        {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}
+                    ]
                 else:
                     new_content = list(content)
                     new_content[-1] = {**new_content[-1], "cache_control": {"type": "ephemeral"}}
@@ -163,7 +168,11 @@ class LiteLLMProvider(LLMProvider):
     def _extra_msg_keys(original_model: str, resolved_model: str) -> frozenset[str]:
         """Return provider-specific extra keys to preserve in request messages."""
         spec = find_by_model(original_model) or find_by_model(resolved_model)
-        if (spec and spec.name == "anthropic") or "claude" in original_model.lower() or resolved_model.startswith("anthropic/"):
+        if (
+            (spec and spec.name == "anthropic")
+            or "claude" in original_model.lower()
+            or resolved_model.startswith("anthropic/")
+        ):
             return _ANTHROPIC_EXTRA_KEYS
         return frozenset()
 
@@ -177,7 +186,9 @@ class LiteLLMProvider(LLMProvider):
         return hashlib.sha256(tool_call_id.encode()).hexdigest()[:9]
 
     @staticmethod
-    def _sanitize_messages(messages: list[dict[str, Any]], extra_keys: frozenset[str] = frozenset()) -> list[dict[str, Any]]:
+    def _sanitize_messages(
+        messages: list[dict[str, Any]], extra_keys: frozenset[str] = frozenset()
+    ) -> list[dict[str, Any]]:
         """Strip non-standard keys and ensure assistant messages have a content key."""
         allowed = _ALLOWED_MSG_KEYS | extra_keys
         sanitized = LLMProvider._sanitize_request_messages(messages, allowed)
@@ -214,20 +225,9 @@ class LiteLLMProvider(LLMProvider):
         max_tokens: int = 4096,
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
+        on_token: Any | None = None,
     ) -> LLMResponse:
-        """
-        Send a chat completion request via LiteLLM.
-
-        Args:
-            messages: List of message dicts with 'role' and 'content'.
-            tools: Optional list of tool definitions in OpenAI format.
-            model: Model identifier (e.g., 'anthropic/claude-sonnet-4-5').
-            max_tokens: Maximum tokens in response.
-            temperature: Sampling temperature.
-
-        Returns:
-            LLMResponse with content and/or tool calls.
-        """
+        """Send a chat completion request via LiteLLM (supports streaming)."""
         original_model = model or self.default_model
         model = self._resolve_model(original_model)
         extra_msg_keys = self._extra_msg_keys(original_model, model)
@@ -235,45 +235,61 @@ class LiteLLMProvider(LLMProvider):
         if self._supports_cache_control(original_model):
             messages, tools = self._apply_cache_control(messages, tools)
 
-        # Clamp max_tokens to at least 1 — negative or zero values cause
-        # LiteLLM to reject the request with "max_tokens must be at least 1".
         max_tokens = max(1, max_tokens)
 
         kwargs: dict[str, Any] = {
             "model": model,
-            "messages": self._sanitize_messages(self._sanitize_empty_content(messages), extra_keys=extra_msg_keys),
+            "messages": self._sanitize_messages(
+                self._sanitize_empty_content(messages), extra_keys=extra_msg_keys
+            ),
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
 
-        # Apply model-specific overrides (e.g. kimi-k2.5 temperature)
         self._apply_model_overrides(model, kwargs)
 
-        # Pass api_key directly — more reliable than env vars alone
         if self.api_key:
             kwargs["api_key"] = self.api_key
-
-        # Pass api_base for custom endpoints
         if self.api_base:
             kwargs["api_base"] = self.api_base
-
-        # Pass extra headers (e.g. APP-Code for AiHubMix)
         if self.extra_headers:
             kwargs["extra_headers"] = self.extra_headers
-        
         if reasoning_effort:
             kwargs["reasoning_effort"] = reasoning_effort
             kwargs["drop_params"] = True
-        
+
         if tools:
             kwargs["tools"] = tools
             kwargs["tool_choice"] = "auto"
+            # Disable streaming when tools are present to ensure reliable tool_calls parsing,
+            # unless on_token is explicitly provided AND we want to risk it (not recommended for tools).
+            # For now, we prefer atomic tool calls.
+            # However, some models support streaming tool calls.
+            # We'll stick to non-streaming for tools for now.
+        elif on_token:
+            kwargs["stream"] = True
 
         try:
             response = await acompletion(**kwargs)
+
+            if kwargs.get("stream"):
+                full_content = []
+                async for chunk in response:
+                    content = chunk.choices[0].delta.content or ""
+                    if content:
+                        full_content.append(content)
+                        await on_token(content)
+
+                # Mock a final response object enough for _parse_response
+                # Since streaming responses don't have all data, we reconstruct what we need.
+                # Note: LiteLLM streaming response doesn't give usage at the end by default unless requested.
+                return LLMResponse(
+                    content="".join(full_content),
+                    finish_reason="stop",
+                )
+
             return self._parse_response(response)
         except Exception as e:
-            # Return error as content for graceful handling
             return LLMResponse(
                 content=f"Error calling LLM: {str(e)}",
                 finish_reason="error",
@@ -299,8 +315,11 @@ class LiteLLMProvider(LLMProvider):
                 content = msg.content
 
         if len(response.choices) > 1:
-            logger.debug("LiteLLM response has {} choices, merged {} tool_calls",
-                         len(response.choices), len(raw_tool_calls))
+            logger.debug(
+                "LiteLLM response has {} choices, merged {} tool_calls",
+                len(response.choices),
+                len(raw_tool_calls),
+            )
 
         tool_calls = []
         for tc in raw_tool_calls:
@@ -309,11 +328,13 @@ class LiteLLMProvider(LLMProvider):
             if isinstance(args, str):
                 args = json_repair.loads(args)
 
-            tool_calls.append(ToolCallRequest(
-                id=_short_tool_id(),
-                name=tc.function.name,
-                arguments=args,
-            ))
+            tool_calls.append(
+                ToolCallRequest(
+                    id=_short_tool_id(),
+                    name=tc.function.name,
+                    arguments=args,
+                )
+            )
 
         usage = {}
         if hasattr(response, "usage") and response.usage:

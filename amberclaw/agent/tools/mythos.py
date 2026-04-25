@@ -46,7 +46,7 @@ class MythosTool(PydanticTool):
         self._temperature = temperature
         self._max_tokens = max_tokens
 
-    async def _ask(self, prompt: str) -> str:
+    async def _ask(self, prompt: str, on_token: Any | None = None) -> str:
         try:
             resp = await self._provider.chat_with_retry(
                 messages=[{"role": "user", "content": prompt}],
@@ -54,6 +54,7 @@ class MythosTool(PydanticTool):
                 model=self._model,
                 temperature=self._temperature,
                 max_tokens=self._max_tokens,
+                on_token=on_token,
             )
             return (resp.content or "").strip()
         except Exception as exc:
@@ -66,7 +67,7 @@ class MythosTool(PydanticTool):
         m = re.search(r"<thought>(.*?)</thought>", text, re.DOTALL)
         return m.group(1).strip() if m else text.strip()
 
-    async def run(self, args: MythosArgs) -> str:
+    async def run(self, args: MythosArgs, on_token: Any | None = None) -> str:
         context = f"Initial Query: {args.query}\n"
         logger.info("Mythos: depth={} on query: {}", args.depth, args.query[:80])
 
@@ -89,7 +90,7 @@ class MythosTool(PydanticTool):
             "Be concise, accurate, and incorporate the best insights from each depth. "
             "Do not repeat the reasoning layers — only the conclusion."
         )
-        final = await self._ask(synthesis_prompt)
+        final = await self._ask(synthesis_prompt, on_token=on_token)
 
         meta = f"\n\n---\n*Mythos reasoning: {args.depth} depth level(s)*"
         return (final or "Mythos produced no final answer.") + meta

@@ -1,6 +1,5 @@
 """DataAgent Exploratory Data Analysis tool."""
 
-from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from loguru import logger
@@ -10,8 +9,11 @@ from amberclaw.agent.tools.base import PydanticTool
 
 class EDAArgs(BaseModel):
     """Arguments for the data_eda tool."""
+
     file_path: str = Field(..., description="Path to CSV or Excel file to analyze.")
-    instructions: str = Field("Perform a comprehensive EDA.", description="Optional EDA instructions.")
+    instructions: str = Field(
+        "Perform a comprehensive EDA.", description="Optional EDA instructions."
+    )
 
 
 class DataEDATool(PydanticTool):
@@ -31,7 +33,11 @@ class DataEDATool(PydanticTool):
             from amberclaw.data.ds_agents import EDAToolsAgent
 
             file_path = args.file_path
-            df = pd.read_csv(file_path) if not file_path.endswith((".xlsx", ".xls")) else pd.read_excel(file_path)
+            df = (
+                pd.read_csv(file_path)
+                if not file_path.endswith((".xlsx", ".xls"))
+                else pd.read_excel(file_path)
+            )
 
             agent = EDAToolsAgent()
             agent.invoke_agent(user_instructions=args.instructions, data_raw=df)

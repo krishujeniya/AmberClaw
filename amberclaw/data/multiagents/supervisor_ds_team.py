@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Sequence, TypedDict, Annotated, Optional, Dict, Any, List
+from typing import Sequence, TypedDict, Annotated, Optional, Dict, Any, List, Union, TYPE_CHECKING
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from IPython.display import Markdown
@@ -11,7 +11,7 @@ from langchain_core.runnables import RunnableLambda
 from langchain_core.utils.json import parse_json_markdown
 from langchain_openai import ChatOpenAI
 
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import StateGraph, END
 from langgraph.types import Checkpointer
 from langgraph.graph.message import add_messages
 
@@ -37,9 +37,7 @@ def _is_agent_output_report_message(m: BaseMessage) -> bool:
     if not s.startswith("{"):
         return False
     head = s[:1200]
-    return '"report_title"' in head and (
-        "Agent Outputs" in head or "Agent Output Summary" in head
-    )
+    return '"report_title"' in head and ("Agent Outputs" in head or "Agent Output Summary" in head)
 
 
 def _supervisor_merge_messages(
@@ -135,20 +133,20 @@ class SupervisorDSState(TypedDict):
 
 def make_supervisor_ds_team(
     model: Any,
-    data_loader_agent,
-    data_wrangling_agent,
-    data_cleaning_agent,
-    eda_tools_agent,
-    data_visualization_agent,
-    sql_database_agent,
-    feature_engineering_agent,
-    h2o_ml_agent,
-    mlflow_tools_agent,
-    model_evaluation_agent,
-    workflow_planner_agent=None,
+    data_loader_agent: Any,
+    data_wrangling_agent: Any,
+    data_cleaning_agent: Any,
+    eda_tools_agent: Any,
+    data_visualization_agent: Any,
+    sql_database_agent: Any,
+    feature_engineering_agent: Any,
+    h2o_ml_agent: Any,
+    mlflow_tools_agent: Any,
+    model_evaluation_agent: Any,
+    workflow_planner_agent: Any = None,
     checkpointer: Optional[Checkpointer] = None,
     temperature: float = 1.0,
-):
+) -> Any:
     """
     Build a supervisor-led data science team using existing sub-agents.
 
@@ -284,9 +282,7 @@ Examples:
                 "Respond with ONLY one of: {route_options}",
             ),
         ]
-    ).partial(
-        route_options=str(route_options), subagent_names=", ".join(subagent_names)
-    )
+    ).partial(route_options=str(route_options), subagent_names=", ".join(subagent_names))
 
     def _parse_router_output(text: str) -> dict[str, str]:
         """
@@ -341,9 +337,7 @@ Examples:
             | JsonOutputFunctionsParser()
         )
     else:
-        supervisor_chain = (
-            prompt | llm | StrOutputParser() | RunnableLambda(_parse_router_output)
-        )
+        supervisor_chain = prompt | llm | StrOutputParser() | RunnableLambda(_parse_router_output)
 
     def _clean_messages(msgs: Sequence[BaseMessage]) -> Sequence[BaseMessage]:
         """
@@ -368,9 +362,7 @@ Examples:
         return cleaned
 
     # Optional LLM intent parser (enable via artifacts.config.use_llm_intent_parser).
-    def _parse_intent(
-        msgs: Sequence[BaseMessage], *, use_llm: bool = False
-    ) -> dict[str, bool]:
+    def _parse_intent(msgs: Sequence[BaseMessage], *, use_llm: bool = False) -> dict[str, bool]:
         last_human_text = ""
         for m in reversed(msgs or []):
             role = getattr(m, "role", getattr(m, "type", None))
@@ -451,9 +443,7 @@ Examples:
             )
             or standardize_column_names
         )
-        wants_eda = has(
-            "describe", "eda", "summary", "correlation", "sweetviz", "missingness"
-        )
+        wants_eda = has("describe", "eda", "summary", "correlation", "sweetviz", "missingness")
         # Feature engineering is often referred to as "features", but "feature-engineered data"
         # can also be a *reference* to an existing dataset. Be conservative: require an action signal.
         feature_action = has(
@@ -736,15 +726,13 @@ Examples:
                 return getattr(m, "content", "") or ""
         return ""
 
-    def _suggest_next_worker(
-        state: SupervisorDSState, clean_msgs: Sequence[BaseMessage]
-    ):
+    def _suggest_next_worker(state: SupervisorDSState) -> Optional[str]:
         """
         Disabled LLM hinting to keep routing deterministic.
         """
         return None
 
-    def supervisor_node(state: SupervisorDSState):
+    def supervisor_node(state: SupervisorDSState) -> Dict[str, Any]:
         print("---SUPERVISOR---")
         clean_msgs = _clean_messages(state.get("messages", []))
         # Hydrate cached datasets from artifacts for stateless reuse across calls.
@@ -760,17 +748,11 @@ Examples:
             hydrated["data_wrangled"] = data_wrangled
         data_sql = state.get("data_sql")
         sql_art = artifacts.get("sql") if isinstance(artifacts, dict) else None
-        if (
-            data_sql is None
-            and isinstance(sql_art, dict)
-            and sql_art.get("data_sql") is not None
-        ):
+        if data_sql is None and isinstance(sql_art, dict) and sql_art.get("data_sql") is not None:
             data_sql = sql_art.get("data_sql")
             hydrated["data_sql"] = data_sql
         feature_data = state.get("feature_data")
-        fe_art = (
-            artifacts.get("feature_engineering") if isinstance(artifacts, dict) else None
-        )
+        fe_art = artifacts.get("feature_engineering") if isinstance(artifacts, dict) else None
         if (
             feature_data is None
             and isinstance(fe_art, dict)
@@ -805,16 +787,12 @@ Examples:
             if role in ("human", "user"):
                 last_human_msg = m
                 break
-        current_request_id = (
-            getattr(last_human_msg, "id", None) if last_human_msg else None
-        )
+        current_request_id = getattr(last_human_msg, "id", None) if last_human_msg else None
 
         handled_request_id = state.get("handled_request_id")
         handled_steps: dict[str, bool] = dict(state.get("handled_steps") or {})
         attempted_steps: dict[str, bool] = dict(state.get("attempted_steps") or {})
-        is_new_request = (
-            current_request_id is not None and current_request_id != handled_request_id
-        )
+        is_new_request = current_request_id is not None and current_request_id != handled_request_id
         if is_new_request:
             handled_request_id = current_request_id
             handled_steps = {}
@@ -871,9 +849,11 @@ Examples:
                 if token.isdigit():
                     ordered = sorted(
                         datasets.items(),
-                        key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                        if isinstance(kv[1], dict)
-                        else 0.0,
+                        key=lambda kv: (
+                            float(kv[1].get("created_ts") or 0.0)
+                            if isinstance(kv[1], dict)
+                            else 0.0
+                        ),
                         reverse=True,
                     )
                     idx = int(token) - 1
@@ -908,16 +888,8 @@ Examples:
             requested_dataset_id = None
 
         if requested_dataset_id and requested_dataset_id != active_dataset_id:
-            selected = (
-                datasets.get(requested_dataset_id)
-                if isinstance(datasets, dict)
-                else None
-            )
-            label = (
-                selected.get("label")
-                if isinstance(selected, dict)
-                else requested_dataset_id
-            )
+            selected = datasets.get(requested_dataset_id) if isinstance(datasets, dict) else None
+            label = selected.get("label") if isinstance(selected, dict) else requested_dataset_id
             msg = AIMessage(
                 content=f"Switched active dataset to `{label}` (`{requested_dataset_id}`).",
                 name="supervisor",
@@ -1007,52 +979,31 @@ Examples:
                 and (state.get("artifacts") or {}).get("merge") is not None
             ):
                 handled_steps["merge"] = True
-            elif (
-                last_worker == "SQL_Database_Agent"
-                and state.get("data_sql") is not None
-            ):
+            elif last_worker == "SQL_Database_Agent" and state.get("data_sql") is not None:
                 handled_steps["sql"] = True
-            elif (
-                last_worker == "Data_Wrangling_Agent"
-                and state.get("data_wrangled") is not None
-            ):
+            elif last_worker == "Data_Wrangling_Agent" and state.get("data_wrangled") is not None:
                 handled_steps["wrangle"] = True
-            elif (
-                last_worker == "Data_Cleaning_Agent"
-                and state.get("data_cleaned") is not None
-            ):
+            elif last_worker == "Data_Cleaning_Agent" and state.get("data_cleaned") is not None:
                 handled_steps["clean"] = True
-            elif (
-                last_worker == "EDA_Tools_Agent"
-                and state.get("eda_artifacts") is not None
-            ):
+            elif last_worker == "EDA_Tools_Agent" and state.get("eda_artifacts") is not None:
                 handled_steps["eda"] = True
-            elif (
-                last_worker == "Data_Visualization_Agent"
-                and state.get("viz_graph") is not None
-            ):
+            elif last_worker == "Data_Visualization_Agent" and state.get("viz_graph") is not None:
                 handled_steps["viz"] = True
             elif (
-                last_worker == "Feature_Engineering_Agent"
-                and state.get("feature_data") is not None
+                last_worker == "Feature_Engineering_Agent" and state.get("feature_data") is not None
             ):
                 handled_steps["feature"] = True
             elif last_worker == "H2O_ML_Agent" and state.get("model_info") is not None:
                 handled_steps["model"] = True
             elif (
-                last_worker == "Model_Evaluation_Agent"
-                and state.get("eval_artifacts") is not None
+                last_worker == "Model_Evaluation_Agent" and state.get("eval_artifacts") is not None
             ):
                 handled_steps["evaluate"] = True
             elif (
-                last_worker == "MLflow_Logging_Agent"
-                and state.get("mlflow_artifacts") is not None
+                last_worker == "MLflow_Logging_Agent" and state.get("mlflow_artifacts") is not None
             ):
                 handled_steps["mlflow_log"] = True
-            elif (
-                last_worker == "MLflow_Tools_Agent"
-                and state.get("mlflow_artifacts") is not None
-            ):
+            elif last_worker == "MLflow_Tools_Agent" and state.get("mlflow_artifacts") is not None:
                 handled_steps["mlflow_tools"] = True
 
         step_to_worker = {
@@ -1108,16 +1059,10 @@ Examples:
         plan_notes: list[str] = []
         planner_messages: list[BaseMessage] = []
         planned_target: Optional[str] = state.get("target_variable")
-        if (
-            use_planner
-            and workflow_planner_agent is not None
-            and current_request_id is not None
-        ):
+        if use_planner and workflow_planner_agent is not None and current_request_id is not None:
             if state_plan_req == current_request_id and isinstance(state_plan, dict):
                 planned_steps = (
-                    state_plan.get("steps")
-                    if isinstance(state_plan.get("steps"), list)
-                    else None
+                    state_plan.get("steps") if isinstance(state_plan.get("steps"), list) else None
                 )
                 plan_questions = (
                     state_plan.get("questions")
@@ -1125,9 +1070,7 @@ Examples:
                     else []
                 )
                 plan_notes = (
-                    state_plan.get("notes")
-                    if isinstance(state_plan.get("notes"), list)
-                    else []
+                    state_plan.get("notes") if isinstance(state_plan.get("notes"), list) else []
                 )
             else:
                 # Provide a minimal context snapshot to help planning.
@@ -1150,17 +1093,11 @@ Examples:
                     plan = workflow_planner_agent.response or {}
                 except Exception:
                     plan = {}
-                planned_steps = (
-                    plan.get("steps") if isinstance(plan.get("steps"), list) else None
-                )
+                planned_steps = plan.get("steps") if isinstance(plan.get("steps"), list) else None
                 plan_questions = (
-                    plan.get("questions")
-                    if isinstance(plan.get("questions"), list)
-                    else []
+                    plan.get("questions") if isinstance(plan.get("questions"), list) else []
                 )
-                plan_notes = (
-                    plan.get("notes") if isinstance(plan.get("notes"), list) else []
-                )
+                plan_notes = plan.get("notes") if isinstance(plan.get("notes"), list) else []
                 planned_target = plan.get("target_variable") or planned_target
                 state_plan_req = current_request_id
                 state_plan = {
@@ -1171,22 +1108,16 @@ Examples:
                 }
                 if planned_steps:
                     pretty_steps = " → ".join(str(s) for s in planned_steps)
-                    note_text = (
-                        "\n".join(f"- {n}" for n in plan_notes) if plan_notes else ""
-                    )
+                    note_text = "\n".join(f"- {n}" for n in plan_notes) if plan_notes else ""
                     msg = f"Planned workflow: {pretty_steps}"
                     if note_text:
                         msg = msg + "\n\nNotes:\n" + note_text
-                    planner_messages = [
-                        AIMessage(content=msg, name="workflow_planner_agent")
-                    ]
+                    planner_messages = [AIMessage(content=msg, name="workflow_planner_agent")]
 
             # If the planner needs user input, ask and stop.
             if plan_questions and not (planned_steps and len(planned_steps) > 0):
                 question_text = "\n".join(f"- {q}" for q in plan_questions)
-                note_text = (
-                    "\n".join(f"- {n}" for n in plan_notes) if plan_notes else ""
-                )
+                note_text = "\n".join(f"- {n}" for n in plan_notes) if plan_notes else ""
                 msg = "To run the workflow, I need:\n" + question_text
                 if note_text:
                     msg = msg + "\n\nNotes:\n" + note_text
@@ -1262,11 +1193,7 @@ Examples:
                 if (
                     not data_ready
                     and needs_data
-                    and not (
-                        intents.get("load")
-                        or intents.get("load_only")
-                        or intents.get("sql")
-                    )
+                    and not (intents.get("load") or intents.get("load_only") or intents.get("sql"))
                 ):
                     steps.insert(0, "load")
 
@@ -1318,11 +1245,7 @@ Examples:
                     if attempted_steps.get(step) and not handled_steps.get(step):
                         print(f"  step '{step}' already attempted -> FINISH")
                         return {
-                            **(
-                                {"messages": planner_messages}
-                                if planner_messages
-                                else {}
-                            ),
+                            **({"messages": planner_messages} if planner_messages else {}),
                             "next": "FINISH",
                             "active_data_key": active_data_key,
                             "datasets": datasets,
@@ -1355,11 +1278,7 @@ Examples:
                         )
                         attempted_steps["load"] = True
                         return {
-                            **(
-                                {"messages": planner_messages}
-                                if planner_messages
-                                else {}
-                            ),
+                            **({"messages": planner_messages} if planner_messages else {}),
                             "next": "Data_Loader_Tools_Agent",
                             **base_update,
                             "active_data_key": active_data_key,
@@ -1410,9 +1329,7 @@ Examples:
             {"messages": clean_msgs, "last_worker": state.get("last_worker")}
         )
         next_worker = result.get("next")
-        print(
-            f"  data_ready={data_ready}, last_worker={last_worker}, router_next={next_worker}"
-        )
+        print(f"  data_ready={data_ready}, last_worker={last_worker}, router_next={next_worker}")
 
         # Intent-aware override when data is present
         if data_ready:
@@ -1583,7 +1500,6 @@ Examples:
             return None
         try:
             import pandas as pd
-            import json
 
             df = pd.DataFrame(df_dict)
             df_preview = df.iloc[:max_rows, :max_cols]
@@ -1631,7 +1547,6 @@ Examples:
         try:
             preview_md = ""
             import pandas as pd
-            import json
 
             if df_dict:
                 df = pd.DataFrame(df_dict)
@@ -1721,9 +1636,7 @@ Examples:
 
     def _dataset_meta(
         data: Any,
-    ) -> tuple[
-        Any, list[str] | None, list[dict[str, str]] | None, str | None, str | None
-    ]:
+    ) -> tuple[Any, list[str] | None, list[dict[str, str]] | None, str | None, str | None]:
         df = _ensure_df(data)
         shape = _shape(df)
         cols = None
@@ -1749,9 +1662,7 @@ Examples:
                 ]
                 schema_str = "|".join(f"{r['name']}:{r['dtype']}" for r in schema)
                 schema_hash = (
-                    hashlib.sha256(schema_str.encode("utf-8")).hexdigest()
-                    if schema_str
-                    else None
+                    hashlib.sha256(schema_str.encode("utf-8")).hexdigest() if schema_str else None
                 )
 
                 # Fingerprint: stable hash over a capped row sample
@@ -1837,9 +1748,7 @@ Examples:
                     try:
                         artifacts = state.get("artifacts") or {}
                         input_ds = (
-                            artifacts.get("input_dataset")
-                            if isinstance(artifacts, dict)
-                            else None
+                            artifacts.get("input_dataset") if isinstance(artifacts, dict) else None
                         )
                         if isinstance(input_ds, dict) and input_ds.get("source"):
                             provenance = {**provenance, **input_ds}
@@ -1892,9 +1801,9 @@ Examples:
             if active_id is None:
                 newest = sorted(
                     datasets.items(),
-                    key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                    if isinstance(kv[1], dict)
-                    else 0.0,
+                    key=lambda kv: (
+                        float(kv[1].get("created_ts") or 0.0) if isinstance(kv[1], dict) else 0.0
+                    ),
                 )
                 active_id = newest[-1][0] if newest else None
 
@@ -1925,9 +1834,7 @@ Examples:
         ts = time.time()
         normalized_parents: list[str] = []
         if isinstance(parent_ids, (list, tuple)):
-            normalized_parents = [
-                str(p) for p in parent_ids if isinstance(p, str) and p
-            ]
+            normalized_parents = [str(p) for p in parent_ids if isinstance(p, str) and p]
         if parent_id and parent_id not in normalized_parents:
             normalized_parents = [parent_id, *normalized_parents]
         normalized_parents = [p for p in normalized_parents if p]
@@ -1977,7 +1884,7 @@ Examples:
         except Exception:
             return df is None
 
-    def node_loader(state: SupervisorDSState):
+    def node_loader(state: SupervisorDSState) -> Dict[str, Any]:
         print("---DATA LOADER---")
         before_msgs = list(state.get("messages", []) or [])
         last_human = _get_last_human(before_msgs)
@@ -1996,9 +1903,7 @@ Examples:
             try:
                 print(f"  loader response_keys={sorted(list(response.keys()))}")
                 if isinstance(loader_artifacts, dict):
-                    print(
-                        f"  loader artifacts_keys={list(loader_artifacts.keys())[:25]}"
-                    )
+                    print(f"  loader artifacts_keys={list(loader_artifacts.keys())[:25]}")
                 else:
                     print(f"  loader artifacts_type={type(loader_artifacts)}")
             except Exception:
@@ -2077,9 +1982,7 @@ Examples:
             try:
                 print(f"  loader load_file_ok_items={len(load_file_ok_items)}")
                 for name, data in load_file_ok_items[:3]:
-                    print(
-                        f"    - ok {name}: data_type={type(data)} shape={_shape(data)}"
-                    )
+                    print(f"    - ok {name}: data_type={type(data)} shape={_shape(data)}")
             except Exception:
                 pass
 
@@ -2101,9 +2004,7 @@ Examples:
                 )
 
                 last_human_lower = last_human.lower()
-                if any(
-                    w in last_human_lower for w in ("load", "read", "import", "open")
-                ):
+                if any(w in last_human_lower for w in ("load", "read", "import", "open")):
                     requested = re.findall(
                         r"(?:`|\"|')?([^\s'\"`]+\.(?:csv|tsv|parquet|xlsx?|jsonl|ndjson|json)(?:\.gz)?)",
                         last_human,
@@ -2153,18 +2054,12 @@ Examples:
                                 "load_file_deterministic_fallback": marker,
                             }
                         elif loader_artifacts is None:
-                            loader_artifacts = {
-                                "load_file_deterministic_fallback": marker
-                            }
+                            loader_artifacts = {"load_file_deterministic_fallback": marker}
             except Exception:
                 pass
 
         # If multiple load_file calls succeeded, keep them all and default the active dataset to the last one.
-        if (
-            loaded_dataset is None
-            and not multiple_loaded_datasets
-            and len(load_file_ok_items) > 1
-        ):
+        if loaded_dataset is None and not multiple_loaded_datasets and len(load_file_ok_items) > 1:
             import re
 
             labels: list[str] = []
@@ -2197,9 +2092,7 @@ Examples:
             ]
             loaded_dataset_label, loaded_dataset = multiple_loaded_datasets[-1]
         elif (
-            loaded_dataset is None
-            and not multiple_loaded_datasets
-            and len(load_file_ok_items) == 1
+            loaded_dataset is None and not multiple_loaded_datasets and len(load_file_ok_items) == 1
         ):
             loaded_dataset_label, loaded_dataset = load_file_ok_items[0]
 
@@ -2220,9 +2113,7 @@ Examples:
                 last_human_text = _get_last_human(before_msgs) or ""
                 last_human_lower = last_human_text.lower()
 
-                if any(
-                    w in last_human_lower for w in ("load", "read", "import", "open")
-                ):
+                if any(w in last_human_lower for w in ("load", "read", "import", "open")):
                     m = re.search(
                         r"(?:`|\"|')?([^\s'\"`]+\.(?:csv|tsv|parquet|xlsx?|jsonl|ndjson|json)(?:\.gz)?)",
                         last_human_text,
@@ -2315,9 +2206,7 @@ Examples:
                 else:
                     loader_artifacts = {"load_file_fallback": marker}
 
-        print(
-            f"  loader data_raw shape={_shape(data_raw)} active_data_key={active_data_key}"
-        )
+        print(f"  loader data_raw shape={_shape(data_raw)} active_data_key={active_data_key}")
 
         datasets, active_dataset_id = _ensure_dataset_registry(state)
         # Register newly loaded datasets in the dataset registry.
@@ -2382,10 +2271,7 @@ Examples:
                         resolve_existing_file_path,
                     )
 
-                    if not (
-                        isinstance(source, str)
-                        and ("." in source and os.path.sep in source)
-                    ):
+                    if not (isinstance(source, str) and ("." in source and os.path.sep in source)):
                         m = re.search(
                             r"(?:`|\"|')?([^\s'\"`]+\.(?:csv|tsv|parquet|xlsx?|jsonl|ndjson|json)(?:\.gz)?)",
                             last_human or "",
@@ -2393,9 +2279,7 @@ Examples:
                         )
                         requested = (m.group(1) if m else "").strip()
                         if requested:
-                            resolved_path, _matches = resolve_existing_file_path(
-                                requested
-                            )
+                            resolved_path, _matches = resolve_existing_file_path(requested)
                             if resolved_path is not None:
                                 source = str(resolved_path)
                             else:
@@ -2414,9 +2298,7 @@ Examples:
                 provenance = {
                     "source_type": "file",
                     "source": source or loaded_dataset_label,
-                    "original_name": os.path.basename(
-                        str(source or loaded_dataset_label or "")
-                    )
+                    "original_name": os.path.basename(str(source or loaded_dataset_label or ""))
                     or None,
                     "user_request": last_human,
                     "fallback_loader": bool(fallback_loaded_dataset),
@@ -2447,9 +2329,7 @@ Examples:
                     "active_dataset_id": active_dataset_id,
                 }
                 # Register only the most recent N to avoid unbounded growth.
-                for fname, data in list(multiple_loaded_datasets)[
-                    -DATASET_REGISTRY_MAX:
-                ]:
+                for fname, data in list(multiple_loaded_datasets)[-DATASET_REGISTRY_MAX:]:
                     datasets, active_dataset_id, _did = _register_dataset(
                         state_for_register,
                         data=data,
@@ -2495,17 +2375,14 @@ Examples:
                 )
                 preview_txt = ""
                 try:
-                    df_active = (
-                        pd.DataFrame(data_raw) if isinstance(data_raw, dict) else None
-                    )
+                    df_active = pd.DataFrame(data_raw) if isinstance(data_raw, dict) else None
                     if df_active is not None:
                         preview_df = df_active.head(5)
                         max_cols = 10
                         if preview_df.shape[1] > max_cols:
                             preview_df = preview_df.iloc[:, :max_cols]
-                        preview_txt = (
-                            "\n\nPreview (first 5 rows):\n\n"
-                            + preview_df.to_markdown(index=False)
+                        preview_txt = "\n\nPreview (first 5 rows):\n\n" + preview_df.to_markdown(
+                            index=False
                         )
                 except Exception:
                     pass
@@ -2514,11 +2391,7 @@ Examples:
                     content=(
                         f"Loaded {len(multiple_loaded_datasets)} datasets:\n\n"
                         + "\n".join(lines)
-                        + (
-                            f"\n\nActive dataset: {active_label}."
-                            if active_label
-                            else ""
-                        )
+                        + (f"\n\nActive dataset: {active_label}." if active_label else "")
                         + preview_txt
                         + "\n\nUse the sidebar dataset selector to switch the active dataset, or use Pipeline Studio to merge them."
                     ),
@@ -2561,8 +2434,7 @@ Examples:
                                     {
                                         "filename": item.get("filename"),
                                         "type": item.get("type"),
-                                        "path": item.get("path")
-                                        or item.get("filepath"),
+                                        "path": item.get("path") or item.get("filepath"),
                                     }
                                 )
                                 continue
@@ -2570,24 +2442,16 @@ Examples:
                                 fp = item.get("file_path")
                                 import os
 
-                                fn = (
-                                    os.path.basename(fp)
-                                    if isinstance(fp, str)
-                                    else str(fp)
-                                )
+                                fn = os.path.basename(fp) if isinstance(fp, str) else str(fp)
                                 names.append(fn)
-                                rows.append(
-                                    {"filename": fn, "type": "file", "path": fp}
-                                )
+                                rows.append({"filename": fn, "type": "file", "path": fp})
                                 continue
                             if "absolute_path" in item or "name" in item:
                                 ap = item.get("absolute_path")
                                 import os
 
                                 fn = item.get("name") or (
-                                    os.path.basename(ap)
-                                    if isinstance(ap, str)
-                                    else str(ap)
+                                    os.path.basename(ap) if isinstance(ap, str) else str(ap)
                                 )
                                 names.append(fn)
                                 rows.append(
@@ -2618,28 +2482,18 @@ Examples:
                                 fp = v.get("file_path")
                                 import os
 
-                                fn = (
-                                    os.path.basename(fp)
-                                    if isinstance(fp, str)
-                                    else str(fp)
-                                )
+                                fn = os.path.basename(fp) if isinstance(fp, str) else str(fp)
                                 names.append(fn)
-                                rows.append(
-                                    {"filename": fn, "type": "file", "path": fp}
-                                )
+                                rows.append({"filename": fn, "type": "file", "path": fp})
                             elif "absolute_path" in v or "name" in v:
                                 ap = v.get("absolute_path")
                                 import os
 
                                 fn = v.get("name") or (
-                                    os.path.basename(ap)
-                                    if isinstance(ap, str)
-                                    else str(ap)
+                                    os.path.basename(ap) if isinstance(ap, str) else str(ap)
                                 )
                                 names.append(fn)
-                                rows.append(
-                                    {"filename": fn, "type": v.get("type"), "path": ap}
-                                )
+                                rows.append({"filename": fn, "type": v.get("type"), "path": ap})
                             else:
                                 names.append(str(v))
                                 rows.append({"filename": str(v)})
@@ -2652,11 +2506,7 @@ Examples:
                     "list" in last_human or "files" in last_human
                 )
                 if wants_csv_only and rows:
-                    rows = [
-                        r
-                        for r in rows
-                        if str(r.get("filename", "")).lower().endswith(".csv")
-                    ]
+                    rows = [r for r in rows if str(r.get("filename", "")).lower().endswith(".csv")]
                     names = [r.get("filename") for r in rows if r.get("filename")]
                     if not rows:
                         summary_msg = AIMessage(
@@ -2667,9 +2517,7 @@ Examples:
 
                 if summary_msg is None:
                     msg_text = (
-                        "Found files: " + ", ".join(names)
-                        if names
-                        else "Found directory contents."
+                        "Found files: " + ", ".join(names) if names else "Found directory contents."
                     )
                     table_text = ""
                     if rows:
@@ -2677,28 +2525,20 @@ Examples:
 
                         df_listing = pd.DataFrame(rows)
                         table_cols = [
-                            c
-                            for c in ["filename", "type", "path"]
-                            if c in df_listing.columns
+                            c for c in ["filename", "type", "path"] if c in df_listing.columns
                         ]
                         table_text = df_listing[table_cols].to_markdown(index=False)
                     # If the user asked for a table or better formatting, try a tiny LLM summary
-                    llm_text = (
-                        _format_listing_with_llm(rows, last_human) if rows else None
-                    )
+                    llm_text = _format_listing_with_llm(rows, last_human) if rows else None
                     if llm_text:
-                        summary_msg = AIMessage(
-                            content=llm_text, name="data_loader_agent"
-                        )
+                        summary_msg = AIMessage(content=llm_text, name="data_loader_agent")
                     elif table_text:
                         summary_msg = AIMessage(
                             content=f"{msg_text}\n\n{table_text}",
                             name="data_loader_agent",
                         )
                     else:
-                        summary_msg = AIMessage(
-                            content=msg_text, name="data_loader_agent"
-                        )
+                        summary_msg = AIMessage(content=msg_text, name="data_loader_agent")
             except Exception:
                 summary_msg = AIMessage(
                     content="Listed directory contents.", name="data_loader_agent"
@@ -2744,9 +2584,7 @@ Examples:
                         _get_last_human(before_msgs),
                     )
                     if llm_text:
-                        summary_msg = AIMessage(
-                            content=llm_text, name="data_loader_agent"
-                        )
+                        summary_msg = AIMessage(content=llm_text, name="data_loader_agent")
                     else:
                         summary_msg = AIMessage(
                             content=f"Loaded dataset with shape {df.shape}.{col_note}\n\n{table_md}",
@@ -2866,7 +2704,7 @@ Examples:
             **downstream_resets,
         }
 
-    def node_merge(state: SupervisorDSState):
+    def node_merge(state: SupervisorDSState) -> Dict[str, Any]:
         print("---DATA MERGE---")
         before_msgs = list(state.get("messages", []) or [])
         last_human = _get_last_human(before_msgs)
@@ -2910,11 +2748,7 @@ Examples:
                 if not isinstance(entry, dict):
                     continue
                 label = str(entry.get("label") or "").lower()
-                prov = (
-                    entry.get("provenance")
-                    if isinstance(entry.get("provenance"), dict)
-                    else {}
-                )
+                prov = entry.get("provenance") if isinstance(entry.get("provenance"), dict) else {}
                 original = str(prov.get("original_name") or "").lower()
                 source = str(prov.get("source") or "").lower()
                 if did.lower() in t:
@@ -2948,9 +2782,9 @@ Examples:
             selected_ids = [active_dataset_id]
             ordered = sorted(
                 datasets.items(),
-                key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                if isinstance(kv[1], dict)
-                else 0.0,
+                key=lambda kv: (
+                    float(kv[1].get("created_ts") or 0.0) if isinstance(kv[1], dict) else 0.0
+                ),
                 reverse=True,
             )
             for did, _e in ordered:
@@ -2965,9 +2799,9 @@ Examples:
             try:
                 ordered = sorted(
                     datasets.items(),
-                    key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-                    if isinstance(kv[1], dict)
-                    else 0.0,
+                    key=lambda kv: (
+                        float(kv[1].get("created_ts") or 0.0) if isinstance(kv[1], dict) else 0.0
+                    ),
                     reverse=True,
                 )
                 for did, e in ordered[:10]:
@@ -3037,9 +2871,7 @@ Examples:
             suffixes_raw = str(merge_cfg.get("suffixes") or "_x,_y")
             suffixes_parts = [p.strip() for p in suffixes_raw.split(",") if p.strip()]
             suffixes = (
-                (suffixes_parts[0], suffixes_parts[1])
-                if len(suffixes_parts) >= 2
-                else ("_x", "_y")
+                (suffixes_parts[0], suffixes_parts[1]) if len(suffixes_parts) >= 2 else ("_x", "_y")
             )
 
             # Infer join keys when not provided.
@@ -3180,7 +3012,7 @@ Examples:
             **downstream_resets,
         }
 
-    def node_wrangling(state: SupervisorDSState):
+    def node_wrangling(state: SupervisorDSState) -> Dict[str, Any]:
         print("---DATA WRANGLING---")
         before_msgs = list(state.get("messages", []) or [])
         last_human = _get_last_human(before_msgs)
@@ -3219,9 +3051,7 @@ Examples:
         )
         response = data_wrangling_agent.response or {}
         merged = _merge_messages(before_msgs, response)
-        merged["messages"] = _tag_messages(
-            merged.get("messages"), "data_wrangling_agent"
-        )
+        merged["messages"] = _tag_messages(merged.get("messages"), "data_wrangling_agent")
         summary_text = _format_result_with_llm(
             "data_wrangling_agent",
             response.get("data_wrangled"),
@@ -3229,9 +3059,7 @@ Examples:
             extra_text="Wrangling steps completed.",
         )
         if summary_text:
-            merged["messages"].append(
-                AIMessage(content=summary_text, name="data_wrangling_agent")
-            )
+            merged["messages"].append(AIMessage(content=summary_text, name="data_wrangling_agent"))
         _append_error_message(
             merged,
             "data_wrangling_agent",
@@ -3255,20 +3083,14 @@ Examples:
                         "user_request": last_human,
                         "transform": {
                             "kind": "python_function",
-                            "function_name": response.get(
-                                "data_wrangler_function_name"
-                            ),
-                            "function_path": response.get(
-                                "data_wrangler_function_path"
-                            ),
+                            "function_name": response.get("data_wrangler_function_name"),
+                            "function_path": response.get("data_wrangler_function_path"),
                             "function_code": _truncate_text(wrangler_code, 12000),
                             "code_sha256": wrangler_code_hash,
                             "recommended_steps": response.get("recommended_steps"),
                             "summary": response.get("data_wrangling_summary"),
                             "error": response.get("data_wrangler_error"),
-                            "error_log_path": response.get(
-                                "data_wrangler_error_log_path"
-                            ),
+                            "error_log_path": response.get("data_wrangler_error_log_path"),
                         },
                     },
                     parent_id=active_dataset_id,
@@ -3301,16 +3123,10 @@ Examples:
                 "data_wrangling": data_wrangled,
                 "data_wrangling_details": {
                     "data_wrangler_function": response.get("data_wrangler_function"),
-                    "data_wrangler_function_path": response.get(
-                        "data_wrangler_function_path"
-                    ),
-                    "data_wrangler_function_name": response.get(
-                        "data_wrangler_function_name"
-                    ),
+                    "data_wrangler_function_path": response.get("data_wrangler_function_path"),
+                    "data_wrangler_function_name": response.get("data_wrangler_function_name"),
                     "data_wrangler_error": response.get("data_wrangler_error"),
-                    "data_wrangler_error_log_path": response.get(
-                        "data_wrangler_error_log_path"
-                    ),
+                    "data_wrangler_error_log_path": response.get("data_wrangler_error_log_path"),
                     "data_wrangling_summary": response.get("data_wrangling_summary"),
                     "recommended_steps": response.get("recommended_steps"),
                 },
@@ -3319,7 +3135,7 @@ Examples:
             **downstream_resets,
         }
 
-    def node_cleaning(state: SupervisorDSState):
+    def node_cleaning(state: SupervisorDSState) -> Dict[str, Any]:
         print("---DATA CLEANING---")
         before_msgs = list(state.get("messages", []) or [])
         last_human = _get_last_human(before_msgs)
@@ -3358,9 +3174,7 @@ Examples:
         )
         response = data_cleaning_agent.response or {}
         merged = _merge_messages(before_msgs, response)
-        merged["messages"] = _tag_messages(
-            merged.get("messages"), "data_cleaning_agent"
-        )
+        merged["messages"] = _tag_messages(merged.get("messages"), "data_cleaning_agent")
         summary_text = _format_result_with_llm(
             "data_cleaning_agent",
             response.get("data_cleaned"),
@@ -3368,9 +3182,7 @@ Examples:
             extra_text="Cleaning/imputation completed.",
         )
         if summary_text:
-            merged["messages"].append(
-                AIMessage(content=summary_text, name="data_cleaning_agent")
-            )
+            merged["messages"].append(AIMessage(content=summary_text, name="data_cleaning_agent"))
         _append_error_message(
             merged,
             "data_cleaning_agent",
@@ -3401,9 +3213,7 @@ Examples:
                             "recommended_steps": response.get("recommended_steps"),
                             "summary": response.get("data_cleaning_summary"),
                             "error": response.get("data_cleaner_error"),
-                            "error_log_path": response.get(
-                                "data_cleaner_error_log_path"
-                            ),
+                            "error_log_path": response.get("data_cleaner_error_log_path"),
                         },
                     },
                     parent_id=active_dataset_id,
@@ -3435,16 +3245,10 @@ Examples:
                 "data_cleaning": data_cleaned,
                 "data_cleaning_details": {
                     "data_cleaner_function": response.get("data_cleaner_function"),
-                    "data_cleaner_function_path": response.get(
-                        "data_cleaner_function_path"
-                    ),
-                    "data_cleaner_function_name": response.get(
-                        "data_cleaner_function_name"
-                    ),
+                    "data_cleaner_function_path": response.get("data_cleaner_function_path"),
+                    "data_cleaner_function_name": response.get("data_cleaner_function_name"),
                     "data_cleaner_error": response.get("data_cleaner_error"),
-                    "data_cleaner_error_log_path": response.get(
-                        "data_cleaner_error_log_path"
-                    ),
+                    "data_cleaner_error_log_path": response.get("data_cleaner_error_log_path"),
                     "data_cleaning_summary": response.get("data_cleaning_summary"),
                     "recommended_steps": response.get("recommended_steps"),
                 },
@@ -3453,7 +3257,7 @@ Examples:
             **downstream_resets,
         }
 
-    def node_sql(state: SupervisorDSState):
+    def node_sql(state: SupervisorDSState) -> Dict[str, Any]:
         print("---SQL DATABASE---")
         before_msgs = list(state.get("messages", []) or [])
         last_human = _get_last_human(before_msgs)
@@ -3472,9 +3276,7 @@ Examples:
             extra_text=response.get("sql_query_code", ""),
         )
         if summary_text:
-            merged["messages"].append(
-                AIMessage(content=summary_text, name="sql_database_agent")
-            )
+            merged["messages"].append(AIMessage(content=summary_text, name="sql_database_agent"))
         _append_error_message(
             merged,
             "sql_database_agent",
@@ -3526,9 +3328,7 @@ Examples:
         return {
             **merged,
             "data_sql": data_sql,
-            "active_data_key": "data_sql"
-            if data_sql is not None
-            else state.get("active_data_key"),
+            "active_data_key": "data_sql" if data_sql is not None else state.get("active_data_key"),
             "datasets": datasets,
             "active_dataset_id": active_dataset_id,
             "artifacts": {
@@ -3536,16 +3336,10 @@ Examples:
                 "sql": {
                     "sql_query_code": response.get("sql_query_code"),
                     "sql_database_function": response.get("sql_database_function"),
-                    "sql_database_function_path": response.get(
-                        "sql_database_function_path"
-                    ),
-                    "sql_database_function_name": response.get(
-                        "sql_database_function_name"
-                    ),
+                    "sql_database_function_path": response.get("sql_database_function_path"),
+                    "sql_database_function_name": response.get("sql_database_function_name"),
                     "sql_database_error": response.get("sql_database_error"),
-                    "sql_database_error_log_path": response.get(
-                        "sql_database_error_log_path"
-                    ),
+                    "sql_database_error_log_path": response.get("sql_database_error_log_path"),
                     "recommended_steps": response.get("recommended_steps"),
                     "data_sql": data_sql,
                 },
@@ -3553,18 +3347,14 @@ Examples:
             "last_worker": "SQL_Database_Agent",
         }
 
-    def node_eda(state: SupervisorDSState):
+    def node_eda(state: SupervisorDSState) -> Dict[str, Any]:
         print("---EDA TOOLS---")
         before_msgs = list(state.get("messages", []) or [])
         last_human = _get_last_human(before_msgs).lower()
         feature_df = _ensure_df(state.get("feature_data"))
         wants_feature_engineered_report = (
             ("feature-engineered" in last_human or "feature engineered" in last_human)
-            and (
-                "data" in last_human
-                or "dataset" in last_human
-                or "features" in last_human
-            )
+            and ("data" in last_human or "dataset" in last_human or "features" in last_human)
         ) or ("engineered features" in last_human)
         active_df = _ensure_df(
             _get_active_data(
@@ -3610,9 +3400,7 @@ Examples:
             extra_text="EDA summary.",
         )
         if summary_text:
-            merged["messages"].append(
-                AIMessage(content=summary_text, name="eda_tools_agent")
-            )
+            merged["messages"].append(AIMessage(content=summary_text, name="eda_tools_agent"))
         eda_artifacts = response.get("eda_artifacts")
         return {
             **merged,
@@ -3624,7 +3412,7 @@ Examples:
             "last_worker": "EDA_Tools_Agent",
         }
 
-    def node_viz(state: SupervisorDSState):
+    def node_viz(state: SupervisorDSState) -> Dict[str, Any]:
         print("---DATA VISUALIZATION---")
         before_msgs = list(state.get("messages", []) or [])
         last_human = _get_last_human(before_msgs)
@@ -3657,9 +3445,7 @@ Examples:
         )
         response = data_visualization_agent.response or {}
         merged = _merge_messages(before_msgs, response)
-        merged["messages"] = _tag_messages(
-            merged.get("messages"), "data_visualization_agent"
-        )
+        merged["messages"] = _tag_messages(merged.get("messages"), "data_visualization_agent")
         plotly_graph = response.get("plotly_graph")
         viz_error = response.get("data_visualization_error")
         viz_error_path = response.get("data_visualization_error_log_path")
@@ -3685,9 +3471,7 @@ Examples:
                     title = getattr(getattr(fig.layout, "title", None), "text", None)
                 except Exception:
                     title = None
-            viz_summary = (
-                response.get("data_visualization_summary") or "Visualization generated."
-            )
+            viz_summary = response.get("data_visualization_summary") or "Visualization generated."
             if trace_types:
                 viz_summary = f"{viz_summary} Trace types: {', '.join(trace_types)}."
             if title:
@@ -3721,9 +3505,7 @@ Examples:
                 **state.get("artifacts", {}),
                 "viz": {
                     "plotly_graph": plotly_graph,
-                    "data_visualization_function": response.get(
-                        "data_visualization_function"
-                    ),
+                    "data_visualization_function": response.get("data_visualization_function"),
                     "error": viz_error,
                     "error_log_path": viz_error_path,
                     "warning": viz_warning,
@@ -3732,7 +3514,7 @@ Examples:
             "last_worker": "Data_Visualization_Agent",
         }
 
-    def node_fe(state: SupervisorDSState):
+    def node_fe(state: SupervisorDSState) -> Dict[str, Any]:
         print("---FEATURE ENGINEERING---")
         before_msgs = list(state.get("messages", []) or [])
         last_human = _get_last_human(before_msgs)
@@ -3771,9 +3553,7 @@ Examples:
         )
         response = feature_engineering_agent.response or {}
         merged = _merge_messages(before_msgs, response)
-        merged["messages"] = _tag_messages(
-            merged.get("messages"), "feature_engineering_agent"
-        )
+        merged["messages"] = _tag_messages(merged.get("messages"), "feature_engineering_agent")
         summary_text = _format_result_with_llm(
             "feature_engineering_agent",
             response.get("data_engineered"),
@@ -3807,19 +3587,13 @@ Examples:
                         "user_request": last_human,
                         "transform": {
                             "kind": "python_function",
-                            "function_name": response.get(
-                                "feature_engineer_function_name"
-                            ),
-                            "function_path": response.get(
-                                "feature_engineer_function_path"
-                            ),
+                            "function_name": response.get("feature_engineer_function_name"),
+                            "function_path": response.get("feature_engineer_function_path"),
                             "function_code": _truncate_text(fe_code, 12000),
                             "code_sha256": fe_code_hash,
                             "recommended_steps": response.get("recommended_steps"),
                             "error": response.get("feature_engineer_error"),
-                            "error_log_path": response.get(
-                                "feature_engineer_error_log_path"
-                            ),
+                            "error_log_path": response.get("feature_engineer_error_log_path"),
                         },
                     },
                     parent_id=active_dataset_id,
@@ -3849,9 +3623,7 @@ Examples:
                 **state.get("artifacts", {}),
                 "feature_engineering": response,
                 "feature_engineering_details": {
-                    "feature_engineer_function": response.get(
-                        "feature_engineer_function"
-                    ),
+                    "feature_engineer_function": response.get("feature_engineer_function"),
                     "feature_engineer_function_path": response.get(
                         "feature_engineer_function_path"
                     ),
@@ -3862,9 +3634,7 @@ Examples:
                     "feature_engineer_error_log_path": response.get(
                         "feature_engineer_error_log_path"
                     ),
-                    "feature_engineering_summary": response.get(
-                        "feature_engineering_summary"
-                    ),
+                    "feature_engineering_summary": response.get("feature_engineering_summary"),
                     "recommended_steps": response.get("recommended_steps"),
                 },
             },
@@ -3872,7 +3642,7 @@ Examples:
             **downstream_resets,
         }
 
-    def node_h2o(state: SupervisorDSState):
+    def node_h2o(state: SupervisorDSState) -> Dict[str, Any]:
         print("---H2O ML---")
         before_msgs = list(state.get("messages", []) or [])
         last_human = _get_last_human(before_msgs)
@@ -3966,20 +3736,14 @@ Examples:
 
                             def _run_has_model_artifact(rid: str) -> bool:
                                 try:
-                                    return bool(
-                                        client.list_artifacts(rid, path="model")
-                                    )
+                                    return bool(client.list_artifacts(rid, path="model"))
                                 except Exception:
                                     return False
 
                             # Prefer the newest run that actually contains a logged model.
                             for r in runs or []:
                                 rid = getattr(getattr(r, "info", None), "run_id", None)
-                                if (
-                                    isinstance(rid, str)
-                                    and rid
-                                    and _run_has_model_artifact(rid)
-                                ):
+                                if isinstance(rid, str) and rid and _run_has_model_artifact(rid):
                                     run_id = rid
                                     break
                     except Exception:
@@ -3989,9 +3753,7 @@ Examples:
                     # Best-effort: drop target column if present so we score only features.
                     target = state.get("target_variable")
                     target = (
-                        target
-                        if isinstance(target, str) and target in active_df.columns
-                        else None
+                        target if isinstance(target, str) and target in active_df.columns else None
                     )
                     x_df = active_df.drop(columns=[target]) if target else active_df
                     try:
@@ -4010,9 +3772,7 @@ Examples:
                             client = MlflowClient()
                             has_model = any(
                                 getattr(item, "path", None) == "model"
-                                for item in client.list_artifacts(
-                                    run_id.strip(), path=""
-                                )
+                                for item in client.list_artifacts(run_id.strip(), path="")
                             )
                         except Exception:
                             has_model = True
@@ -4038,9 +3798,7 @@ Examples:
                         except Exception:
                             model = mlflow.pyfunc.load_model(model_uri)
 
-                        if hasattr(model, "predict") and not hasattr(
-                            model, "_model_json"
-                        ):
+                        if hasattr(model, "predict") and not hasattr(model, "_model_json"):
                             # Likely a pyfunc wrapper; predict directly.
                             raw_preds = model.predict(x_df)
                             if isinstance(raw_preds, pd.DataFrame):
@@ -4055,23 +3813,13 @@ Examples:
                             try:
                                 out_json = getattr(model, "_model_json", {}) or {}
                                 output = (
-                                    out_json.get("output")
-                                    if isinstance(out_json, dict)
-                                    else {}
+                                    out_json.get("output") if isinstance(out_json, dict) else {}
                                 )
-                                names = (
-                                    output.get("names")
-                                    if isinstance(output, dict)
-                                    else None
-                                )
+                                names = output.get("names") if isinstance(output, dict) else None
                                 domains = (
-                                    output.get("domains")
-                                    if isinstance(output, dict)
-                                    else None
+                                    output.get("domains") if isinstance(output, dict) else None
                                 )
-                                if isinstance(names, list) and isinstance(
-                                    domains, list
-                                ):
+                                if isinstance(names, list) and isinstance(domains, list):
                                     for col, dom in zip(names, domains):
                                         if dom is None:
                                             continue
@@ -4180,11 +3928,7 @@ Examples:
 
             # Best-effort: drop target column if present so we score only features.
             target = state.get("target_variable")
-            target = (
-                target
-                if isinstance(target, str) and target in active_df.columns
-                else None
-            )
+            target = target if isinstance(target, str) and target in active_df.columns else None
             x_df = active_df.drop(columns=[target]) if target else active_df
 
             try:
@@ -4290,9 +4034,7 @@ Examples:
             extra_text="H2O AutoML results.",
         )
         if summary_text:
-            merged["messages"].append(
-                AIMessage(content=summary_text, name="h2o_ml_agent")
-            )
+            merged["messages"].append(AIMessage(content=summary_text, name="h2o_ml_agent"))
         _append_error_message(
             merged,
             "h2o_ml_agent",
@@ -4334,9 +4076,7 @@ Examples:
                 "h2o": response,
                 "h2o_details": {
                     "h2o_train_error": response.get("h2o_train_error"),
-                    "h2o_train_error_log_path": response.get(
-                        "h2o_train_error_log_path"
-                    ),
+                    "h2o_train_error_log_path": response.get("h2o_train_error_log_path"),
                     "best_model_id": response.get("best_model_id"),
                     "leaderboard": response.get("leaderboard"),
                     "mlflow_run_id": mlflow_run_id,
@@ -4346,7 +4086,7 @@ Examples:
             "last_worker": "H2O_ML_Agent",
         }
 
-    def node_mlflow(state: SupervisorDSState):
+    def node_mlflow(state: SupervisorDSState) -> Dict[str, Any]:
         print("---MLFLOW TOOLS---")
         before_msgs = list(state.get("messages", []) or [])
         mlflow_tools_agent.invoke_messages(
@@ -4362,9 +4102,7 @@ Examples:
             extra_text="MLflow artifacts.",
         )
         if summary_text:
-            merged["messages"].append(
-                AIMessage(content=summary_text, name="mlflow_tools_agent")
-            )
+            merged["messages"].append(AIMessage(content=summary_text, name="mlflow_tools_agent"))
         mlflow_artifacts = response.get("mlflow_artifacts")
         return {
             **merged,
@@ -4376,7 +4114,7 @@ Examples:
             "last_worker": "MLflow_Tools_Agent",
         }
 
-    def node_eval(state: SupervisorDSState):
+    def node_eval(state: SupervisorDSState) -> Dict[str, Any]:
         print("---MODEL EVALUATION---")
         before_msgs = list(state.get("messages", []) or [])
         feature_df = _ensure_df(state.get("feature_data"))
@@ -4384,9 +4122,7 @@ Examples:
             feature_df
             if not _is_empty_df(feature_df)
             else _ensure_df(
-                _get_active_data(
-                    state, ["data_cleaned", "data_wrangled", "data_sql", "data_raw"]
-                )
+                _get_active_data(state, ["data_cleaned", "data_wrangled", "data_sql", "data_raw"])
             )
         )
         if _is_empty_df(active_df):
@@ -4409,9 +4145,7 @@ Examples:
         )
         response = model_evaluation_agent.response or {}
         merged = _merge_messages(before_msgs, response)
-        merged["messages"] = _tag_messages(
-            merged.get("messages"), "model_evaluation_agent"
-        )
+        merged["messages"] = _tag_messages(merged.get("messages"), "model_evaluation_agent")
         eval_artifacts = response.get("eval_artifacts")
         plotly_graph = response.get("plotly_graph")
         if isinstance(eval_artifacts, dict) and eval_artifacts.get("error"):
@@ -4434,9 +4168,8 @@ Examples:
             "last_worker": "Model_Evaluation_Agent",
         }
 
-    def node_mlflow_log(state: SupervisorDSState):
+    def node_mlflow_log(state: SupervisorDSState) -> Dict[str, Any]:
         print("---MLFLOW LOGGING---")
-        before_msgs = list(state.get("messages", []) or [])
 
         # Pull config from the supervisor artifacts (optional).
         cfg = {}
@@ -4446,12 +4179,8 @@ Examples:
             cfg = {}
 
         tracking_uri = cfg.get("mlflow_tracking_uri") if isinstance(cfg, dict) else None
-        artifact_root = (
-            cfg.get("mlflow_artifact_root") if isinstance(cfg, dict) else None
-        )
-        experiment_name = (
-            cfg.get("mlflow_experiment_name") if isinstance(cfg, dict) else None
-        )
+        artifact_root = cfg.get("mlflow_artifact_root") if isinstance(cfg, dict) else None
+        experiment_name = cfg.get("mlflow_experiment_name") if isinstance(cfg, dict) else None
 
         # Attempt to reuse an existing run id (from H2O training) if present.
         run_id = None
@@ -4468,9 +4197,7 @@ Examples:
             feature_df
             if not _is_empty_df(feature_df)
             else _ensure_df(
-                _get_active_data(
-                    state, ["data_cleaned", "data_wrangled", "data_sql", "data_raw"]
-                )
+                _get_active_data(state, ["data_cleaned", "data_wrangled", "data_sql", "data_raw"])
             )
         )
         viz_graph = state.get("viz_graph")
@@ -4500,9 +4227,7 @@ Examples:
                     if isinstance(artifact_root, str) and artifact_root.strip():
                         root = Path(artifact_root).expanduser().resolve()
                         root.mkdir(parents=True, exist_ok=True)
-                        safe = re.sub(
-                            r"[^A-Za-z0-9._-]+", "_", str(experiment_name)
-                        ).strip("_")
+                        safe = re.sub(r"[^A-Za-z0-9._-]+", "_", str(experiment_name)).strip("_")
                         safe = safe or "experiment"
                         artifact_location = (root / safe).as_uri()
                         client = MlflowClient(tracking_uri=tracking_uri)
@@ -4569,15 +4294,11 @@ Examples:
                     if isinstance(pipe, dict) and pipe.get("lineage"):
                         pipe_spec = dict(pipe)
                         script = pipe_spec.pop("script", None)
-                        mlflow.log_dict(
-                            pipe_spec, artifact_file="pipeline/pipeline_spec.json"
-                        )
+                        mlflow.log_dict(pipe_spec, artifact_file="pipeline/pipeline_spec.json")
                         logged["dicts"].append("pipeline/pipeline_spec.json")
                         if isinstance(script, str) and script.strip():
                             if hasattr(mlflow, "log_text"):
-                                mlflow.log_text(
-                                    script, artifact_file="pipeline/pipeline_repro.py"
-                                )
+                                mlflow.log_text(script, artifact_file="pipeline/pipeline_repro.py")
                                 logged["dicts"].append("pipeline/pipeline_repro.py")
                             else:
                                 mlflow.log_dict(
@@ -4587,9 +4308,7 @@ Examples:
                                 logged["dicts"].append("pipeline/pipeline_repro.json")
                         try:
                             if pipe.get("pipeline_hash"):
-                                mlflow.set_tag(
-                                    "pipeline_hash", str(pipe.get("pipeline_hash"))
-                                )
+                                mlflow.set_tag("pipeline_hash", str(pipe.get("pipeline_hash")))
                         except Exception:
                             pass
                 except Exception:
@@ -4641,9 +4360,7 @@ Examples:
                         pass
                 if eval_plot:
                     try:
-                        mlflow.log_dict(
-                            eval_plot, artifact_file="evaluation/eval_plot.json"
-                        )
+                        mlflow.log_dict(eval_plot, artifact_file="evaluation/eval_plot.json")
                         logged["dicts"].append("evaluation/eval_plot.json")
                     except Exception:
                         pass
@@ -4651,9 +4368,7 @@ Examples:
                         import plotly.io as pio
 
                         fig = pio.from_json(json.dumps(eval_plot))
-                        mlflow.log_figure(
-                            fig, artifact_file="evaluation/eval_plot.html"
-                        )
+                        mlflow.log_figure(fig, artifact_file="evaluation/eval_plot.html")
                         logged["figures"].append("evaluation/eval_plot.html")
                     except Exception:
                         pass
@@ -4668,26 +4383,10 @@ Examples:
                 "Logged: "
                 + ", ".join(
                     [
-                        *(
-                            [f"{len(logged['tables'])} table(s)"]
-                            if logged["tables"]
-                            else []
-                        ),
-                        *(
-                            [f"{len(logged['figures'])} figure(s)"]
-                            if logged["figures"]
-                            else []
-                        ),
-                        *(
-                            [f"{len(logged['dicts'])} json artifact(s)"]
-                            if logged["dicts"]
-                            else []
-                        ),
-                        *(
-                            [f"{len(logged['metrics'])} metric(s)"]
-                            if logged["metrics"]
-                            else []
-                        ),
+                        *([f"{len(logged['tables'])} table(s)"] if logged["tables"] else []),
+                        *([f"{len(logged['figures'])} figure(s)"] if logged["figures"] else []),
+                        *([f"{len(logged['dicts'])} json artifact(s)"] if logged["dicts"] else []),
+                        *([f"{len(logged['metrics'])} metric(s)"] if logged["metrics"] else []),
                     ]
                 )
                 + "."
@@ -4699,9 +4398,7 @@ Examples:
 
         msg = "\n".join(message_lines)
         merged = {"messages": [AIMessage(content=msg, name="mlflow_logging_agent")]}
-        merged["messages"] = _tag_messages(
-            merged.get("messages"), "mlflow_logging_agent"
-        )
+        merged["messages"] = _tag_messages(merged.get("messages"), "mlflow_logging_agent")
         return {
             **merged,
             "mlflow_artifacts": {"run_id": run_id, "logged": logged},
@@ -4755,20 +4452,20 @@ class SupervisorDSTeam:
     def __init__(
         self,
         model: Any,
-        data_loader_agent,
-        data_wrangling_agent,
-        data_cleaning_agent,
-        eda_tools_agent,
-        data_visualization_agent,
-        sql_database_agent,
-        feature_engineering_agent,
-        h2o_ml_agent,
-        mlflow_tools_agent,
-        model_evaluation_agent,
-        workflow_planner_agent=None,
+        data_loader_agent: Any,
+        data_wrangling_agent: Any,
+        data_cleaning_agent: Any,
+        eda_tools_agent: Any,
+        data_visualization_agent: Any,
+        sql_database_agent: Any,
+        feature_engineering_agent: Any,
+        h2o_ml_agent: Any,
+        mlflow_tools_agent: Any,
+        model_evaluation_agent: Any,
+        workflow_planner_agent: Any = None,
         checkpointer: Optional[Checkpointer] = None,
         temperature: float = 1.0,
-    ):
+    ) -> None:
         self._params = {
             "model": model,
             "workflow_planner_agent": workflow_planner_agent,
@@ -4786,9 +4483,9 @@ class SupervisorDSTeam:
             "temperature": temperature,
         }
         self._compiled_graph = self._make_compiled_graph()
-        self.response: Optional[dict] = None
+        self.response: Optional[Dict[str, Any]] = None
 
-    def _make_compiled_graph(self):
+    def _make_compiled_graph(self) -> Any:
         self.response = None
         return make_supervisor_ds_team(
             model=self._params["model"],
@@ -4845,9 +4542,7 @@ class SupervisorDSTeam:
         )
         return None
 
-    def invoke_agent(
-        self, user_instructions: str, artifacts: Optional[dict] = None, **kwargs
-    ):
+    def invoke_agent(self, user_instructions: str, artifacts: Optional[dict] = None, **kwargs):
         """
         Convenience wrapper for a single human prompt.
         """
@@ -4855,31 +4550,29 @@ class SupervisorDSTeam:
         return self.invoke_messages(messages=[msg], artifacts=artifacts, **kwargs)
 
     async def ainvoke_agent(
-        self, user_instructions: str, artifacts: Optional[dict] = None, **kwargs
-    ):
+        self, user_instructions: str, artifacts: Optional[Dict[str, Any]] = None, **kwargs: Any
+    ) -> Any:
         msg = HumanMessage(content=user_instructions)
-        return await self.ainvoke_messages(
-            messages=[msg], artifacts=artifacts, **kwargs
-        )
+        return await self.ainvoke_messages(messages=[msg], artifacts=artifacts, **kwargs)
 
-    def invoke(self, input: dict, **kwargs):
+    def invoke(self, input: Dict[str, Any], **kwargs: Any) -> Any:
         """
         Generic invoke passthrough (for backward compatibility).
         """
         self.response = self._compiled_graph.invoke(input, **kwargs)
         return self.response
 
-    async def ainvoke(self, input: dict, **kwargs):
+    async def ainvoke(self, input: Dict[str, Any], **kwargs: Any) -> Any:
         self.response = await self._compiled_graph.ainvoke(input, **kwargs)
         return self.response
 
-    def get_ai_message(self, markdown: bool = False):
+    def get_ai_message(self, markdown: bool = False) -> Any:
         """
         Return the last assistant/ai message.
         """
         if not self.response or "messages" not in self.response:
             return None
-        last_ai = None
+        last_ai: Any = None
         for msg in reversed(self.response.get("messages", [])):
             if isinstance(msg, AIMessage) or getattr(msg, "role", None) in (
                 "assistant",
@@ -4889,10 +4582,10 @@ class SupervisorDSTeam:
                 break
         if last_ai is None:
             return None
-        content = getattr(last_ai, "content", "")
+        content: Any = getattr(last_ai, "content", "")
         return Markdown(content) if markdown else content
 
-    def get_artifacts(self):
+    def get_artifacts(self) -> Optional[Dict[str, Any]]:
         """
         Return aggregated artifacts dict from the supervisor state.
         """
@@ -4900,7 +4593,7 @@ class SupervisorDSTeam:
             return self.response.get("artifacts")
         return None
 
-    def show(self, xray: int = 0):
+    def show(self, xray: int = 0) -> None:
         """
         Displays the supervisor team's state graph as a Mermaid diagram.
         """
@@ -4911,7 +4604,7 @@ class SupervisorDSTeam:
         except Exception:
             return None
 
-    def _repr_mimebundle_(self, *args, **kwargs):
+    def _repr_mimebundle_(self, *args: Any, **kwargs: Any) -> Any:
         """
         Jupyter/IPython rich display: render the supervisor graph as a Mermaid PNG.
         """

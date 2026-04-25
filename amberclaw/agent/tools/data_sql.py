@@ -1,6 +1,5 @@
 """DataAgent SQL Database tool — natural language SQL queries."""
 
-from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 import pandas as pd
@@ -11,8 +10,13 @@ from amberclaw.agent.tools.base import PydanticTool
 
 class SQLArgs(BaseModel):
     """Arguments for the data_sql_query tool."""
-    connection_string: str = Field(..., description="SQLAlchemy connection string (e.g. 'sqlite:///data.db').")
-    instructions: str = Field(..., description="What to query (e.g. 'List all customers with >100 orders').")
+
+    connection_string: str = Field(
+        ..., description="SQLAlchemy connection string (e.g. 'sqlite:///data.db')."
+    )
+    instructions: str = Field(
+        ..., description="What to query (e.g. 'List all customers with >100 orders')."
+    )
 
 
 class DataSQLTool(PydanticTool):

@@ -34,10 +34,26 @@ from amberclaw.data.utils.regex import (
     format_recommended_steps,
     get_generic_summary,
 )
-from amberclaw.data.tools.dataframe import get_dataframe_summary
 from amberclaw.data.utils.logging import log_ai_function, log_ai_error
 from amberclaw.data.utils.sandbox import run_code_sandboxed_subprocess
 from amberclaw.data.utils.messages import get_last_user_message_content
+
+class GraphState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], operator.add]
+    user_instructions: str
+    recommended_steps: str
+    data_raw: dict
+    data_engineered: dict
+    target_variable: str
+    all_datasets_summary: str
+    feature_engineer_function: str
+    feature_engineer_function_path: str
+    feature_engineer_file_name: str
+    feature_engineer_function_name: str
+    feature_engineer_error: str
+    feature_engineer_error_log_path: str
+    max_retries: int
+    retry_count: int
 
 # Setup
 AGENT_NAME = "feature_engineering_agent"
@@ -364,9 +380,7 @@ class FeatureEngineeringAgent(BaseAgent):
         Retrieves the agent's workflow summary, if logging is enabled.
         """
         if self.response and self.response.get("messages"):
-            summary = get_generic_summary(
-                json.loads(self.response.get("messages")[-1].content)
-            )
+            summary = get_generic_summary(json.loads(self.response.get("messages")[-1].content))
             if markdown:
                 return Markdown(summary)
             else:
@@ -617,27 +631,12 @@ def make_feature_engineering_agent(
                     "sample_values": sample_vals,
                 }
             )
-        return json.dumps({"n_rows": n_rows, "n_cols": df_limited.shape[1], "schema": schema}, indent=2)
+        return json.dumps(
+            {"n_rows": n_rows, "n_cols": df_limited.shape[1], "schema": schema}, indent=2
+        )
 
-    # Define GraphState for the router
-    class GraphState(TypedDict):
-        messages: Annotated[Sequence[BaseMessage], operator.add]
-        user_instructions: str
-        recommended_steps: str
-        data_raw: dict
-        data_engineered: dict
-        target_variable: str
-        all_datasets_summary: str
-        feature_engineer_function: str
-        feature_engineer_function_path: str
-        feature_engineer_file_name: str
-        feature_engineer_function_name: str
-        feature_engineer_error: str
-        feature_engineer_error_log_path: str
-        max_retries: int
-        retry_count: int
 
-    def recommend_feature_engineering_steps(state: GraphState):
+    def recommend_feature_engineering_steps(state: GraphState) -> dict[str, Any]:
         """
         Recommend a series of feature engineering steps based on the input data.
         These recommended steps will be appended to the user_instructions.
@@ -758,7 +757,7 @@ def make_feature_engineering_agent(
                 code_snippet_key="feature_engineer_function",
             )
 
-    def create_feature_engineering_code(state: GraphState):
+    def create_feature_engineering_code(state: GraphState) -> dict[str, Any]:
         if bypass_recommended_steps:
             print(format_agent_name(AGENT_NAME))
 
@@ -832,9 +831,7 @@ def make_feature_engineering_agent(
             ],
         )
 
-        feature_engineering_agent = (
-            feature_engineering_prompt | llm | PythonOutputParser()
-        )
+        feature_engineering_agent = feature_engineering_prompt | llm | PythonOutputParser()
 
         response = feature_engineering_agent.invoke(
             {
@@ -865,7 +862,7 @@ def make_feature_engineering_agent(
             "all_datasets_summary": all_datasets_summary_str,
         }
 
-    def execute_feature_engineering_code(state):
+    def execute_feature_engineering_code(state: GraphState) -> dict[str, Any]:
         print("    * EXECUTE FEATURE ENGINEERING CODE (SANDBOXED)")
 
         result, error = run_code_sandboxed_subprocess(
@@ -885,9 +882,7 @@ def make_feature_engineering_agent(
                 df_out = pd.DataFrame(result)
                 target = state.get("target_variable")
                 if target and target not in df_out.columns:
-                    validation_error = (
-                        f"Target column '{target}' missing from engineered output."
-                    )
+                    validation_error = f"Target column '{target}' missing from engineered output."
             except Exception as exc:
                 validation_error = f"Engineered output is not a valid table: {exc}"
         else:
@@ -919,7 +914,7 @@ def make_feature_engineering_agent(
             "feature_engineer_error_log_path": error_log_path,
         }
 
-    def fix_feature_engineering_code(state: GraphState):
+    def fix_feature_engineering_code(state: GraphState) -> dict[str, Any]:
         feature_engineer_prompt = """
         You are a Feature Engineering Agent. Your job is to fix the {function_name}() function that currently contains errors.
         
@@ -947,7 +942,7 @@ def make_feature_engineering_agent(
         )
 
     # Final reporting node
-    def report_agent_outputs(state: GraphState):
+    def report_agent_outputs(state: GraphState) -> dict[str, Any]:
         return node_func_report_agent_outputs(
             state=state,
             keys_to_include=[

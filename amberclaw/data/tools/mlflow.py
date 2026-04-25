@@ -27,9 +27,7 @@ def _records_to_md_table(records: list[dict], columns: list[str], max_rows: int 
     rows = records[: max_rows if max_rows and max_rows > 0 else len(records)]
     header = "| " + " | ".join(cols) + " |"
     sep = "| " + " | ".join(["---"] * len(cols)) + " |"
-    body = [
-        "| " + " | ".join(_escape_md_cell(r.get(c)) for c in cols) + " |" for r in rows
-    ]
+    body = ["| " + " | ".join(_escape_md_cell(r.get(c)) for c in cols) + " |" for r in rows]
     return "\n".join([header, sep] + body)
 
 
@@ -199,7 +197,10 @@ def mlflow_log_table(
     ) as run:
         mlflow.log_table(df, artifact_file=artifact_file)
         rid = getattr(run.info, "run_id", None) if run else run_id
-    return ("Table logged.", {"run_id": rid, "artifact_file": artifact_file, "shape": tuple(df.shape)})
+    return (
+        "Table logged.",
+        {"run_id": rid, "artifact_file": artifact_file, "shape": tuple(df.shape)},
+    )
 
 
 @tool(response_format="content_and_artifact")
@@ -304,6 +305,7 @@ def mlflow_log_artifact(
         "Artifact logged.",
         {"run_id": rid, "local_path": local_path, "artifact_path": artifact_path},
     )
+
 
 @tool(response_format="content_and_artifact")
 def mlflow_search_experiments(
@@ -457,7 +459,7 @@ def mlflow_search_runs(
             if start_ms is not None and end_ms is not None:
                 duration_s = max(0.0, (end_ms - start_ms) / 1000.0)
         except Exception:
-                duration_s = None
+            duration_s = None
 
         rid = getattr(run.info, "run_id", None)
         metrics = dict(getattr(run.data, "metrics", {}) or {})
@@ -481,7 +483,9 @@ def mlflow_search_runs(
             "end_time": _ms_to_iso(end_ms),
             "duration_seconds": duration_s,
             "has_model": has_model,
-            "model_uri": f"runs:/{rid}/model" if (has_model and isinstance(rid, str) and rid) else None,
+            "model_uri": f"runs:/{rid}/model"
+            if (has_model and isinstance(rid, str) and rid)
+            else None,
             "params_preview": _kv_preview(params),
             "metrics_preview": _kv_preview(metrics),
         }
@@ -491,9 +495,7 @@ def mlflow_search_runs(
             run_record["params"] = params
             run_record["tags"] = tags
 
-        records.append(
-            run_record
-        )
+        records.append(run_record)
 
     table = _records_to_md_table(
         records,
@@ -612,9 +614,7 @@ def mlflow_predict_from_run_id(
         # fallback
         preds_str = str(preds)
         artifact_dict = {"predictions": preds_str}
-        message = (
-            f"Predictions returned (unrecognized type). Example: {preds_str[:100]}..."
-        )
+        message = f"Predictions returned (unrecognized type). Example: {preds_str[:100]}..."
 
     return (message, artifact_dict)
 
@@ -672,9 +672,7 @@ def _find_free_port(start_port: int, host: str) -> int:
             # If bind succeeds, it's free
             return port_candidate
 
-    raise OSError(
-        f"No available ports found in the range {start_port}-{start_port + 999}"
-    )
+    raise OSError(f"No available ports found in the range {start_port}-{start_port + 999}")
 
 
 @tool(response_format="content")
@@ -982,8 +980,7 @@ def mlflow_get_run_details(
     # Shallow artifact listing at root
     artifacts = client.list_artifacts(run_id, "")
     artifacts_data = [
-        {"path": a.path, "is_dir": a.is_dir, "file_size": a.file_size}
-        for a in artifacts
+        {"path": a.path, "is_dir": a.is_dir, "file_size": a.file_size} for a in artifacts
     ]
 
     flattened = {
@@ -1086,10 +1083,7 @@ def mlflow_ui_status(port: int = 5000) -> tuple:
         listening = []
 
     running = any(p["pid"] in listening for p in ui_procs) if ui_procs else bool(listening)
-    msg = (
-        f"MLflow UI {'appears to be running' if running else 'not detected'} "
-        f"on port {port}."
-    )
+    msg = f"MLflow UI {'appears to be running' if running else 'not detected'} on port {port}."
     return msg, {"ui_processes": ui_procs, "listening_pids_on_port": listening}
 
 

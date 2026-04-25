@@ -41,6 +41,23 @@ from amberclaw.data.utils.logging import log_ai_function, log_ai_error
 from amberclaw.data.utils.sandbox import run_code_sandboxed_subprocess
 from amberclaw.data.utils.messages import get_last_user_message_content
 
+class GraphState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], operator.add]
+    user_instructions: str
+    recommended_steps: str
+    data_raw: dict
+    data_cleaned: dict
+    all_datasets_summary: str
+    data_cleaner_function: str
+    data_cleaner_function_path: str
+    data_cleaner_file_name: str
+    data_cleaner_function_name: str
+    data_cleaner_error: str
+    data_cleaning_summary: str
+    data_cleaner_error_log_path: str
+    max_retries: int
+    retry_count: int
+
 # Setup
 AGENT_NAME = "data_cleaning_agent"
 LOG_PATH = os.path.join(os.getcwd(), "logs/")
@@ -284,6 +301,7 @@ class DataCleaningAgent(BaseAgent):
             **kwargs,
         )
         return None
+
     def _make_compiled_graph(self):
         """
         Create the compiled graph for the data cleaning agent. Running this method will reset the response to None.
@@ -291,15 +309,12 @@ class DataCleaningAgent(BaseAgent):
         self.response = None
         return make_data_cleaning_agent(**self._params)
 
-
     def get_workflow_summary(self, markdown=False):
         """
         Retrieves the agent's workflow summary, if logging is enabled.
         """
         if self.response and self.response.get("messages"):
-            summary = get_generic_summary(
-                json.loads(self.response.get("messages")[-1].content)
-            )
+            summary = get_generic_summary(json.loads(self.response.get("messages")[-1].content))
             if markdown:
                 return Markdown(summary)
             else:
@@ -343,9 +358,7 @@ Function Name: {self.response.get("data_cleaner_function_name")}
         """
         if self.response:
             if markdown:
-                return Markdown(
-                    f"```python\n{self.response.get('data_cleaner_function')}\n```"
-                )
+                return Markdown(f"```python\n{self.response.get('data_cleaner_function')}\n```")
             else:
                 return self.response.get("data_cleaner_function")
 
@@ -503,25 +516,8 @@ def make_data_cleaning_agent(
         if not os.path.exists(log_path):
             os.makedirs(log_path)
 
-    # Define GraphState for the router
-    class GraphState(TypedDict):
-        messages: Annotated[Sequence[BaseMessage], operator.add]
-        user_instructions: str
-        recommended_steps: str
-        data_raw: dict
-        data_cleaned: dict
-        all_datasets_summary: str
-        data_cleaner_function: str
-        data_cleaner_function_path: str
-        data_cleaner_file_name: str
-        data_cleaner_function_name: str
-        data_cleaner_error: str
-        data_cleaning_summary: str
-        data_cleaner_error_log_path: str
-        max_retries: int
-        retry_count: int
 
-    def recommend_cleaning_steps(state: GraphState):
+    def recommend_cleaning_steps(state: GraphState) -> dict[str, Any]:
         """
         Recommend a series of data cleaning steps based on the input data.
         These recommended steps will be appended to the user_instructions.
@@ -600,7 +596,7 @@ def make_data_cleaning_agent(
             "all_datasets_summary": all_datasets_summary_str,
         }
 
-    def create_data_cleaner_code(state: GraphState):
+    def create_data_cleaner_code(state: GraphState) -> dict[str, Any]:
         print("    * CREATE DATA CLEANER CODE")
 
         if bypass_recommended_steps:
@@ -715,7 +711,7 @@ def make_data_cleaning_agent(
                 code_snippet_key="data_cleaner_function",
             )
 
-    def execute_data_cleaner_code(state: GraphState):
+    def execute_data_cleaner_code(state: GraphState) -> dict[str, Any]:
         print("    * EXECUTE DATA CLEANER CODE (SANDBOXED)")
 
         result, error = run_code_sandboxed_subprocess(
@@ -787,7 +783,7 @@ def make_data_cleaning_agent(
             "data_cleaner_error_log_path": error_log_path,
         }
 
-    def fix_data_cleaner_code(state: GraphState):
+    def fix_data_cleaner_code(state: GraphState) -> dict[str, Any]:
         data_cleaner_prompt = """
         You are a Data Cleaning Agent. Your job is to create a {function_name}() function that can be run on the data provided. The function is currently broken and needs to be fixed.
         
@@ -815,7 +811,7 @@ def make_data_cleaning_agent(
         )
 
     # Final reporting node
-    def report_agent_outputs(state: GraphState):
+    def report_agent_outputs(state: GraphState) -> dict[str, Any]:
         return node_func_report_agent_outputs(
             state=state,
             keys_to_include=[

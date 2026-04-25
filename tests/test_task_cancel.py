@@ -19,9 +19,11 @@ def _make_loop():
     workspace = MagicMock()
     workspace.__truediv__ = MagicMock(return_value=MagicMock())
 
-    with patch("amberclaw.agent.loop.ContextBuilder"), \
-         patch("amberclaw.agent.loop.SessionManager"), \
-         patch("amberclaw.agent.loop.SubagentManager") as MockSubMgr:
+    with (
+        patch("amberclaw.agent.loop.ContextBuilder"),
+        patch("amberclaw.agent.loop.SessionManager"),
+        patch("amberclaw.agent.loop.SubagentManager") as MockSubMgr,
+    ):
         MockSubMgr.return_value.cancel_by_session = AsyncMock(return_value=0)
         loop = AgentLoop(bus=bus, provider=provider, workspace=workspace)
     return loop, bus

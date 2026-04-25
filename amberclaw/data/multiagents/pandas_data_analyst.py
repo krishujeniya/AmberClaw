@@ -76,9 +76,7 @@ class PandasDataAnalyst(BaseAgent):
         return make_pandas_data_analyst(
             model=self._params["model"],
             data_wrangling_agent=self._params["data_wrangling_agent"]._compiled_graph,
-            data_visualization_agent=self._params[
-                "data_visualization_agent"
-            ]._compiled_graph,
+            data_visualization_agent=self._params["data_visualization_agent"]._compiled_graph,
             checkpointer=self._params["checkpointer"],
         )
 
@@ -233,9 +231,7 @@ class PandasDataAnalyst(BaseAgent):
                     seen.add(role)
                 if role in allowed and role not in role_to_content:
                     role_to_content[role] = getattr(msg, "content", "")
-            agent_labels = [
-                f"- **Agent {i + 1}:** {role}\n" for i, role in enumerate(agents)
-            ]
+            agent_labels = [f"- **Agent {i + 1}:** {role}\n" for i, role in enumerate(agents)]
             header = (
                 f"# Pandas Data Analyst Workflow Summary\n\nThis workflow contains {len(agents)} agents:\n\n"
                 + "\n".join(agent_labels)
@@ -260,13 +256,8 @@ class PandasDataAnalyst(BaseAgent):
         if isinstance(data_raw, dict):
             return data_raw
         if isinstance(data_raw, list):
-            return [
-                item.to_dict() if isinstance(item, pd.DataFrame) else item
-                for item in data_raw
-            ]
-        raise ValueError(
-            "data_raw must be a DataFrame, dict, or list of DataFrames/dicts"
-        )
+            return [item.to_dict() if isinstance(item, pd.DataFrame) else item for item in data_raw]
+        raise ValueError("data_raw must be a DataFrame, dict, or list of DataFrames/dicts")
 
 
 def make_pandas_data_analyst(
@@ -390,18 +381,12 @@ def make_pandas_data_analyst(
             "user_instructions_data_visualization": response.get(
                 "user_instructions_data_visualization"
             ),
-            "routing_preprocessor_decision": response.get(
-                "routing_preprocessor_decision", "table"
-            ),
+            "routing_preprocessor_decision": response.get("routing_preprocessor_decision", "table"),
         }
 
     def router_chart_or_table(state: PrimaryState):
         print("---ROUTER: CHART OR TABLE---")
-        return (
-            "chart"
-            if state.get("routing_preprocessor_decision") == "chart"
-            else "table"
-        )
+        return "chart" if state.get("routing_preprocessor_decision") == "chart" else "table"
 
     def invoke_data_wrangling_agent(state: PrimaryState):
         response = data_wrangling_agent.invoke(

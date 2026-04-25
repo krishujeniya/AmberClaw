@@ -20,7 +20,6 @@ from amberclaw.data.utils.regex import (
 )
 
 from IPython.display import Image, display
-import pandas as pd
 
 
 class BaseAgent(CompiledStateGraph):
@@ -31,7 +30,7 @@ class BaseAgent(CompiledStateGraph):
     graph operations.
     """
 
-    def __init__(self, **params):
+    def __init__(self, **params: Any) -> None:
         """
         Initialize the agent with provided parameters.
 
@@ -40,7 +39,7 @@ class BaseAgent(CompiledStateGraph):
         """
         self._params = params
         self._compiled_graph = self._make_compiled_graph()
-        self.response = None
+        self.response: Any = None
         self.name = self._compiled_graph.name
         self.checkpointer = self._compiled_graph.checkpointer
         self.store = self._compiled_graph.store
@@ -57,15 +56,13 @@ class BaseAgent(CompiledStateGraph):
         self.interrupt_before_nodes = self._compiled_graph.interrupt_before_nodes
         self.config = self._compiled_graph.config
 
-    def _make_compiled_graph(self):
+    def _make_compiled_graph(self) -> CompiledStateGraph:
         """
         Subclasses should override this method to create a specific compiled graph.
         """
-        raise NotImplementedError(
-            "Subclasses must implement the `_make_compiled_graph` method."
-        )
+        raise NotImplementedError("Subclasses must implement the `_make_compiled_graph` method.")
 
-    def update_params(self, **kwargs):
+    def update_params(self, **kwargs: Any) -> None:
         """
         Update one or more parameters and rebuild the compiled graph.
 
@@ -75,7 +72,7 @@ class BaseAgent(CompiledStateGraph):
         self._params.update(kwargs)
         self._compiled_graph = self._make_compiled_graph()
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         """
         Delegate attribute access to the compiled graph if the attribute is not found.
 
@@ -91,8 +88,8 @@ class BaseAgent(CompiledStateGraph):
         self,
         input: Union[dict[str, Any], Any],
         config: Optional[RunnableConfig] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Any:
         """
         Wrapper for self._compiled_graph.invoke()
 
@@ -104,14 +101,10 @@ class BaseAgent(CompiledStateGraph):
         Returns:
             Any: The agent's response.
         """
-        self.response = self._compiled_graph.invoke(
-            input=input, config=config, **kwargs
-        )
+        self.response = self._compiled_graph.invoke(input=input, config=config, **kwargs)
 
         if self.response.get("messages"):
-            self.response["messages"] = remove_consecutive_duplicates(
-                self.response["messages"]
-            )
+            self.response["messages"] = remove_consecutive_duplicates(self.response["messages"])
 
         return self.response
 
@@ -119,8 +112,8 @@ class BaseAgent(CompiledStateGraph):
         self,
         input: Union[dict[str, Any], Any],
         config: Optional[RunnableConfig] = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Any:
         """
         Wrapper for self._compiled_graph.ainvoke()
 
@@ -132,14 +125,10 @@ class BaseAgent(CompiledStateGraph):
         Returns:
             Any: The agent's response.
         """
-        self.response = await self._compiled_graph.ainvoke(
-            input=input, config=config, **kwargs
-        )
+        self.response = await self._compiled_graph.ainvoke(input=input, config=config, **kwargs)
 
         if self.response.get("messages"):
-            self.response["messages"] = remove_consecutive_duplicates(
-                self.response["messages"]
-            )
+            self.response["messages"] = remove_consecutive_duplicates(self.response["messages"])
 
         return self.response
 
@@ -148,8 +137,8 @@ class BaseAgent(CompiledStateGraph):
         input: dict[str, Any] | Any,
         config: RunnableConfig | None = None,
         stream_mode: StreamMode | list[StreamMode] | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Any:
         """
         Wrapper for self._compiled_graph.stream()
 
@@ -172,9 +161,7 @@ class BaseAgent(CompiledStateGraph):
         )
 
         if self.response.get("messages"):
-            self.response["messages"] = remove_consecutive_duplicates(
-                self.response["messages"]
-            )
+            self.response["messages"] = remove_consecutive_duplicates(self.response["messages"])
 
         return self.response
 
@@ -183,8 +170,8 @@ class BaseAgent(CompiledStateGraph):
         input: dict[str, Any] | Any,
         config: RunnableConfig | None = None,
         stream_mode: StreamMode | list[StreamMode] | None = None,
-        **kwargs,
-    ):
+        **kwargs: Any,
+    ) -> Any:
         """
         Wrapper for self._compiled_graph.astream()
 
@@ -207,13 +194,11 @@ class BaseAgent(CompiledStateGraph):
         )
 
         if self.response.get("messages"):
-            self.response["messages"] = remove_consecutive_duplicates(
-                self.response["messages"]
-            )
+            self.response["messages"] = remove_consecutive_duplicates(self.response["messages"])
 
         return self.response
 
-    def get_state_keys(self):
+    def get_state_keys(self) -> list[str]:
         """
         Returns a list of keys that the state graph response contains.
 
@@ -222,7 +207,7 @@ class BaseAgent(CompiledStateGraph):
         """
         return list(self.get_output_jsonschema()["properties"].keys())
 
-    def get_state_properties(self):
+    def get_state_properties(self) -> Dict[str, Any]:
         """
         Returns detailed properties of the state graph response.
 
@@ -231,13 +216,13 @@ class BaseAgent(CompiledStateGraph):
         """
         return self.get_output_jsonschema()["properties"]
 
-    def get_state(self, config, *, subgraphs=False):
+    def get_state(self, config: RunnableConfig, *, subgraphs: bool = False) -> Any:
         """
         Returns the state of the agent.
         """
         return self._compiled_graph.get_state(config, subgraphs=subgraphs)
 
-    def get_state_history(self, config, *, filter=None, before=None, limit=None):
+    def get_state_history(self, config: RunnableConfig, *, filter: Optional[Dict[str, Any]] = None, before: Optional[Union[str, RunnableConfig]] = None, limit: Optional[int] = None) -> Any:
         """
         Returns the state history of the agent.
         """
@@ -245,13 +230,13 @@ class BaseAgent(CompiledStateGraph):
             config, filter=filter, before=before, limit=limit
         )
 
-    def update_state(self, config, values, as_node=None):
+    def update_state(self, config: RunnableConfig, values: Dict[str, Any], as_node: Optional[str] = None) -> Any:
         """
         Updates the state of the agent.
         """
         return self._compiled_graph.update_state(config, values, as_node)
 
-    def get_response(self):
+    def get_response(self) -> Any:
         """
         Returns the response generated by the agent.
 
@@ -259,13 +244,11 @@ class BaseAgent(CompiledStateGraph):
             Any: The agent's response.
         """
         if self.response.get("messages"):
-            self.response["messages"] = remove_consecutive_duplicates(
-                self.response["messages"]
-            )
+            self.response["messages"] = remove_consecutive_duplicates(self.response["messages"])
 
         return self.response
 
-    def show(self, xray: int = 0):
+    def show(self, xray: int = 0) -> None:
         """
         Displays the agent's state graph as a Mermaid diagram.
 
@@ -292,7 +275,8 @@ def create_coding_agent_graph(
     bypass_recommended_steps: bool = False,
     bypass_explain_code: bool = False,
     agent_name: str = "coding_agent",
-):
+    temperature: float = 1.0,
+) -> CompiledStateGraph:
     """
     Creates a generic agent graph using the provided node functions and node names.
 
@@ -336,12 +320,12 @@ def create_coding_agent_graph(
         Whether to skip the recommended steps node.
     bypass_explain_code : bool, optional
         Whether to skip the final explain code node.
-    name : str, optional
+    agent_name : str, optional
         The name of the agent graph.
 
     Returns
     -------
-    app : langchain.graphs.StateGraph
+    app : CompiledStateGraph
         The compiled workflow application.
     """
 
@@ -356,30 +340,20 @@ def create_coding_agent_graph(
 
     # Conditionally add the recommended-steps node
     if not bypass_recommended_steps:
-        workflow.add_node(
-            recommended_steps_node_name, node_functions[recommended_steps_node_name]
-        )
+        workflow.add_node(recommended_steps_node_name, node_functions[recommended_steps_node_name])
 
     # Conditionally add the human review node
     if human_in_the_loop:
-        workflow.add_node(
-            human_review_node_name, node_functions[human_review_node_name]
-        )
+        workflow.add_node(human_review_node_name, node_functions[human_review_node_name])
 
     # Conditionally add the explanation node
     if not bypass_explain_code:
-        workflow.add_node(
-            explain_code_node_name, node_functions[explain_code_node_name]
-        )
+        workflow.add_node(explain_code_node_name, node_functions[explain_code_node_name])
 
     # * EDGES
 
     # Set the entry point
-    entry_point = (
-        create_code_node_name
-        if bypass_recommended_steps
-        else recommended_steps_node_name
-    )
+    entry_point = create_code_node_name if bypass_recommended_steps else recommended_steps_node_name
 
     workflow.set_entry_point(entry_point)
 
@@ -390,7 +364,7 @@ def create_coding_agent_graph(
     workflow.add_edge(fix_code_node_name, execute_code_node_name)
 
     # Define a helper to check if we have an error & can still retry
-    def error_and_can_retry(state):
+    def error_and_can_retry(state: Any) -> bool:
         return (
             state.get(error_key) is not None
             and state.get(retry_count_key) is not None
@@ -495,15 +469,9 @@ def node_func_human_review(
         update = {}
     else:
         goto = no_goto
-        modifications = (
-            "User Has Requested Modifications To Previous Code: \n" + user_input
-        )
+        modifications = "User Has Requested Modifications To Previous Code: \n" + user_input
         if state.get(user_instructions_key) is None:
-            update = {
-                user_instructions_key: modifications
-                + "\n\nPrevious Code:\n"
-                + code_markdown
-            }
+            update = {user_instructions_key: modifications + "\n\nPrevious Code:\n" + code_markdown}
         else:
             update = {
                 user_instructions_key: state.get(user_instructions_key)
@@ -677,7 +645,7 @@ def node_func_execute_agent_from_sql_connection(
 
     # Ensure the connection object is provided
     if connection is None:
-        raise ValueError(f"Connection object not found.")
+        raise ValueError("Connection object not found.")
 
     # Execute the code snippet to define the agent function
     local_vars = {}
@@ -893,6 +861,4 @@ def node_func_report_agent_outputs(
 
     # Wrap it in a list of messages (like the current "messages" pattern).
     # You can serialize this dictionary as JSON or just cast it to string.
-    return {
-        result_key: [AIMessage(content=json.dumps(final_report, indent=2), role=role)]
-    }
+    return {result_key: [AIMessage(content=json.dumps(final_report, indent=2), role=role)]}

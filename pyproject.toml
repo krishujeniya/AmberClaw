@@ -22,64 +22,70 @@ dependencies = [
     "litellm>=1.81.5",
     "pydantic>=2.12.0",
     "pydantic-settings>=2.12.0",
-    "websockets>=16.0",
-    "websocket-client>=1.9.0",
     "httpx>=0.28.0",
-    "oauth-cli-kit>=0.1.3",
     "loguru>=0.7.3",
-    "readability-lxml>=0.8.4",
     "rich>=14.0.0",
-    "croniter>=6.0.0",
-    "dingtalk-stream>=0.24.0",
-    "python-telegram-bot[socks]>=22.6",
-    "lark-oapi>=1.5.0",
-    "socksio>=1.0.0",
-    "python-socketio>=5.16.0",
-    "msgpack>=1.1.0",
-    "slack-sdk>=3.39.0",
-    "slackify-markdown>=0.2.0",
-    "qq-botpy>=1.2.0",
-    "python-socks[asyncio]>=2.8.0",
-    "prompt-toolkit>=3.0.50",
-    "mcp>=1.26.0",
+    "python-dotenv>=1.0.0",
     "json-repair>=0.57.0",
     "chardet>=3.0.2",
     "openai>=2.8.0",
-    "openpyxl>=3.1.0",
-    "langchain>=0.3.0",
-    "langchain-community>=0.3.0",
-    "langchain-ollama",
-    "langchain-openai>=0.2.0",
-    "langchain-experimental>=0.3.0",
+    "langchain>=0.3.0,<1.0.0",
     "langgraph>=0.2.0",
+    "keyring>=25.0.0",
+    "cryptography>=42.0.0",
+    "PyYAML>=6.0.0",
+    "prompt-toolkit>=3.0.43",
+    "oauth-cli-kit>=0.1.0",
+]
+
+[project.optional-dependencies]
+data = [
     "pandas>=2.0.0",
     "sqlalchemy>=2.0.0",
     "numpy>=1.26.0",
     "plotly>=6.0.0",
+    "openpyxl>=3.1.0",
+    "langchain-community>=0.3.0",
+]
+ml = [
     "scikit-learn>=1.5.0",
     "xgboost>=2.0.0",
-    "psutil>=5.9.0",
-    "google-genai>=1.0.0",
-    "langchain-google-genai>=2.1.0",
-    "google-api-python-client>=2.150.0",
-    "google-auth-httplib2>=0.2.0",
-    "google-auth-oauthlib>=1.2.0",
+    "h2o>=3.44.0",
+    "langchain-experimental>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langchain-ollama",
+]
+memory = [
+    "mem0ai>=0.1.0",
+]
+channels = [
+    "websockets>=16.0",
+    "websocket-client>=1.9.0",
+    "dingtalk-stream>=0.24.0",
+    "python-telegram-bot[socks]>=22.6",
+    "lark-oapi>=1.5.0",
+    "python-socketio>=5.16.0",
+    "qq-botpy>=1.2.0",
+    "slack-sdk>=3.39.0",
+    "matrix-nio>=0.24.0",
+    "aiohttp>=3.11.0",
+    "nh3>=0.2.18",
+    "mistune>=3.0.0",
+]
+docs = [
     "pypdf>=5.0.0",
     "unstructured>=0.16.0",
     "python-docx>=1.1.0",
-    "python-dotenv>=1.0.0",
-]
-
-[project.optional-dependencies]
-matrix = [
-    "matrix-nio[e2e]>=0.25.2",
-    "mistune>=3.0.0",
-    "nh3>=0.2.17",
+    "readability-lxml>=0.8.4",
 ]
 dev = [
     "pytest>=9.0.0",
     "pytest-asyncio>=1.3.0",
-    "ruff>=0.1.0",
+    "pytest-cov>=6.0.0",
+    "coverage>=7.6.0",
+    "ruff>=0.9.0",
+    "mypy>=1.10.0",
+    "pyright>=1.1.360",
 ]
 
 [project.scripts]
@@ -89,12 +95,6 @@ amberclaw = "amberclaw.cli.commands:app"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build.targets.wheel]
-packages = ["amberclaw"]
-
-[tool.hatch.metadata]
-allow-direct-references = true
-
 [tool.ruff]
 line-length = 100
 target-version = "py311"
@@ -102,3 +102,15 @@ target-version = "py311"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+addopts = "--cov=amberclaw --cov-report=term-missing"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pyright]
+include = ["amberclaw"]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+

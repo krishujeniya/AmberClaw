@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import re
 import weakref
 from contextlib import AsyncExitStack
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Awaitable, Callable
 
 from loguru import logger
 
 from amberclaw.agent.context import ContextBuilder
+from amberclaw.agent.graph import AgentGraph
 from amberclaw.agent.memory import MemoryStore
 from amberclaw.agent.subagent import SubagentManager
 from amberclaw.agent.tools.cron import CronTool
@@ -74,8 +74,12 @@ class AgentLoop:
         session_manager: SessionManager | None = None,
         mcp_servers: dict | None = None,
         channels_config: ChannelsConfig | None = None,
+        fallback_models: list[str] | None = None,
+        embedding_model: str | None = None,
+        reranker_model: str | None = None,
     ):
         from amberclaw.config.schema import ExecToolConfig
+
         self.bus = bus
         self.channels_config = channels_config
         self.provider = provider
@@ -91,6 +95,9 @@ class AgentLoop:
         self.exec_config = exec_config or ExecToolConfig()
         self.cron_service = cron_service
         self.restrict_to_workspace = restrict_to_workspace
+        self.fallback_models = fallback_models or []
+        self.embedding_model = embedding_model
+        self.reranker_model = reranker_model
 
         self.context = ContextBuilder(workspace)
         self.sessions = session_manager or SessionManager(workspace)
@@ -111,12 +118,22 @@ class AgentLoop:
 
         self._running = False
         self._mcp_servers = mcp_servers or {}
+
+        # Initialize LangGraph engine
+        self._graph = AgentGraph(
+            provider=self.provider,
+            tools=list(self.tools.values()),
+            max_iterations=self.max_iterations,
+        )
+
         self._mcp_stack: AsyncExitStack | None = None
         self._mcp_connected = False
         self._mcp_connecting = False
         self._consolidating: set[str] = set()  # Session keys with consolidation in progress
         self._consolidation_tasks: set[asyncio.Task] = set()  # Strong refs to in-flight tasks
-        self._consolidation_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = weakref.WeakValueDictionary()
+        self._consolidation_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = (
+            weakref.WeakValueDictionary()
+        )
         self._active_tasks: dict[str, list[asyncio.Task]] = {}  # session_key -> tasks
         self._processing_lock = asyncio.Lock()
         self._register_default_tools()
@@ -124,6 +141,7 @@ class AgentLoop:
     def _register_default_tools(self) -> None:
         """Register all core tools — every feature is always available from user config."""
         from amberclaw.config.loader import load_config
+
         _cfg = load_config()
 
         allowed_dir = self.workspace if self.restrict_to_workspace else None
@@ -133,12 +151,14 @@ class AgentLoop:
             self.tools.register(cls(workspace=self.workspace, allowed_dir=allowed_dir))
 
         # ── Shell ─────────────────────────────────────────────────────────────
-        self.tools.register(ExecTool(
-            working_dir=str(self.workspace),
-            timeout=self.exec_config.timeout,
-            restrict_to_workspace=self.restrict_to_workspace,
-            path_append=self.exec_config.path_append,
-        ))
+        self.tools.register(
+            ExecTool(
+                working_dir=str(self.workspace),
+                timeout=self.exec_config.timeout,
+                restrict_to_workspace=self.restrict_to_workspace,
+                path_append=self.exec_config.path_append,
+            )
+        )
 
         # ── Web ───────────────────────────────────────────────────────────────
         self.tools.register(WebSearchTool(api_key=self.brave_api_key, proxy=self.web_proxy))
@@ -152,24 +172,28 @@ class AgentLoop:
 
         # ── Council (multi-model consensus) — always core ─────────────────────
         try:
-            self.tools.register(CouncilTool(
-                provider=self.provider,
-                model=self.model,
-                temperature=self.temperature,
-                max_tokens=min(self.max_tokens, 2048),
-            ))
+            self.tools.register(
+                CouncilTool(
+                    provider=self.provider,
+                    model=self.model,
+                    temperature=self.temperature,
+                    max_tokens=min(self.max_tokens, 2048),
+                )
+            )
             logger.info("Council tool registered")
         except Exception as exc:
             logger.debug("Council tool skipped: {}", exc)
 
         # ── Mythos (recursive deep reasoning) — always core ───────────────────
         try:
-            self.tools.register(MythosTool(
-                provider=self.provider,
-                model=self.model,
-                temperature=self.temperature,
-                max_tokens=min(self.max_tokens, 2048),
-            ))
+            self.tools.register(
+                MythosTool(
+                    provider=self.provider,
+                    model=self.model,
+                    temperature=self.temperature,
+                    max_tokens=min(self.max_tokens, 2048),
+                )
+            )
             logger.info("Mythos tool registered")
         except Exception as exc:
             logger.debug("Mythos tool skipped: {}", exc)
@@ -177,22 +201,37 @@ class AgentLoop:
         # ── Personal Assistant (session-persisted conversation) ───────────────
         try:
             system_prompt = getattr(_cfg.assistant, "system_prompt", "") or ""
-            self.tools.register(AssistantTool(
-                provider=self.provider,
-                model=self.model,
-                workspace=self.workspace,
-                temperature=0.7,
-                max_tokens=min(self.max_tokens, 2048),
-                system_prompt=system_prompt,
-            ))
+            self.tools.register(
+                AssistantTool(
+                    provider=self.provider,
+                    model=self.model,
+                    workspace=self.workspace,
+                    temperature=0.7,
+                    max_tokens=min(self.max_tokens, 2048),
+                    system_prompt=system_prompt,
+                )
+            )
             logger.info("PersonalAssistant tool registered")
         except Exception as exc:
             logger.debug("PersonalAssistant tool skipped: {}", exc)
 
         # ── Knowledge RAG ─────────────────────────────────────────────────────
         try:
-            self.tools.register(KnowledgeSearchTool())
-            self.tools.register(KnowledgeAddTool())
+            self.tools.register(
+                KnowledgeSearchTool(
+                    workspace=self.workspace,
+                    provider=self.provider,
+                    embedding_model=self.embedding_model,
+                    reranker_model=self.reranker_model,
+                )
+            )
+            self.tools.register(
+                KnowledgeAddTool(
+                    workspace=self.workspace,
+                    provider=self.provider,
+                    embedding_model=self.embedding_model,
+                )
+            )
             logger.info("Knowledge RAG tools registered")
         except Exception as exc:
             logger.debug("Knowledge RAG skipped: {}", exc)
@@ -224,6 +263,7 @@ class AgentLoop:
             return
         self._mcp_connecting = True
         from amberclaw.agent.tools.mcp import connect_mcp_servers
+
         try:
             self._mcp_stack = AsyncExitStack()
             await self._mcp_stack.__aenter__()
@@ -257,92 +297,102 @@ class AgentLoop:
     @staticmethod
     def _tool_hint(tool_calls: list) -> str:
         """Format tool calls as concise hint, e.g. 'web_search("query")'."""
+
         def _fmt(tc):
             args = (tc.arguments[0] if isinstance(tc.arguments, list) else tc.arguments) or {}
             val = next(iter(args.values()), None) if isinstance(args, dict) else None
             if not isinstance(val, str):
                 return tc.name
             return f'{tc.name}("{val[:40]}…")' if len(val) > 40 else f'{tc.name}("{val}")'
+
         return ", ".join(_fmt(tc) for tc in tool_calls)
 
     async def _run_agent_loop(
         self,
         initial_messages: list[dict],
         on_progress: Callable[..., Awaitable[None]] | None = None,
+        on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> tuple[str | None, list[str], list[dict]]:
-        """Run the agent iteration loop. Returns (final_content, tools_used, messages)."""
-        messages = initial_messages
-        iteration = 0
-        final_content = None
+        """Run the agent iteration loop via LangGraph."""
+        from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+
+        # Convert initial messages to LangChain format for the graph
+        lc_msgs = []
+        for m in initial_messages:
+            role = m.get("role")
+            content = m.get("content")
+            if role == "user":
+                lc_msgs.append(HumanMessage(content=content))
+            elif role == "assistant":
+                ai_m = AIMessage(content=content or "")
+                if m.get("tool_calls"):
+                    ai_m.additional_kwargs["tool_calls"] = m["tool_calls"]
+                lc_msgs.append(ai_m)
+            elif role == "tool":
+                lc_msgs.append(ToolMessage(content=content, tool_call_id=m["tool_call_id"]))
+
+        # Execute graph with streaming for tokens
+        final_state = None
         tools_used: list[str] = []
 
-        while iteration < self.max_iterations:
-            iteration += 1
+        inputs = {
+            "messages": lc_msgs,
+            "iterations": 0,
+            "config": {
+                "model": self.model,
+                "llm_kwargs": {
+                    "temperature": self.temperature,
+                    "max_tokens": self.max_tokens,
+                    "reasoning_effort": self.reasoning_effort,
+                    "fallback_models": self.fallback_models,
+                    "on_token": on_token,  # Provider handles this
+                },
+            },
+        }
 
-            response = await self.provider.chat_with_retry(
-                messages=messages,
-                tools=self.tools.get_definitions(),
-                model=self.model,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                reasoning_effort=self.reasoning_effort,
-            )
+        # Use invoke for now to keep it simple, while we verify plumbing
+        # We can move to astream_events later for more granular control
+        final_state = await self._graph.runnable.ainvoke(inputs)
 
-            if response.has_tool_calls:
-                if on_progress:
-                    thought = self._strip_think(response.content)
-                    if thought:
-                        await on_progress(thought)
-                    await on_progress(self._tool_hint(response.tool_calls), tool_hint=True)
+        # Extract results
+        final_messages = final_state["messages"]
+        last_msg = final_messages[-1]
 
-                tool_call_dicts = [
+        # Back-convert to list[dict] for AmberClaw session storage
+        all_msgs_dict = []
+        for m in final_messages:
+            if isinstance(m, HumanMessage):
+                all_msgs_dict.append({"role": "user", "content": m.content})
+            elif isinstance(m, AIMessage):
+                all_msgs_dict.append(
                     {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {
-                            "name": tc.name,
-                            "arguments": json.dumps(tc.arguments, ensure_ascii=False)
-                        }
+                        "role": "assistant",
+                        "content": m.content,
+                        "tool_calls": m.additional_kwargs.get("tool_calls"),
                     }
-                    for tc in response.tool_calls
-                ]
-                messages = self.context.add_assistant_message(
-                    messages, response.content, tool_call_dicts,
-                    reasoning_content=response.reasoning_content,
-                    thinking_blocks=response.thinking_blocks,
+                )
+            elif isinstance(m, ToolMessage):
+                all_msgs_dict.append(
+                    {
+                        "role": "tool",
+                        "content": m.content,
+                        "tool_call_id": m.tool_call_id,
+                        "name": m.name or "tool",  # ToolMessage has a name usually
+                    }
                 )
 
-                for tool_call in response.tool_calls:
-                    tools_used.append(tool_call.name)
-                    args_str = json.dumps(tool_call.arguments, ensure_ascii=False)
-                    logger.info("Tool call: {}({})", tool_call.name, args_str[:200])
-                    result = await self.tools.execute(tool_call.name, tool_call.arguments)
-                    messages = self.context.add_tool_result(
-                        messages, tool_call.id, tool_call.name, result
-                    )
-            else:
-                clean = self._strip_think(response.content)
-                # Don't persist error responses to session history — they can
-                # poison the context and cause permanent 400 loops (#1303).
-                if response.finish_reason == "error":
-                    logger.error("LLM returned error: {}", (clean or "")[:200])
-                    final_content = clean or "Sorry, I encountered an error calling the AI model."
-                    break
-                messages = self.context.add_assistant_message(
-                    messages, clean, reasoning_content=response.reasoning_content,
-                    thinking_blocks=response.thinking_blocks,
-                )
-                final_content = clean
-                break
+        # Identify tools used from messages
+        for m in final_messages:
+            if isinstance(m, ToolMessage):
+                # We don't have the original tool name easily here unless we store it
+                # but we can try to find it or just record that tools were used
+                tools_used.append("tool")
 
-        if final_content is None and iteration >= self.max_iterations:
-            logger.warning("Max iterations ({}) reached", self.max_iterations)
-            final_content = (
-                f"I reached the maximum number of tool call iterations ({self.max_iterations}) "
-                "without completing the task. You can try breaking the task into smaller steps."
-            )
-
-        return final_content, tools_used, messages
+        return (
+            last_msg.content if isinstance(last_msg, AIMessage) else None,
+            tools_used,
+            all_msgs_dict,
+        )
 
     async def run(self) -> None:
         """Run the agent loop, dispatching messages as tasks to stay responsive to /stop."""
@@ -361,7 +411,13 @@ class AgentLoop:
             else:
                 task = asyncio.create_task(self._dispatch(msg))
                 self._active_tasks.setdefault(msg.session_key, []).append(task)
-                task.add_done_callback(lambda t, k=msg.session_key: self._active_tasks.get(k, []) and self._active_tasks[k].remove(t) if t in self._active_tasks.get(k, []) else None)
+                task.add_done_callback(
+                    lambda t, k=msg.session_key: (
+                        self._active_tasks.get(k, []) and self._active_tasks[k].remove(t)
+                        if t in self._active_tasks.get(k, [])
+                        else None
+                    )
+                )
 
     async def _handle_stop(self, msg: InboundMessage) -> None:
         """Cancel all active tasks and subagents for the session."""
@@ -375,31 +431,53 @@ class AgentLoop:
         sub_cancelled = await self.subagents.cancel_by_session(msg.session_key)
         total = cancelled + sub_cancelled
         content = f"⏹ Stopped {total} task(s)." if total else "No active task to stop."
-        await self.bus.publish_outbound(OutboundMessage(
-            channel=msg.channel, chat_id=msg.chat_id, content=content,
-        ))
+        await self.bus.publish_outbound(
+            OutboundMessage(
+                channel=msg.channel,
+                chat_id=msg.chat_id,
+                content=content,
+            )
+        )
 
     async def _dispatch(self, msg: InboundMessage) -> None:
         """Process a message under the global lock."""
+
+        async def on_token(token: str):
+            await self.bus.publish_outbound(
+                OutboundMessage(
+                    channel=msg.channel,
+                    chat_id=msg.chat_id,
+                    content=token,
+                    metadata={"_token": True, "message_id": msg.metadata.get("message_id")},
+                )
+            )
+
         async with self._processing_lock:
             try:
-                response = await self._process_message(msg)
+                response = await self._process_message(msg, on_token=on_token)
                 if response is not None:
                     await self.bus.publish_outbound(response)
                 elif msg.channel == "cli":
-                    await self.bus.publish_outbound(OutboundMessage(
-                        channel=msg.channel, chat_id=msg.chat_id,
-                        content="", metadata=msg.metadata or {},
-                    ))
+                    await self.bus.publish_outbound(
+                        OutboundMessage(
+                            channel=msg.channel,
+                            chat_id=msg.chat_id,
+                            content="",
+                            metadata=msg.metadata or {},
+                        )
+                    )
             except asyncio.CancelledError:
                 logger.info("Task cancelled for session {}", msg.session_key)
                 raise
             except Exception:
                 logger.exception("Error processing message for session {}", msg.session_key)
-                await self.bus.publish_outbound(OutboundMessage(
-                    channel=msg.channel, chat_id=msg.chat_id,
-                    content="Sorry, I encountered an error.",
-                ))
+                await self.bus.publish_outbound(
+                    OutboundMessage(
+                        channel=msg.channel,
+                        chat_id=msg.chat_id,
+                        content="Sorry, I encountered an error.",
+                    )
+                )
 
     async def close_mcp(self) -> None:
         """Close MCP connections."""
@@ -420,12 +498,14 @@ class AgentLoop:
         msg: InboundMessage,
         session_key: str | None = None,
         on_progress: Callable[[str], Awaitable[None]] | None = None,
+        on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> OutboundMessage | None:
         """Process a single inbound message and return the response."""
         # System messages: parse origin from chat_id ("channel:chat_id")
         if msg.channel == "system":
-            channel, chat_id = (msg.chat_id.split(":", 1) if ":" in msg.chat_id
-                                else ("cli", msg.chat_id))
+            channel, chat_id = (
+                msg.chat_id.split(":", 1) if ":" in msg.chat_id else ("cli", msg.chat_id)
+            )
             logger.info("Processing system message from {}", msg.sender_id)
             key = f"{channel}:{chat_id}"
             session = self.sessions.get_or_create(key)
@@ -433,13 +513,21 @@ class AgentLoop:
             history = session.get_history(max_messages=self.memory_window)
             messages = self.context.build_messages(
                 history=history,
-                current_message=msg.content, channel=channel, chat_id=chat_id,
+                current_message=msg.content,
+                channel=channel,
+                chat_id=chat_id,
             )
-            final_content, _, all_msgs = await self._run_agent_loop(messages)
+            final_content, _, all_msgs = await self._run_agent_loop(
+                messages,
+                on_token=on_token,
+            )
             self._save_turn(session, all_msgs, 1 + len(history))
             self.sessions.save(session)
-            return OutboundMessage(channel=channel, chat_id=chat_id,
-                                  content=final_content or "Background task completed.")
+            return OutboundMessage(
+                channel=channel,
+                chat_id=chat_id,
+                content=final_content or "Background task completed.",
+            )
 
         preview = msg.content[:80] + "..." if len(msg.content) > 80 else msg.content
         logger.info("Processing message from {}:{}: {}", msg.channel, msg.sender_id, preview)
@@ -454,19 +542,21 @@ class AgentLoop:
             self._consolidating.add(session.key)
             try:
                 async with lock:
-                    snapshot = session.messages[session.last_consolidated:]
+                    snapshot = session.messages[session.last_consolidated :]
                     if snapshot:
                         temp = Session(key=session.key)
                         temp.messages = list(snapshot)
                         if not await self._consolidate_memory(temp, archive_all=True):
                             return OutboundMessage(
-                                channel=msg.channel, chat_id=msg.chat_id,
+                                channel=msg.channel,
+                                chat_id=msg.chat_id,
                                 content="Memory archival failed, session not cleared. Please try again.",
                             )
             except Exception:
                 logger.exception("/new archival failed for {}", session.key)
                 return OutboundMessage(
-                    channel=msg.channel, chat_id=msg.chat_id,
+                    channel=msg.channel,
+                    chat_id=msg.chat_id,
                     content="Memory archival failed, session not cleared. Please try again.",
                 )
             finally:
@@ -475,14 +565,18 @@ class AgentLoop:
             session.clear()
             self.sessions.save(session)
             self.sessions.invalidate(session.key)
-            return OutboundMessage(channel=msg.channel, chat_id=msg.chat_id,
-                                  content="New session started.")
+            return OutboundMessage(
+                channel=msg.channel, chat_id=msg.chat_id, content="New session started."
+            )
         if cmd == "/help":
-            return OutboundMessage(channel=msg.channel, chat_id=msg.chat_id,
-                                  content="🐈 amberclaw commands:\n/new — Start a new conversation\n/stop — Stop the current task\n/help — Show available commands")
+            return OutboundMessage(
+                channel=msg.channel,
+                chat_id=msg.chat_id,
+                content="🐈 amberclaw commands:\n/new — Start a new conversation\n/stop — Stop the current task\n/help — Show available commands",
+            )
 
         unconsolidated = len(session.messages) - session.last_consolidated
-        if (unconsolidated >= self.memory_window and session.key not in self._consolidating):
+        if unconsolidated >= self.memory_window and session.key not in self._consolidating:
             self._consolidating.add(session.key)
             lock = self._consolidation_locks.setdefault(session.key, asyncio.Lock())
 
@@ -509,19 +603,27 @@ class AgentLoop:
             history=history,
             current_message=msg.content,
             media=msg.media if msg.media else None,
-            channel=msg.channel, chat_id=msg.chat_id,
+            channel=msg.channel,
+            chat_id=msg.chat_id,
         )
 
         async def _bus_progress(content: str, *, tool_hint: bool = False) -> None:
             meta = dict(msg.metadata or {})
             meta["_progress"] = True
             meta["_tool_hint"] = tool_hint
-            await self.bus.publish_outbound(OutboundMessage(
-                channel=msg.channel, chat_id=msg.chat_id, content=content, metadata=meta,
-            ))
+            await self.bus.publish_outbound(
+                OutboundMessage(
+                    channel=msg.channel,
+                    chat_id=msg.chat_id,
+                    content=content,
+                    metadata=meta,
+                )
+            )
 
         final_content, _, all_msgs = await self._run_agent_loop(
-            initial_messages, on_progress=on_progress or _bus_progress,
+            initial_messages,
+            on_progress=on_progress or _bus_progress,
+            on_token=on_token,
         )
 
         if final_content is None:
@@ -536,22 +638,31 @@ class AgentLoop:
         preview = final_content[:120] + "..." if len(final_content) > 120 else final_content
         logger.info("Response to {}:{}: {}", msg.channel, msg.sender_id, preview)
         return OutboundMessage(
-            channel=msg.channel, chat_id=msg.chat_id, content=final_content,
+            channel=msg.channel,
+            chat_id=msg.chat_id,
+            content=final_content,
             metadata=msg.metadata or {},
         )
 
     def _save_turn(self, session: Session, messages: list[dict], skip: int) -> None:
         """Save new-turn messages into session, truncating large tool results."""
         from datetime import datetime
+
         for m in messages[skip:]:
             entry = dict(m)
             role, content = entry.get("role"), entry.get("content")
             if role == "assistant" and not content and not entry.get("tool_calls"):
                 continue  # skip empty assistant messages — they poison session context
-            if role == "tool" and isinstance(content, str) and len(content) > self._TOOL_RESULT_MAX_CHARS:
-                entry["content"] = content[:self._TOOL_RESULT_MAX_CHARS] + "\n... (truncated)"
+            if (
+                role == "tool"
+                and isinstance(content, str)
+                and len(content) > self._TOOL_RESULT_MAX_CHARS
+            ):
+                entry["content"] = content[: self._TOOL_RESULT_MAX_CHARS] + "\n... (truncated)"
             elif role == "user":
-                if isinstance(content, str) and content.startswith(ContextBuilder._RUNTIME_CONTEXT_TAG):
+                if isinstance(content, str) and content.startswith(
+                    ContextBuilder._RUNTIME_CONTEXT_TAG
+                ):
                     # Strip the runtime-context prefix, keep only the user text.
                     parts = content.split("\n\n", 1)
                     if len(parts) > 1 and parts[1].strip():
@@ -561,10 +672,15 @@ class AgentLoop:
                 if isinstance(content, list):
                     filtered = []
                     for c in content:
-                        if c.get("type") == "text" and isinstance(c.get("text"), str) and c["text"].startswith(ContextBuilder._RUNTIME_CONTEXT_TAG):
+                        if (
+                            c.get("type") == "text"
+                            and isinstance(c.get("text"), str)
+                            and c["text"].startswith(ContextBuilder._RUNTIME_CONTEXT_TAG)
+                        ):
                             continue  # Strip runtime context from multimodal messages
-                        if (c.get("type") == "image_url"
-                                and c.get("image_url", {}).get("url", "").startswith("data:image/")):
+                        if c.get("type") == "image_url" and c.get("image_url", {}).get(
+                            "url", ""
+                        ).startswith("data:image/"):
                             filtered.append({"type": "text", "text": "[image]"})
                         else:
                             filtered.append(c)
@@ -578,8 +694,11 @@ class AgentLoop:
     async def _consolidate_memory(self, session, archive_all: bool = False) -> bool:
         """Delegate to MemoryStore.consolidate(). Returns True on success."""
         return await MemoryStore(self.workspace).consolidate(
-            session, self.provider, self.model,
-            archive_all=archive_all, memory_window=self.memory_window,
+            session,
+            self.provider,
+            self.model,
+            archive_all=archive_all,
+            memory_window=self.memory_window,
         )
 
     async def process_direct(
@@ -589,9 +708,12 @@ class AgentLoop:
         channel: str = "cli",
         chat_id: str = "direct",
         on_progress: Callable[[str], Awaitable[None]] | None = None,
+        on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> str:
         """Process a message directly (for CLI or cron usage)."""
         await self._connect_mcp()
         msg = InboundMessage(channel=channel, sender_id="user", chat_id=chat_id, content=content)
-        response = await self._process_message(msg, session_key=session_key, on_progress=on_progress)
+        response = await self._process_message(
+            msg, session_key=session_key, on_progress=on_progress, on_token=on_token
+        )
         return response.content if response else ""

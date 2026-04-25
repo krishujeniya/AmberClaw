@@ -79,7 +79,6 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         litellm_prefix="",
         is_direct=True,
     ),
-
     # === Azure OpenAI (direct API calls with API version 2024-10-21) =====
     ProviderSpec(
         name="azure_openai",
@@ -364,7 +363,7 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
     ProviderSpec(
         name="ollama",
         keywords=("ollama",),
-        env_key="OLLAMA_API_KEY", # Usually not needed but keeps pattern
+        env_key="OLLAMA_API_KEY",  # Usually not needed but keeps pattern
         display_name="Ollama",
         litellm_prefix="ollama",  # llama3 → ollama/llama3
         skip_prefixes=("ollama/",),
@@ -372,13 +371,13 @@ PROVIDERS: tuple[ProviderSpec, ...] = (
         is_gateway=False,
         is_local=True,
         detect_by_key_prefix="",
-        detect_by_base_keyword="11434", # Default ollama port
+        detect_by_base_keyword="11434",  # Default ollama port
         default_api_base="http://localhost:11434",
         strip_model_prefix=False,
         model_overrides=(),
+        is_direct=True,  # Bypasses LiteLLM for multimodal support
     ),
     # === Auxiliary (not a primary LLM provider) ============================
-
     # Groq: mainly used for Whisper voice transcription, also usable for LLM.
     # Needs "groq/" prefix for LiteLLM routing. Placed last — it rarely wins fallback.
     ProviderSpec(

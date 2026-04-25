@@ -33,7 +33,9 @@ class TelegramConfig(Base):
         None  # HTTP/SOCKS5 proxy URL, e.g. "http://127.0.0.1:7890" or "socks5://127.0.0.1:1080"
     )
     reply_to_message: bool = False  # If true, bot replies quote the original message
-    group_policy: Literal["open", "mention"] = "mention"  # "mention" responds when @mentioned or replied to, "open" responds to all
+    group_policy: Literal["open", "mention"] = (
+        "mention"  # "mention" responds when @mentioned or replied to, "open" responds to all
+    )
 
 
 class FeishuConfig(Base):
@@ -200,8 +202,6 @@ class QQConfig(Base):
     )  # Allowed user openids (empty = public access)
 
 
-
-
 class ChannelsConfig(Base):
     """Configuration for chat channels."""
 
@@ -232,6 +232,9 @@ class AgentDefaults(Base):
     max_tool_iterations: int = 40
     memory_window: int = 100
     reasoning_effort: str | None = None  # low / medium / high — enables LLM thinking mode
+    fallback_models: list[str] = Field(default_factory=list)  # Models to try if primary fails
+    embedding_model: str = "openai/text-embedding-3-small"
+    reranker_model: str | None = None  # e.g. "cohere/rerank-v3-english"
 
 
 class AgentsConfig(Base):
@@ -252,7 +255,9 @@ class ProvidersConfig(Base):
     """Configuration for LLM providers."""
 
     custom: ProviderConfig = Field(default_factory=ProviderConfig)  # Any OpenAI-compatible endpoint
-    azure_openai: ProviderConfig = Field(default_factory=ProviderConfig)  # Azure OpenAI (model = deployment name)
+    azure_openai: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # Azure OpenAI (model = deployment name)
     anthropic: ProviderConfig = Field(default_factory=ProviderConfig)
     openai: ProviderConfig = Field(default_factory=ProviderConfig)
     openrouter: ProviderConfig = Field(default_factory=ProviderConfig)
@@ -288,18 +293,18 @@ class GatewayConfig(Base):
 
 
 class GoogleDriveConfig(Base):
-    \"\"\"Google Drive tool configuration.\"\"\"
+    """Google Drive tool configuration."""
 
     enabled: bool = False
-    credentials_json: str = \"\"\"  # Path to credentials.json
-    token_json: str = \"\"\"  # Path to token.json
+    credentials_json: str = ""  # Path to credentials.json
+    token_json: str = ""  # Path to token.json
     authorized_users: list[str] = Field(default_factory=list)
 
 
 class KnowledgeConfig(Base):
-    \"\"\"Knowledge base configuration.\"\"\"
+    """Knowledge base configuration."""
 
-    db_path: str = \"~/.amberclaw/amberclaw.db\"
+    db_path: str = "~/.amberclaw/amberclaw.db"
 
 
 class WebSearchConfig(Base):
@@ -357,13 +362,13 @@ class DataAgentConfig(Base):
 
 
 class ToolsConfig(Base):
-    \"\"\"Tools configuration.\"\"\"
+    """Tools configuration."""
 
     web: WebToolsConfig = Field(default_factory=WebToolsConfig)
     exec: ExecToolConfig = Field(default_factory=ExecToolConfig)
     drive: GoogleDriveConfig = Field(default_factory=GoogleDriveConfig)
     knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
-    restrict_to_workspace: bool = False  # If true, restrict all tool access to workspace directory
+    restrict_to_workspace: bool = True  # If true, restrict all tool access to workspace directory
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
 
 
@@ -438,9 +443,23 @@ class Config(BaseSettings):
         return name
 
     def get_api_key(self, model: str | None = None) -> str | None:
-        """Get API key for the given model. Falls back to first available key."""
+        """Get API key for the given model. Falls back to first available key. Supports keyring RESOLUTION."""
         p = self.get_provider(model)
-        return p.api_key if p else None
+        if not p or not p.api_key:
+            return None
+
+        # Support keyring resolution: keyring:service:username
+        if p.api_key.startswith("keyring:"):
+            try:
+                import keyring
+
+                parts = p.api_key.split(":")
+                if len(parts) == 3:
+                    _, service, username = parts
+                    return keyring.get_password(service, username)
+            except Exception:
+                pass
+        return p.api_key
 
     def get_api_base(self, model: str | None = None) -> str | None:
         """Get API base URL for the given model. Applies default URLs for known gateways."""

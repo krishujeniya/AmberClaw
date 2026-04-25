@@ -55,23 +55,17 @@ def get_dataframe_summary(
     # --- Dictionary Case ---
     if isinstance(dataframes, dict):
         for dataset_name, df in dataframes.items():
-            summaries.append(
-                _summarize_dataframe(df, dataset_name, n_sample, skip_stats)
-            )
+            summaries.append(_summarize_dataframe(df, dataset_name, n_sample, skip_stats))
 
     # --- Single DataFrame Case ---
     elif isinstance(dataframes, pd.DataFrame):
-        summaries.append(
-            _summarize_dataframe(dataframes, "Single_Dataset", n_sample, skip_stats)
-        )
+        summaries.append(_summarize_dataframe(dataframes, "Single_Dataset", n_sample, skip_stats))
 
     # --- List of DataFrames Case ---
     elif isinstance(dataframes, list):
         for idx, df in enumerate(dataframes):
             dataset_name = f"Dataset_{idx}"
-            summaries.append(
-                _summarize_dataframe(df, dataset_name, n_sample, skip_stats)
-            )
+            summaries.append(_summarize_dataframe(df, dataset_name, n_sample, skip_stats))
 
     else:
         raise TypeError(
@@ -81,9 +75,7 @@ def get_dataframe_summary(
     return summaries
 
 
-def _summarize_dataframe(
-    df: pd.DataFrame, dataset_name: str, n_sample=30, skip_stats=False
-) -> str:
+def _summarize_dataframe(df: pd.DataFrame, dataset_name: str, n_sample=30, skip_stats=False) -> str:
     """Generate a summary string for a single DataFrame."""
     # 1. Convert dictionary-type cells to strings
     #    This prevents unhashable dict errors during df.nunique().
@@ -96,18 +88,14 @@ def _summarize_dataframe(
 
     # 3. Calculate missing value stats
     missing_stats = (df.isna().sum() / len(df) * 100).sort_values(ascending=False)
-    missing_summary = "\n".join(
-        [f"{col}: {val:.2f}%" for col, val in missing_stats.items()]
-    )
+    missing_summary = "\n".join([f"{col}: {val:.2f}%" for col, val in missing_stats.items()])
 
     # 4. Get column data types
     column_types = "\n".join([f"{col}: {dtype}" for col, dtype in df.dtypes.items()])
 
     # 5. Get unique value counts
     unique_counts = df.nunique()  # Will no longer fail on unhashable dict
-    unique_counts_summary = "\n".join(
-        [f"{col}: {count}" for col, count in unique_counts.items()]
-    )
+    unique_counts_summary = "\n".join([f"{col}: {count}" for col, count in unique_counts.items()])
 
     # 6. Generate the summary text
     if not skip_stats:

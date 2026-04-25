@@ -2,7 +2,7 @@
 
 from contextvars import ContextVar
 from datetime import datetime
-from typing import Any, Optional, Literal
+from typing import Optional, Literal
 from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
@@ -12,12 +12,21 @@ from amberclaw.cron.types import CronSchedule
 
 class CronArgs(BaseModel):
     """Arguments for the cron tool."""
+
     action: Literal["add", "list", "remove"] = Field(..., description="Action to perform")
     message: Optional[str] = Field(None, description="Reminder message (for add)")
-    every_seconds: Optional[int] = Field(None, description="Interval in seconds (for recurring tasks)")
-    cron_expr: Optional[str] = Field(None, description="Cron expression like '0 9 * * *' (for scheduled tasks)")
-    tz: Optional[str] = Field(None, description="IANA timezone for cron expressions (e.g. 'America/Vancouver')")
-    at: Optional[str] = Field(None, description="ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')")
+    every_seconds: Optional[int] = Field(
+        None, description="Interval in seconds (for recurring tasks)"
+    )
+    cron_expr: Optional[str] = Field(
+        None, description="Cron expression like '0 9 * * *' (for scheduled tasks)"
+    )
+    tz: Optional[str] = Field(
+        None, description="IANA timezone for cron expressions (e.g. 'America/Vancouver')"
+    )
+    at: Optional[str] = Field(
+        None, description="ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')"
+    )
     job_id: Optional[str] = Field(None, description="Job ID (for remove)")
 
 
@@ -68,6 +77,7 @@ class CronTool(PydanticTool):
             return "Error: tz can only be used with cron_expr"
         if args.tz:
             from zoneinfo import ZoneInfo
+
             try:
                 ZoneInfo(args.tz)
             except (KeyError, Exception):

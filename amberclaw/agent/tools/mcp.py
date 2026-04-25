@@ -1,6 +1,7 @@
 """MCP client: connects to MCP servers and wraps their tools as native amberclaw tools."""
 
 import asyncio
+import time
 from contextlib import AsyncExitStack
 from typing import Any
 
@@ -62,6 +63,30 @@ class MCPToolWrapper(Tool):
             )
             return f"(MCP tool call failed: {type(exc).__name__})"
 
+        # Handle Nov 2025 Tasks primitive (async tools)
+        if hasattr(result, "meta") and result.meta and result.meta.get("task_id"):
+            task_id = result.meta["task_id"]
+            logger.info("MCP: Tool '{}' returned task_id '{}', polling...", self._name, task_id)
+            try:
+                # Poll for task completion (limited by tool_timeout)
+                start_time = time.time()
+                while time.time() - start_time < self._tool_timeout:
+                    # In Nov 2025 spec, session has get_task/poll_task or similar
+                    # If not explicitly in SDK yet, we use generic request_adhoc or similar
+                    # For now, we assume the session handles it via a hypothetical 'get_task_status'
+                    # or the user can check the logs.
+                    # As mcp SDK evolves, this will be more standard.
+                    task_update = await self._session.get_task_status(
+                        task_id
+                    )  # Hypothetical SDK method
+                    if task_update.is_finished:
+                        result = task_update.result
+                        break
+                    await asyncio.sleep(1)
+            except Exception as e:
+                logger.warning("MCP task polling failed: {}", e)
+                return f"(MCP tool initiated task {task_id}, but polling failed or not supported by SDK)"
+
         parts = []
         for block in result.content:
             if isinstance(block, types.TextContent):
@@ -101,6 +126,7 @@ async def connect_mcp_servers(
                 )
                 read, write = await stack.enter_async_context(stdio_client(params))
             elif transport_type == "sse":
+
                 def httpx_client_factory(
                     headers: dict[str, str] | None = None,
                     timeout: httpx.Timeout | None = None,

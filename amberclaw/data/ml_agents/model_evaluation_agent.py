@@ -127,7 +127,9 @@ class ModelEvaluationAgent(BaseAgent):
         best_model_id = None
         if isinstance(model_artifacts, dict):
             model_path = model_artifacts.get("model_path") or model_artifacts.get("modelPath")
-            best_model_id = model_artifacts.get("best_model_id") or model_artifacts.get("bestModelId")
+            best_model_id = model_artifacts.get("best_model_id") or model_artifacts.get(
+                "bestModelId"
+            )
 
         df = data_raw.copy()
         y = df[target_variable]
@@ -265,7 +267,9 @@ class ModelEvaluationAgent(BaseAgent):
                     metrics.update(
                         {
                             "precision": float(
-                                precision_score(y_true, y_pred, pos_label=pos_label, zero_division=0)
+                                precision_score(
+                                    y_true, y_pred, pos_label=pos_label, zero_division=0
+                                )
                             ),
                             "recall": float(
                                 recall_score(y_true, y_pred, pos_label=pos_label, zero_division=0)
@@ -285,8 +289,18 @@ class ModelEvaluationAgent(BaseAgent):
                         auc = float(roc_auc_score((y_true == pos_label).astype(int), y_score))
                         fpr, tpr, _ = roc_curve((y_true == pos_label).astype(int), y_score)
                         roc_fig = go.Figure()
-                        roc_fig.add_trace(go.Scatter(x=fpr, y=tpr, mode="lines", name=f"ROC (AUC={auc:.3f})"))
-                        roc_fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines", name="Chance", line=dict(dash="dash")))
+                        roc_fig.add_trace(
+                            go.Scatter(x=fpr, y=tpr, mode="lines", name=f"ROC (AUC={auc:.3f})")
+                        )
+                        roc_fig.add_trace(
+                            go.Scatter(
+                                x=[0, 1],
+                                y=[0, 1],
+                                mode="lines",
+                                name="Chance",
+                                line=dict(dash="dash"),
+                            )
+                        )
                         roc_fig.update_layout(
                             title="ROC Curve (Holdout)",
                             xaxis_title="False Positive Rate",
@@ -298,7 +312,11 @@ class ModelEvaluationAgent(BaseAgent):
                     metrics["auc"] = auc
 
                 cm = confusion_matrix(y_true, y_pred, labels=labels)
-                cm_df = pd.DataFrame(cm, index=[f"true:{l}" for l in labels], columns=[f"pred:{l}" for l in labels])
+                cm_df = pd.DataFrame(
+                    cm,
+                    index=[f"true:{label}" for label in labels],
+                    columns=[f"pred:{label}" for label in labels],
+                )
 
                 cm_fig = go.Figure(
                     data=go.Heatmap(
@@ -355,7 +373,9 @@ class ModelEvaluationAgent(BaseAgent):
 
                 resid = (y_true - y_pred).rename("residual")
                 plot_df = pd.DataFrame({"y_true": y_true, "y_pred": y_pred, "residual": resid})
-                fig = px.scatter(plot_df, x="y_pred", y="residual", title="Residuals vs Predicted (Holdout)")
+                fig = px.scatter(
+                    plot_df, x="y_pred", y="residual", title="Residuals vs Predicted (Holdout)"
+                )
                 fig.update_layout(xaxis_title="Predicted", yaxis_title="Residual")
                 plotly_graph = fig.to_dict()
 

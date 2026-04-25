@@ -381,9 +381,7 @@ def get_file_info(file_path: str) -> Tuple[str, List[Dict]]:
     import time
 
     if not os.path.isfile(file_path):
-        return f"{file_path} is not a valid file.", [
-            {"type": "error", "file_path": file_path}
-        ]
+        return f"{file_path} is not a valid file.", [{"type": "error", "file_path": file_path}]
 
     file_stats = os.stat(file_path)
 
@@ -611,15 +609,12 @@ def auto_load_file(file_path: str, max_rows: Optional[int] = None) -> pd.DataFra
     -------
     pd.DataFrame
     """
-    import pandas as pd
 
     resolved_path, matches = resolve_existing_file_path(file_path)
     if resolved_path is None:
         if matches:
             shown = "\n".join([f"- {m}" for m in matches])
-            return (
-                f"File not found: {file_path}. Multiple matches found; please specify a full path:\n{shown}"
-            )
+            return f"File not found: {file_path}. Multiple matches found; please specify a full path:\n{shown}"
         hint = " Try `data/<filename>` if it's in the project data folder."
         return f"File not found: {file_path}.{hint}"
 

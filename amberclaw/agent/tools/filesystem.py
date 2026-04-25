@@ -2,7 +2,6 @@
 
 import difflib
 from pathlib import Path
-from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
@@ -16,7 +15,7 @@ def _resolve_path(
     if not p.is_absolute() and workspace:
         p = workspace / p
     resolved = p.resolve()
-    
+
     enforced_dir = allowed_dir or workspace
     if enforced_dir:
         try:
@@ -28,6 +27,7 @@ def _resolve_path(
 
 class ReadFileArgs(BaseModel):
     """Arguments for the read_file tool."""
+
     path: str = Field(..., description="The file path to read")
 
 
@@ -35,7 +35,7 @@ class ReadFileTool(PydanticTool):
     """Tool to read file contents."""
 
     _MAX_CHARS = 128_000  # ~128 KB — prevents OOM from reading huge files into LLM context
-    
+
     name = "read_file"
     description = "Read the contents of a file at the given path."
     args_schema = ReadFileArgs
@@ -62,7 +62,10 @@ class ReadFileTool(PydanticTool):
 
             content = file_path.read_text(encoding="utf-8")
             if len(content) > self._MAX_CHARS:
-                return content[: self._MAX_CHARS] + f"\n\n... (truncated — file is {len(content):,} chars, limit {self._MAX_CHARS:,})"
+                return (
+                    content[: self._MAX_CHARS]
+                    + f"\n\n... (truncated — file is {len(content):,} chars, limit {self._MAX_CHARS:,})"
+                )
             return content
         except PermissionError as e:
             return f"Error: {e}"
@@ -72,6 +75,7 @@ class ReadFileTool(PydanticTool):
 
 class WriteFileArgs(BaseModel):
     """Arguments for the write_file tool."""
+
     path: str = Field(..., description="The file path to write to")
     content: str = Field(..., description="The content to write")
 
@@ -102,6 +106,7 @@ class WriteFileTool(PydanticTool):
 
 class EditFileArgs(BaseModel):
     """Arguments for the edit_file tool."""
+
     path: str = Field(..., description="The file path to edit")
     old_text: str = Field(..., description="The exact text to find and replace")
     new_text: str = Field(..., description="The text to replace with")
@@ -175,6 +180,7 @@ class EditFileTool(PydanticTool):
 
 class ListDirArgs(BaseModel):
     """Arguments for the list_dir tool."""
+
     path: str = Field(..., description="The directory path to list")
 
 
@@ -211,4 +217,3 @@ class ListDirTool(PydanticTool):
             return f"Error: {e}"
         except Exception as e:
             return f"Error listing directory: {str(e)}"
-

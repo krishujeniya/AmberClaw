@@ -89,9 +89,9 @@ class WorkflowPlannerAgent(BaseAgent):
             "- mlflow_log (log workflow artifacts: metrics/tables/figures to MLflow)\n"
             "- mlflow_tools (inspect MLflow: list/search runs/artifacts, launch UI)\n\n"
             "Rules:\n"
-            "- Output schema: {\"steps\": [..], \"target_variable\": str|null, \"questions\": [..], \"notes\": [..]}.\n"
+            '- Output schema: {"steps": [..], "target_variable": str|null, "questions": [..], "notes": [..]}.\n'
             "- steps must be a de-duplicated ordered list of step IDs from the allowed set.\n"
-            "- The word \"model\" can be ambiguous (e.g., a product \"bike model\" vs an ML model). "
+            '- The word "model" can be ambiguous (e.g., a product "bike model" vs an ML model). '
             "Only include the ML step `model` when the user explicitly asks to train/build/predict with an ML model.\n"
             "- If required info is missing (e.g., file path for load, target column for model), "
             "put a short question in questions and omit dependent steps.\n"
@@ -99,7 +99,7 @@ class WorkflowPlannerAgent(BaseAgent):
             "- Prefer a minimal plan that satisfies the user request.\n"
             "- If proactive_workflow_mode is OFF, include ONLY the steps explicitly requested (plus prerequisites).\n"
             "- If proactive_workflow_mode is ON, you MAY propose a reasonable end-to-end workflow for broad requests "
-            "(e.g., \"analyze\", \"explore\", \"full workflow\"), but keep narrow requests narrow.\n"
+            '(e.g., "analyze", "explore", "full workflow"), but keep narrow requests narrow.\n'
             f"- proactive_workflow_mode={'ON' if proactive_mode else 'OFF'}.\n"
         )
 

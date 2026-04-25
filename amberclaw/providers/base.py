@@ -3,7 +3,7 @@
 import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 from loguru import logger
 
@@ -11,6 +11,7 @@ from loguru import logger
 @dataclass
 class ToolCallRequest:
     """A tool call request from the LLM."""
+
     id: str
     name: str
     arguments: dict[str, Any]
@@ -19,13 +20,14 @@ class ToolCallRequest:
 @dataclass
 class LLMResponse:
     """Response from an LLM provider."""
+
     content: str | None
     tool_calls: list[ToolCallRequest] = field(default_factory=list)
     finish_reason: str = "stop"
     usage: dict[str, int] = field(default_factory=dict)
     reasoning_content: str | None = None  # Kimi, DeepSeek-R1 etc.
     thinking_blocks: list[dict] | None = None  # Anthropic extended thinking
-    
+
     @property
     def has_tool_calls(self) -> bool:
         """Check if response contains tool calls."""
@@ -35,7 +37,7 @@ class LLMResponse:
 class LLMProvider(ABC):
     """
     Abstract base class for LLM providers.
-    
+
     Implementations should handle the specifics of each provider's API
     while maintaining a consistent interface.
     """
@@ -73,13 +75,18 @@ class LLMProvider(ABC):
 
             if isinstance(content, str) and not content:
                 clean = dict(msg)
-                clean["content"] = None if (msg.get("role") == "assistant" and msg.get("tool_calls")) else "(empty)"
+                clean["content"] = (
+                    None
+                    if (msg.get("role") == "assistant" and msg.get("tool_calls"))
+                    else "(empty)"
+                )
                 result.append(clean)
                 continue
 
             if isinstance(content, list):
                 filtered = [
-                    item for item in content
+                    item
+                    for item in content
                     if not (
                         isinstance(item, dict)
                         and item.get("type") in ("text", "input_text", "output_text")
@@ -129,17 +136,19 @@ class LLMProvider(ABC):
         max_tokens: int = 4096,
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
+        on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
         """
         Send a chat completion request.
-        
+
         Args:
             messages: List of message dicts with 'role' and 'content'.
             tools: Optional list of tool definitions.
             model: Model identifier (provider-specific).
             max_tokens: Maximum tokens in response.
             temperature: Sampling temperature.
-        
+            on_token: Optional async callback for streaming tokens.
+
         Returns:
             LLMResponse with content and/or tool calls.
         """
@@ -158,57 +167,62 @@ class LLMProvider(ABC):
         max_tokens: int = 4096,
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
+        fallback_models: list[str] | None = None,
+        on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
-        """Call chat() with retry on transient provider failures."""
-        for attempt, delay in enumerate(self._CHAT_RETRY_DELAYS, start=1):
-            try:
-                response = await self.chat(
-                    messages=messages,
-                    tools=tools,
-                    model=model,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    reasoning_effort=reasoning_effort,
+        """Call chat() with retry on transient failures and optional fallbacks."""
+        models_to_try = [model] + (fallback_models or [])
+        last_exception = None
+
+        for current_model in models_to_try:
+            if not current_model:
+                continue
+
+            for attempt, delay in enumerate(self._CHAT_RETRY_DELAYS, start=1):
+                try:
+                    response = await self.chat(
+                        messages=messages,
+                        tools=tools,
+                        model=current_model,
+                        max_tokens=max_tokens,
+                        temperature=temperature,
+                        reasoning_effort=reasoning_effort,
+                        on_token=on_token,
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    last_exception = exc
+                    response = LLMResponse(
+                        content=f"Error calling LLM ({current_model}): {exc}",
+                        finish_reason="error",
+                    )
+
+                if response.finish_reason != "error":
+                    return response
+                if not self._is_transient_error(response.content):
+                    # For non-transient errors (like 400 Bad Request), we might still want to
+                    # try a fallback if it's potentially model-specific, but usually it's better to break.
+                    # However, LiteLLM often maps 429 to Exception, so we mostly rely on transient check.
+                    break
+
+                err = (response.content or "").lower()
+                logger.warning(
+                    "LLM transient error on {} (attempt {}/{}), retrying in {}s: {}",
+                    current_model,
+                    attempt,
+                    len(self._CHAT_RETRY_DELAYS),
+                    delay,
+                    err[:120],
                 )
-            except asyncio.CancelledError:
-                raise
-            except Exception as exc:
-                response = LLMResponse(
-                    content=f"Error calling LLM: {exc}",
-                    finish_reason="error",
-                )
+                await asyncio.sleep(delay)
 
-            if response.finish_reason != "error":
-                return response
-            if not self._is_transient_error(response.content):
-                return response
+            logger.warning("Primary model {} failed, checking fallbacks...", current_model)
 
-            err = (response.content or "").lower()
-            logger.warning(
-                "LLM transient error (attempt {}/{}), retrying in {}s: {}",
-                attempt,
-                len(self._CHAT_RETRY_DELAYS),
-                delay,
-                err[:120],
-            )
-            await asyncio.sleep(delay)
-
-        try:
-            return await self.chat(
-                messages=messages,
-                tools=tools,
-                model=model,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                reasoning_effort=reasoning_effort,
-            )
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            return LLMResponse(
-                content=f"Error calling LLM: {exc}",
-                finish_reason="error",
-            )
+        return LLMResponse(
+            content=f"LLM call failed after trying all models. Last error: {last_exception}",
+            finish_reason="error",
+        )
 
     @abstractmethod
     def get_default_model(self) -> str:

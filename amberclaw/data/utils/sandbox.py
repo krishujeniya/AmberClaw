@@ -10,13 +10,12 @@ Goals:
 
 from __future__ import annotations
 
-import ast
 import json
 import os
 import subprocess
 import sys
 from textwrap import dedent
-from typing import Any, Dict, Tuple
+from typing import Any, Tuple
 
 
 def _build_runner_script() -> str:

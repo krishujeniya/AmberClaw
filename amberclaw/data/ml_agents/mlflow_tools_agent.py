@@ -1,4 +1,4 @@
-from typing_extensions import Any, Optional, Annotated, Sequence, Dict
+from typing_extensions import Any, Optional, Annotated, Sequence, Dict, TypedDict
 import operator
 
 import pandas as pd
@@ -43,6 +43,13 @@ from amberclaw.data.tools.mlflow import (
     mlflow_ui_status,
 )
 from amberclaw.data.utils.messages import get_tool_call_names
+
+class GraphState(AgentState):
+    messages: Annotated[Sequence[BaseMessage], operator.add]
+    user_instructions: str
+    data_raw: dict
+    mlflow_artifacts: dict
+    tool_calls: list
 
 AGENT_NAME = "mlflow_tools_agent"
 
@@ -208,9 +215,7 @@ class MLflowToolsAgent(BaseAgent):
         self.response = response
         return None
 
-    def invoke_agent(
-        self, user_instructions: str = None, data_raw: pd.DataFrame = None, **kwargs
-    ):
+    def invoke_agent(self, user_instructions: str = None, data_raw: pd.DataFrame = None, **kwargs):
         """
         Runs the agent with the given user instructions.
 
@@ -392,12 +397,6 @@ def make_mlflow_tools_agent(
     if mlflow_registry_uri is not None:
         mlflow.set_registry_uri(mlflow_registry_uri)
 
-    class GraphState(AgentState):
-        messages: Annotated[Sequence[BaseMessage], operator.add]
-        user_instructions: str
-        data_raw: dict
-        mlflow_artifacts: dict
-        tool_calls: list
 
     # Build React subgraph once so it appears in .show(xray=1)
     react_agent = create_react_agent(
@@ -439,12 +438,7 @@ def make_mlflow_tools_agent(
             rows = records[: max_rows if max_rows and max_rows > 0 else len(records)]
             header = "| " + " | ".join(cols) + " |"
             sep = "| " + " | ".join(["---"] * len(cols)) + " |"
-            body = [
-                "| "
-                + " | ".join(_escape_md_cell(r.get(c)) for c in cols)
-                + " |"
-                for r in rows
-            ]
+            body = ["| " + " | ".join(_escape_md_cell(r.get(c)) for c in cols) + " |" for r in rows]
             return "\n".join([header, sep] + body)
 
         if not internal_messages:
@@ -473,11 +467,11 @@ def make_mlflow_tools_agent(
             art = getattr(msg, "artifact", None)
             name = getattr(msg, "name", None)
             if art is not None:
-                key = name or f"artifact_{len(artifacts)+1}"
+                key = name or f"artifact_{len(artifacts) + 1}"
                 artifacts[key] = art
                 last_tool_artifact = art
             elif isinstance(msg, dict) and "artifact" in msg:
-                key = msg.get("name") or f"artifact_{len(artifacts)+1}"
+                key = msg.get("name") or f"artifact_{len(artifacts) + 1}"
                 artifacts[key] = msg["artifact"]
                 last_tool_artifact = msg["artifact"]
 
@@ -514,7 +508,9 @@ def make_mlflow_tools_agent(
             runs_art = art.get("mlflow_search_runs")
             if isinstance(runs_art, dict) and isinstance(runs_art.get("runs"), list):
                 runs = runs_art.get("runs") or []
-                count = runs_art.get("count") if isinstance(runs_art.get("count"), int) else len(runs)
+                count = (
+                    runs_art.get("count") if isinstance(runs_art.get("count"), int) else len(runs)
+                )
                 max_results = runs_art.get("max_results")
                 header = (
                     f"Showing {count} most recent run(s) (max_results={max_results})."
@@ -542,7 +538,9 @@ def make_mlflow_tools_agent(
 
             return "\n\n".join([p for p in parts if isinstance(p, str) and p.strip()]) or None
 
-        formatted = _format_artifacts_table(artifacts) or _format_artifacts_table(last_tool_artifact)
+        formatted = _format_artifacts_table(artifacts) or _format_artifacts_table(
+            last_tool_artifact
+        )
         last_ai_message = AIMessage(
             content=formatted or last_ai_content,
             name=AGENT_NAME,

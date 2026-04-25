@@ -54,7 +54,7 @@ class CouncilTool(PydanticTool):
         self._temperature = temperature
         self._max_tokens = max_tokens
 
-    async def _ask(self, model: str, messages: list[dict]) -> str:
+    async def _ask(self, model: str, messages: list[dict], on_token: Any | None = None) -> str:
         """Query a single model, return text or empty string on error."""
         try:
             resp = await self._provider.chat_with_retry(
@@ -63,13 +63,14 @@ class CouncilTool(PydanticTool):
                 model=model,
                 temperature=self._temperature,
                 max_tokens=self._max_tokens,
+                on_token=on_token,
             )
             return (resp.content or "").strip()
         except Exception as exc:
             logger.warning("Council: model {} failed: {}", model, exc)
             return ""
 
-    async def run(self, args: CouncilArgs) -> str:
+    async def run(self, args: CouncilArgs, on_token: Any | None = None) -> str:
         models = args.models or [self._primary_model]
         if len(models) == 1:
             models = models * 2  # degenerate case: same model twice, still useful for ranking
@@ -82,9 +83,7 @@ class CouncilTool(PydanticTool):
         raw_responses = await asyncio.gather(*tasks)
 
         stage1: list[dict] = [
-            {"model": m, "response": r}
-            for m, r in zip(models, raw_responses)
-            if r
+            {"model": m, "response": r} for m, r in zip(models, raw_responses) if r
         ]
         if not stage1:
             return "Council failed: all models returned empty responses."
@@ -92,8 +91,7 @@ class CouncilTool(PydanticTool):
         # ── Stage 2: Peer Ranking ─────────────────────────────────────────────
         labels = [chr(65 + i) for i in range(len(stage1))]
         responses_block = "\n\n".join(
-            f"Response {lbl}:\n{item['response']}"
-            for lbl, item in zip(labels, stage1)
+            f"Response {lbl}:\n{item['response']}" for lbl, item in zip(labels, stage1)
         )
         ranking_prompt = (
             f"You are an anonymous peer reviewer.\n\n"
@@ -111,9 +109,7 @@ class CouncilTool(PydanticTool):
             stage1_rankings = [r for r in rankings if r]
 
         # ── Stage 3: Synthesis ────────────────────────────────────────────────
-        stage1_block = "\n\n".join(
-            f"[{item['model']}]: {item['response']}" for item in stage1
-        )
+        stage1_block = "\n\n".join(f"[{item['model']}]: {item['response']}" for item in stage1)
         rankings_block = "\n\n".join(stage1_rankings) if stage1_rankings else "(no rankings)"
         synthesis_prompt = (
             f"You are synthesizing a council of AI experts.\n\n"
@@ -126,6 +122,7 @@ class CouncilTool(PydanticTool):
         final = await self._ask(
             self._primary_model,
             [{"role": "user", "content": synthesis_prompt}],
+            on_token=on_token,
         )
 
         meta = f"\n\n---\n*Council used {len(stage1)} models · {args.depth} ranking round(s)*"

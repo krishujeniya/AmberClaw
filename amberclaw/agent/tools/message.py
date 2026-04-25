@@ -1,6 +1,6 @@
 """Message tool for sending messages to users."""
 
-from typing import Any, Awaitable, Callable, Optional, Literal
+from typing import Awaitable, Callable, Optional, Literal
 from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
@@ -9,11 +9,16 @@ from amberclaw.bus.events import OutboundMessage
 
 class MessageArgs(BaseModel):
     """Arguments for the message tool."""
+
     content: str = Field(..., description="The message content to send")
-    channel: Optional[str] = Field(None, description="Optional: target channel (telegram, discord, etc.)")
+    channel: Optional[str] = Field(
+        None, description="Optional: target channel (telegram, discord, etc.)"
+    )
     chat_id: Optional[str] = Field(None, description="Optional: target chat/user ID")
     media: Optional[list[str]] = Field(None, description="Optional: list of file paths to attach")
-    importance: Literal["low", "medium", "high"] = Field("medium", description="Optional: message importance level")
+    importance: Literal["low", "medium", "high"] = Field(
+        "medium", description="Optional: message importance level"
+    )
 
 
 class MessageTool(PydanticTool):

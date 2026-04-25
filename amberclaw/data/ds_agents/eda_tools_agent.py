@@ -119,9 +119,7 @@ class EDAToolsAgent(BaseAgent):
         self.response = response
         return None
 
-    def invoke_agent(
-        self, user_instructions: str = None, data_raw: pd.DataFrame = None, **kwargs
-    ):
+    def invoke_agent(self, user_instructions: str = None, data_raw: pd.DataFrame = None, **kwargs):
         """
         Synchronously runs the agent with user instructions and data.
 
@@ -234,9 +232,7 @@ class EDAToolsAgent(BaseAgent):
                         and isinstance(v["describe_df"], dict)
                     ):
                         converted[k] = pd.DataFrame.from_dict(v["describe_df"]).T
-                    elif isinstance(v, dict) and all(
-                        isinstance(val, dict) for val in v.values()
-                    ):
+                    elif isinstance(v, dict) and all(isinstance(val, dict) for val in v.values()):
                         converted[k] = pd.DataFrame(v).T
                     elif isinstance(v, dict):
                         converted[k] = pd.DataFrame(v)
@@ -284,6 +280,14 @@ class EDAToolsAgent(BaseAgent):
         return self.response["tool_calls"]
 
 
+class GraphState(AgentState):
+    messages: Annotated[Sequence[BaseMessage], operator.add]
+    user_instructions: str
+    data_raw: dict
+    eda_artifacts: dict
+    tool_calls: list
+
+
 def make_eda_tools_agent(
     model: Any,
     create_react_agent_kwargs: Optional[Dict] = {},
@@ -311,13 +315,6 @@ def make_eda_tools_agent(
         The compiled state graph for the EDA agent.
     """
 
-    class GraphState(AgentState):
-        messages: Annotated[Sequence[BaseMessage], operator.add]
-        user_instructions: str
-        data_raw: dict
-        eda_artifacts: dict
-        tool_calls: list
-
     # Build the React subgraph once so it shows in .show(xray=1)
     react_agent = create_react_agent(
         model,
@@ -341,11 +338,7 @@ def make_eda_tools_agent(
             print("    * No data_raw provided to EDA agent")
         else:
             try:
-                n_rows = (
-                    len(next(iter(data_raw.values())))
-                    if isinstance(data_raw, dict)
-                    else "?"
-                )
+                n_rows = len(next(iter(data_raw.values()))) if isinstance(data_raw, dict) else "?"
             except Exception:
                 n_rows = "?"
             print(f"    * data_raw rows: {n_rows}")
@@ -354,9 +347,7 @@ def make_eda_tools_agent(
             "You are an EDA agent. You have access to the dataset in state as data_raw. "
             "Use the provided EDA tools to summarize or visualize the data, then return concise results."
         )
-        base_messages = state.get("messages", []) or [
-            ("user", state.get("user_instructions"))
-        ]
+        base_messages = state.get("messages", []) or [("user", state.get("user_instructions"))]
         messages = [("system", system_hint)] + base_messages
 
         input_payload = {
@@ -420,9 +411,7 @@ def make_eda_tools_agent(
                     if "describe_df_flat" in last_tool_artifact and isinstance(
                         last_tool_artifact["describe_df_flat"], dict
                     ):
-                        df_preview = pd.DataFrame(
-                            last_tool_artifact["describe_df_flat"]
-                        ).head()
+                        df_preview = pd.DataFrame(last_tool_artifact["describe_df_flat"]).head()
                         summary_snippet = df_preview.to_markdown(index=False)
                     # Try legacy describe_df
                     elif "describe_df" in last_tool_artifact and isinstance(

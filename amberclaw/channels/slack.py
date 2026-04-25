@@ -2,7 +2,6 @@
 
 import asyncio
 import re
-from typing import Any
 
 from loguru import logger
 from slack_sdk.socket_mode.request import SocketModeRequest
@@ -115,9 +114,7 @@ class SlackChannel(BaseChannel):
             return
 
         # Acknowledge right away
-        await client.send_socket_mode_response(
-            SocketModeResponse(envelope_id=req.envelope_id)
-        )
+        await client.send_socket_mode_response(SocketModeResponse(envelope_id=req.envelope_id))
 
         payload = req.payload or {}
         event = payload.get("event") or {}

@@ -5,27 +5,31 @@ from typing import Sequence
 from langchain_core.messages import BaseMessage
 
 
-def get_tool_call_names(messages):
+def get_tool_call_names(messages: Sequence[BaseMessage]) -> list[str]:
     """
     Method to extract the tool call names from a list of LangChain messages.
-    
+
     Parameters:
     ----------
-    messages : list
+    messages : Sequence[BaseMessage]
         A list of LangChain messages.
-        
+
     Returns:
     -------
-    tool_calls : list
+    tool_calls : list[str]
         A list of tool call names.
-    
+
     """
-    tool_calls = []
+    tool_calls: list[str] = []
     for message in messages:
-        try: 
-            if "tool_call_id" in list(dict(message).keys()):
-                tool_calls.append(message.name)
-        except:
+        # Check if it's a ToolMessage or has tool_call_id in its dict representation
+        try:
+            msg_dict = dict(message)
+            if "tool_call_id" in msg_dict:
+                name = getattr(message, "name", None)
+                if name:
+                    tool_calls.append(name)
+        except (AttributeError, TypeError, ValueError):
             pass
     return tool_calls
 

@@ -38,6 +38,26 @@ from amberclaw.data.utils.logging import log_ai_function, log_ai_error
 from amberclaw.data.utils.messages import get_last_user_message_content
 from amberclaw.data.tools.h2o import H2O_AUTOML_DOCUMENTATION
 
+class GraphState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], operator.add]
+    user_instructions: str
+    recommended_steps: str
+    data_raw: dict
+    leaderboard: dict
+    best_model_id: str
+    model_path: str
+    model_results: dict
+    target_variable: str
+    all_datasets_summary: str
+    h2o_train_function: str
+    h2o_train_function_path: str
+    h2o_train_file_name: str
+    h2o_train_function_name: str
+    h2o_train_error: str
+    h2o_train_error_log_path: str
+    max_retries: int
+    retry_count: int
+
 AGENT_NAME = "h2o_ml_agent"
 LOG_PATH = os.path.join(os.getcwd(), "logs/")
 MAX_SUMMARY_COLUMNS = 30
@@ -392,9 +412,7 @@ class H2OMLAgent(BaseAgent):
         Retrieves the agent's workflow summary, if logging is enabled.
         """
         if self.response and self.response.get("messages"):
-            summary = get_generic_summary(
-                json.loads(self.response.get("messages")[-1].content)
-            )
+            summary = get_generic_summary(json.loads(self.response.get("messages")[-1].content))
             if markdown:
                 return Markdown(summary)
             else:
@@ -467,8 +485,8 @@ def make_h2o_ml_agent(
 
     # Check if H2O is installed
     try:
-        import h2o
-        from h2o.automl import H2OAutoML
+        import h2o  # noqa: F401
+        from h2o.automl import H2OAutoML  # noqa: F401
     except ImportError as e:
         raise ImportError(
             "The 'h2o' library is not installed. Please install it using pip:\n\n"
@@ -483,26 +501,6 @@ def make_h2o_ml_agent(
             )
             checkpointer = MemorySaver()
 
-    # Define GraphState
-    class GraphState(TypedDict):
-        messages: Annotated[Sequence[BaseMessage], operator.add]
-        user_instructions: str
-        recommended_steps: str
-        data_raw: dict
-        leaderboard: dict
-        best_model_id: str
-        model_path: str
-        model_results: dict
-        target_variable: str
-        all_datasets_summary: str
-        h2o_train_function: str
-        h2o_train_function_path: str
-        h2o_train_file_name: str
-        h2o_train_function_name: str
-        h2o_train_error: str
-        h2o_train_error_log_path: str
-        max_retries: int
-        retry_count: int
 
     # 1) Recommend ML steps (optional)
     def recommend_ml_steps(state: GraphState):
@@ -920,9 +918,7 @@ def make_h2o_ml_agent(
             target_col_final = _infer_target(df)
             if target_col_final:
                 if target_col_final not in df.columns:
-                    raise ValueError(
-                        f"Target variable '{target_col_final}' not found in data."
-                    )
+                    raise ValueError(f"Target variable '{target_col_final}' not found in data.")
                 non_null = df[target_col_final].notnull().sum()
                 if non_null == 0:
                     raise ValueError(
@@ -930,12 +926,7 @@ def make_h2o_ml_agent(
                     )
                 nunique = df[target_col_final].dropna().nunique()
                 if nunique < 2:
-                    vc = (
-                        df[target_col_final]
-                        .value_counts(dropna=False)
-                        .head(5)
-                        .to_dict()
-                    )
+                    vc = df[target_col_final].value_counts(dropna=False).head(5).to_dict()
                     raise ValueError(
                         f"Target variable '{target_col_final}' has <2 classes (nunique={nunique}). "
                         f"Value counts (top 5): {vc}"
@@ -970,9 +961,7 @@ def make_h2o_ml_agent(
 
         # If no error, extract leaderboard, best_model_id, and model_path
         if not result["h2o_train_error"]:
-            if result["h2o_train_result"] and isinstance(
-                result["h2o_train_result"], dict
-            ):
+            if result["h2o_train_result"] and isinstance(result["h2o_train_result"], dict):
                 lb = result["h2o_train_result"].get("leaderboard", {})
                 best_id = result["h2o_train_result"].get("best_model_id", None)
                 mpath = result["h2o_train_result"].get("model_path", None)
@@ -1005,7 +994,10 @@ def make_h2o_ml_agent(
                             from mlflow.tracking import MlflowClient
                             import re
 
-                            if isinstance(mlflow_artifact_root, str) and mlflow_artifact_root.strip():
+                            if (
+                                isinstance(mlflow_artifact_root, str)
+                                and mlflow_artifact_root.strip()
+                            ):
                                 root = Path(mlflow_artifact_root).expanduser().resolve()
                                 root.mkdir(parents=True, exist_ok=True)
                                 safe = re.sub(r"[^A-Za-z0-9._-]+", "_", str(exp_name)).strip("_")
@@ -1092,7 +1084,9 @@ def make_h2o_ml_agent(
                             try:
                                 mlflow.set_tag("agent", AGENT_NAME)
                                 if isinstance(user_instructions, str) and user_instructions.strip():
-                                    mlflow.set_tag("user_instructions", user_instructions.strip()[:5000])
+                                    mlflow.set_tag(
+                                        "user_instructions", user_instructions.strip()[:5000]
+                                    )
                             except Exception:
                                 pass
                             try:

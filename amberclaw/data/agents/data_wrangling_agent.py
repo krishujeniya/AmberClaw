@@ -42,6 +42,25 @@ LOG_PATH = os.path.join(os.getcwd(), "logs/")
 MAX_SUMMARY_COLUMNS = 30
 MAX_SUMMARY_CHARS = 5000
 
+# State Definition
+class GraphState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], operator.add]
+    user_instructions: str
+    recommended_steps: str
+    # data_raw should be a dict for a single dataset or a list of dicts for multiple datasets
+    data_raw: Union[dict, list]
+    data_wrangled: dict
+    all_datasets_summary: str
+    data_wrangler_function: str
+    data_wrangler_function_path: str
+    data_wrangler_function_name: str
+    data_wrangler_error: str
+    data_wrangler_error_log_path: str
+    data_wrangling_summary: str
+    max_retries: int
+    retry_count: int
+
+
 # Class
 
 
@@ -371,9 +390,7 @@ class DataWranglingAgent(BaseAgent):
         Retrieves the agent's workflow summary, if logging is enabled.
         """
         if self.response and self.response.get("messages"):
-            summary = get_generic_summary(
-                json.loads(self.response.get("messages")[-1].content)
-            )
+            summary = get_generic_summary(json.loads(self.response.get("messages")[-1].content))
             if markdown:
                 return Markdown(summary)
             else:
@@ -501,14 +518,10 @@ Function Name: {self.response.get("data_wrangler_function_name")}
                 elif isinstance(item, dict):
                     converted_list.append(item)
                 else:
-                    raise ValueError(
-                        "List must contain only DataFrames or dictionaries."
-                    )
+                    raise ValueError("List must contain only DataFrames or dictionaries.")
             return converted_list
 
-        raise ValueError(
-            "data_raw must be a DataFrame, a dict, or a list of dicts/DataFrames."
-        )
+        raise ValueError("data_raw must be a DataFrame, a dict, or a list of dicts/DataFrames.")
 
 
 # Function
@@ -622,7 +635,9 @@ def make_data_wrangling_agent(
         if isinstance(data_raw, dict):
             dataframes = {"main": pd.DataFrame.from_dict(data_raw)}
         elif isinstance(data_raw, list) and all(isinstance(item, dict) for item in data_raw):
-            dataframes = {f"dataset_{i}": pd.DataFrame.from_dict(d) for i, d in enumerate(data_raw, start=1)}
+            dataframes = {
+                f"dataset_{i}": pd.DataFrame.from_dict(d) for i, d in enumerate(data_raw, start=1)
+            }
         else:
             raise ValueError("data_raw must be a dict or a list of dicts.")
 
@@ -653,24 +668,7 @@ def make_data_wrangling_agent(
         if not os.path.exists(log_path):
             os.makedirs(log_path)
 
-    class GraphState(TypedDict):
-        messages: Annotated[Sequence[BaseMessage], operator.add]
-        user_instructions: str
-        recommended_steps: str
-        # data_raw should be a dict for a single dataset or a list of dicts for multiple datasets
-        data_raw: Union[dict, list]
-        data_wrangled: dict
-        all_datasets_summary: str
-        data_wrangler_function: str
-        data_wrangler_function_path: str
-        data_wrangler_function_name: str
-        data_wrangler_error: str
-        data_wrangler_error_log_path: str
-        data_wrangling_summary: str
-        max_retries: int
-        retry_count: int
-
-    def recommend_wrangling_steps(state: GraphState):
+    def recommend_wrangling_steps(state: GraphState) -> dict[str, Any]:
         print(format_agent_name(AGENT_NAME))
         print("    * RECOMMEND WRANGLING STEPS")
 
@@ -732,7 +730,7 @@ def make_data_wrangling_agent(
             "all_datasets_summary": all_datasets_summary_str,
         }
 
-    def create_data_wrangler_code(state: GraphState):
+    def create_data_wrangler_code(state: GraphState) -> dict[str, Any]:
         print(format_agent_name(AGENT_NAME))
         print("    * CREATE DATA WRANGLER CODE")
 
@@ -853,9 +851,7 @@ def make_data_wrangling_agent(
 
         def human_review(
             state: GraphState,
-        ) -> Command[
-            Literal["recommend_wrangling_steps", "report_agent_outputs"]
-        ]:
+        ) -> Command[Literal["recommend_wrangling_steps", "report_agent_outputs"]]:
             return node_func_human_review(
                 state=state,
                 prompt_text=prompt_text_human_review,
@@ -880,7 +876,7 @@ def make_data_wrangling_agent(
                 code_snippet_key="data_wrangler_function",
             )
 
-    def execute_data_wrangler_code(state: GraphState):
+    def execute_data_wrangler_code(state: GraphState) -> dict[str, Any]:
         print("    * EXECUTE DATA WRANGLER CODE (SANDBOXED)")
 
         result, error = run_code_sandboxed_subprocess(
@@ -962,7 +958,7 @@ def make_data_wrangling_agent(
             "data_wrangling_summary": wrangling_summary,
         }
 
-    def fix_data_wrangler_code(state: GraphState):
+    def fix_data_wrangler_code(state: GraphState) -> dict[str, Any]:
         data_wrangler_prompt = """
         You are a Data Wrangling Agent. Your job is to create a {function_name}() function that can be run on the data provided. The function is currently broken and needs to be fixed.
         
@@ -990,7 +986,7 @@ def make_data_wrangling_agent(
         )
 
     # Final reporting node
-    def report_agent_outputs(state: GraphState):
+    def report_agent_outputs(state: GraphState) -> dict[str, Any]:
         return node_func_report_agent_outputs(
             state=state,
             keys_to_include=[

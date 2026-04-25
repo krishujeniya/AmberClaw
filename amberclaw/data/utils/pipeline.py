@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 
 def strip_markdown_code_fences(code: str) -> str:
@@ -252,7 +252,9 @@ def build_reproducible_pipeline_script(
     # Merge nodes are DAG nodes (multiple parents). Generate a best-effort script that
     # replays each input branch into df_0/df_1/... and then applies the recorded merge code.
     target_parents = _parent_ids(target_entry)
-    prov = target_entry.get("provenance") if isinstance(target_entry.get("provenance"), dict) else {}
+    prov = (
+        target_entry.get("provenance") if isinstance(target_entry.get("provenance"), dict) else {}
+    )
     transform = prov.get("transform") if isinstance(prov.get("transform"), dict) else {}
     if len(target_parents) > 1 and str(transform.get("kind") or "") == "python_merge":
         lines: List[str] = []
@@ -307,7 +309,9 @@ def build_reproducible_pipeline_script(
                             if not s:
                                 continue
                             # Filter obvious tool-name placeholders
-                            if s in {"load_file", "load_directory", "artifact"} or s.startswith("load_file_"):
+                            if s in {"load_file", "load_directory", "artifact"} or s.startswith(
+                                "load_file_"
+                            ):
                                 continue
                             return s
                         return None
@@ -328,33 +332,48 @@ def build_reproducible_pipeline_script(
                         else:
                             out.append(f"# TODO: add reader for: {file_source!r}")
                             out.append(f"{df_var} = pd.read_csv({file_source!r})")
-                    elif stage == "sql" and isinstance(transform, dict) and transform.get("sql_query_code"):
+                    elif (
+                        stage == "sql"
+                        and isinstance(transform, dict)
+                        and transform.get("sql_query_code")
+                    ):
                         sql_query = str(transform.get("sql_query_code") or "")
                         out.append("import sqlalchemy as sql")
                         out.append("engine = sql.create_engine('YOUR_SQLALCHEMY_URL')")
                         out.append(f"sql_query = {sql_query!r}")
                         out.append(f"{df_var} = pd.read_sql_query(sql_query, engine)")
                     else:
-                        out.append("# TODO: root dataset source not recorded; provide your own df here.")
+                        out.append(
+                            "# TODO: root dataset source not recorded; provide your own df here."
+                        )
                         out.append(f"{df_var} = pd.DataFrame()")
                 else:
-                    kind = str(transform.get("kind") or "")
+                    transform_kind = transform.get("kind")
+                    kind = str(transform_kind) if transform_kind else ""
                     if kind == "python_function":
                         code = ""
-                        file_code = _read_text_file(transform.get("function_path"))
+                        fpath = transform.get("function_path")
+                        file_code = _read_text_file(str(fpath)) if fpath else None
                         if isinstance(file_code, str) and file_code.strip():
                             code = strip_markdown_code_fences(file_code)
                         else:
-                            code = strip_markdown_code_fences(str(transform.get("function_code") or ""))
-                        fn_name = transform.get("function_name")
-                        fn_name = str(fn_name) if isinstance(fn_name, str) and fn_name else _infer_function_name(code)
+                            fcode = transform.get("function_code")
+                            code = strip_markdown_code_fences(str(fcode or ""))
+                        fn_name_raw = transform.get("function_name")
+                        fn_name = (
+                            str(fn_name_raw)
+                            if isinstance(fn_name_raw, str) and fn_name_raw
+                            else _infer_function_name(code)
+                        )
                         if code and fn_name:
                             out.append("")
                             out.append(code)
                             out.append("")
                             out.append(f"{df_var} = {fn_name}({df_var})")
                         else:
-                            out.append("# TODO: missing function code/name for this step; see datasets provenance.")
+                            out.append(
+                                "# TODO: missing function code/name for this step; see datasets provenance."
+                            )
                     elif kind == "sql_query" and transform.get("sql_query_code"):
                         sql_query = str(transform.get("sql_query_code") or "")
                         out.append("import sqlalchemy as sql")
@@ -387,7 +406,9 @@ def build_reproducible_pipeline_script(
                         out.append("preds = model.predict(frame)")
                         out.append(f"{df_var} = preds.as_data_frame(use_pandas=True)")
                     else:
-                        out.append("# TODO: transform not recorded in a runnable form; see datasets provenance.")
+                        out.append(
+                            "# TODO: transform not recorded in a runnable form; see datasets provenance."
+                        )
 
                 out.append("")
 
@@ -443,12 +464,15 @@ def build_reproducible_pipeline_script(
             lines.append(f"#   schema_hash: {entry.get('schema_hash')}")
         if entry.get("fingerprint"):
             lines.append(f"#   fingerprint: {entry.get('fingerprint')}")
-        if isinstance(transform, dict) and transform.get("kind"):
-            lines.append(f"#   transform: {transform.get('kind')}")
-            if transform.get("code_sha256"):
-                lines.append(f"#   code_sha256: {transform.get('code_sha256')}")
-            if transform.get("sql_sha256"):
-                lines.append(f"#   sql_sha256: {transform.get('sql_sha256')}")
+        t_kind = transform.get("kind")
+        if isinstance(transform, dict) and t_kind:
+            lines.append(f"#   transform: {t_kind}")
+            codesha = transform.get("code_sha256")
+            if codesha:
+                lines.append(f"#   code_sha256: {codesha}")
+            sqlsha = transform.get("sql_sha256")
+            if sqlsha:
+                lines.append(f"#   sql_sha256: {sqlsha}")
 
         if idx == 0:
             source_type = str(prov.get("source_type") or "")
@@ -466,7 +490,9 @@ def build_reproducible_pipeline_script(
                     s = c.strip()
                     if not s:
                         continue
-                    if s in {"load_file", "load_directory", "artifact"} or s.startswith("load_file_"):
+                    if s in {"load_file", "load_directory", "artifact"} or s.startswith(
+                        "load_file_"
+                    ):
                         continue
                     return s
                 return None
@@ -499,16 +525,23 @@ def build_reproducible_pipeline_script(
                 )
                 lines.append("df = pd.DataFrame()")
         else:
-            kind = str(transform.get("kind") or "")
+            kind_raw = transform.get("kind")
+            kind = str(kind_raw) if kind_raw else ""
             if kind == "python_function":
                 code = ""
-                file_code = _read_text_file(transform.get("function_path"))
+                f_path = transform.get("function_path")
+                file_code = _read_text_file(str(f_path)) if f_path else None
                 if isinstance(file_code, str) and file_code.strip():
                     code = strip_markdown_code_fences(file_code)
                 else:
-                    code = strip_markdown_code_fences(str(transform.get("function_code") or ""))
-                fn_name = transform.get("function_name")
-                fn_name = str(fn_name) if isinstance(fn_name, str) and fn_name else _infer_function_name(code)
+                    f_code = transform.get("function_code")
+                    code = strip_markdown_code_fences(str(f_code or ""))
+                fn_name_val = transform.get("function_name")
+                fn_name = (
+                    str(fn_name_val)
+                    if isinstance(fn_name_val, str) and fn_name_val
+                    else _infer_function_name(code)
+                )
                 if code and fn_name:
                     lines.append("")
                     lines.append(code)
@@ -537,7 +570,9 @@ def build_reproducible_pipeline_script(
                 lines.append(f"model_uri = {model_uri!r}")
                 lines.append("model = mlflow.pyfunc.load_model(model_uri)")
                 lines.append("preds = model.predict(df)")
-                lines.append("df = preds if isinstance(preds, pd.DataFrame) else pd.DataFrame(preds)")
+                lines.append(
+                    "df = preds if isinstance(preds, pd.DataFrame) else pd.DataFrame(preds)"
+                )
             elif kind == "h2o_predict":
                 model_id = transform.get("model_id")
                 model_id = model_id.strip() if isinstance(model_id, str) else ""
@@ -583,7 +618,9 @@ def build_pipeline_snapshot(
     if target == "active":
         target_dataset_id = active_dataset_id
     elif target == "latest":
-        target_dataset_id = pick_latest_dataset_id_any_stage(datasets) or model_dataset_id or active_dataset_id
+        target_dataset_id = (
+            pick_latest_dataset_id_any_stage(datasets) or model_dataset_id or active_dataset_id
+        )
     elif target == "all":
         target = "all"
         target_dataset_id = None
@@ -595,9 +632,9 @@ def build_pipeline_snapshot(
     if target == "all":
         ordered = sorted(
             datasets.items(),
-            key=lambda kv: float(kv[1].get("created_ts") or 0.0)
-            if isinstance(kv[1], dict)
-            else 0.0,
+            key=lambda kv: (
+                float(kv[1].get("created_ts") or 0.0) if isinstance(kv[1], dict) else 0.0
+            ),
         )
         lineage_ids = [did for did, _e in ordered if isinstance(did, str) and did]
     elif isinstance(target_dataset_id, str) and target_dataset_id:
@@ -612,8 +649,10 @@ def build_pipeline_snapshot(
         e = datasets.get(did)
         if not isinstance(e, dict):
             return {"id": did}
-        prov = e.get("provenance") if isinstance(e.get("provenance"), dict) else {}
-        transform = prov.get("transform") if isinstance(prov.get("transform"), dict) else {}
+        prov_raw = e.get("provenance")
+        prov = prov_raw if isinstance(prov_raw, dict) else {}
+        trans_raw = prov.get("transform")
+        transform = trans_raw if isinstance(trans_raw, dict) else {}
         return {
             "id": did,
             "label": e.get("label"),
@@ -622,15 +661,13 @@ def build_pipeline_snapshot(
             "parent_ids": _parent_ids(e),
             "schema_hash": e.get("schema_hash"),
             "fingerprint": e.get("fingerprint"),
-            "source": prov.get("source") if isinstance(prov, dict) else None,
-            "transform_kind": transform.get("kind") if isinstance(transform, dict) else None,
+            "source": prov.get("source"),
+            "transform_kind": transform.get("kind"),
             "transform_hash": (
                 transform.get("code_sha256")
                 or transform.get("sql_sha256")
                 or transform.get("sql_database_function_sha256")
-            )
-            if isinstance(transform, dict)
-            else None,
+            ),
             "created_at": e.get("created_at"),
             "created_by": e.get("created_by"),
         }

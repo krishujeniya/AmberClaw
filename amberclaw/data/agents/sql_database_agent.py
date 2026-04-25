@@ -34,6 +34,22 @@ from amberclaw.data.tools.sql import get_database_metadata
 from amberclaw.data.utils.logging import log_ai_function, log_ai_error
 from amberclaw.data.utils.messages import get_last_user_message_content
 
+class GraphState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], operator.add]
+    user_instructions: str
+    recommended_steps: str
+    data_sql: dict
+    all_sql_database_summary: str
+    sql_query_code: str
+    sql_database_function: str
+    sql_database_function_path: str
+    sql_database_function_file_name: str
+    sql_database_function_name: str
+    sql_database_error: str
+    sql_database_error_log_path: str
+    max_retries: int
+    retry_count: int
+
 # Setup
 AGENT_NAME = "sql_database_agent"
 LOG_PATH = os.path.join(os.getcwd(), "logs/")
@@ -252,9 +268,7 @@ class SQLDatabaseAgent(BaseAgent):
         self.response = response
         return None
 
-    def invoke_agent(
-        self, user_instructions: str = None, max_retries=3, retry_count=0, **kwargs
-    ):
+    def invoke_agent(self, user_instructions: str = None, max_retries=3, retry_count=0, **kwargs):
         """
         Synchronously runs the SQL Database Agent based on user instructions.
 
@@ -331,9 +345,7 @@ class SQLDatabaseAgent(BaseAgent):
         Retrieves the agent's workflow summary, if logging is enabled.
         """
         if self.response and self.response.get("messages"):
-            summary = get_generic_summary(
-                json.loads(self.response.get("messages")[-1].content)
-            )
+            summary = get_generic_summary(json.loads(self.response.get("messages")[-1].content))
             if markdown:
                 return Markdown(summary)
             else:
@@ -546,23 +558,8 @@ def make_sql_database_agent(
     is_engine = isinstance(connection, sql.engine.base.Engine)
     conn = connection.connect() if is_engine else connection
 
-    class GraphState(TypedDict):
-        messages: Annotated[Sequence[BaseMessage], operator.add]
-        user_instructions: str
-        recommended_steps: str
-        data_sql: dict
-        all_sql_database_summary: str
-        sql_query_code: str
-        sql_database_function: str
-        sql_database_function_path: str
-        sql_database_function_file_name: str
-        sql_database_function_name: str
-        sql_database_error: str
-        sql_database_error_log_path: str
-        max_retries: int
-        retry_count: int
 
-    def recommend_sql_steps(state: GraphState):
+    def recommend_sql_steps(state: GraphState) -> dict[str, Any]:
         print(format_agent_name(AGENT_NAME))
 
         all_sql_database_summary = _truncate_metadata(
@@ -644,7 +641,7 @@ def make_sql_database_agent(
             "all_sql_database_summary": all_sql_database_summary,
         }
 
-    def create_sql_query_code(state: GraphState):
+    def create_sql_query_code(state: GraphState) -> dict[str, Any]:
         if bypass_recommended_steps:
             print(format_agent_name(AGENT_NAME))
             all_sql_database_summary = _truncate_metadata(
@@ -795,7 +792,7 @@ def {function_name}(connection):
                 code_snippet_key="sql_database_function",
             )
 
-    def execute_sql_database_code(state: GraphState):
+    def execute_sql_database_code(state: GraphState) -> dict[str, Any]:
         # If validation failed earlier, short-circuit and log
         if state.get("sql_database_error"):
             error_prefixed = state.get("sql_database_error")
@@ -826,9 +823,7 @@ def {function_name}(connection):
             error_key="sql_database_error",
             code_snippet_key="sql_database_function",
             agent_function_name=state.get("sql_database_function_name"),
-            post_processing=lambda df: df.to_dict()
-            if isinstance(df, pd.DataFrame)
-            else df,
+            post_processing=lambda df: df.to_dict() if isinstance(df, pd.DataFrame) else df,
             error_message_prefix="An error occurred during executing the sql database pipeline: ",
         )
 
@@ -848,7 +843,7 @@ def {function_name}(connection):
         result["sql_database_error_log_path"] = error_log_path
         return result
 
-    def fix_sql_database_code(state: GraphState):
+    def fix_sql_database_code(state: GraphState) -> dict[str, Any]:
         prompt = """
         You are a SQL Database Agent code fixer. Your job is to create a {function_name}(connection) function that can be run on a sql connection. The function is currently broken and needs to be fixed.
         
@@ -876,7 +871,7 @@ def {function_name}(connection):
         )
 
     # Final reporting node
-    def report_agent_outputs(state: GraphState):
+    def report_agent_outputs(state: GraphState) -> dict[str, Any]:
         return node_func_report_agent_outputs(
             state=state,
             keys_to_include=[
@@ -923,9 +918,7 @@ def {function_name}(connection):
     return app
 
 
-def smart_schema_filter(
-    llm, user_instructions, all_sql_database_summary, smart_filtering=True
-):
+def smart_schema_filter(llm, user_instructions, all_sql_database_summary, smart_filtering=True):
     """
     This function filters the tables and columns based on the user instructions and the recommended steps.
     """
@@ -992,7 +985,16 @@ def _validate_sql(sql_text: str, safe_mode: bool = True):
     lowered = sql_text.strip().lower()
     if not lowered.startswith("select"):
         return "Only read-only SELECT queries are allowed (safe_mode=True)."
-    unsafe_keywords = ["insert", "update", "delete", "drop", "alter", "truncate", "create", "replace"]
+    unsafe_keywords = [
+        "insert",
+        "update",
+        "delete",
+        "drop",
+        "alter",
+        "truncate",
+        "create",
+        "replace",
+    ]
     if any(kw in lowered for kw in unsafe_keywords):
         return "Write operations are not allowed; ensure the query is read-only (safe_mode=True)."
     return None

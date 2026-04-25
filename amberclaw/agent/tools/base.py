@@ -2,7 +2,8 @@
 
 from abc import ABC, abstractmethod
 from typing import Any, Type, TypeVar
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
+from langchain_core.tools import BaseTool
 
 
 class Tool(ABC):
@@ -85,7 +86,12 @@ class Tool(ABC):
             return val
         if target_type == "integer" and isinstance(val, int) and not isinstance(val, bool):
             return val
-        if target_type in self._TYPE_MAP and target_type not in ("boolean", "integer", "array", "object"):
+        if target_type in self._TYPE_MAP and target_type not in (
+            "boolean",
+            "integer",
+            "array",
+            "object",
+        ):
             expected = self._TYPE_MAP[target_type]
             if isinstance(val, expected):
                 return val
@@ -135,11 +141,13 @@ class Tool(ABC):
         t, label = schema.get("type"), path or "parameter"
         if t == "integer" and (not isinstance(val, int) or isinstance(val, bool)):
             return [f"{label} should be integer"]
-        if t == "number" and (
-            not isinstance(val, self._TYPE_MAP[t]) or isinstance(val, bool)
-        ):
+        if t == "number" and (not isinstance(val, self._TYPE_MAP[t]) or isinstance(val, bool)):
             return [f"{label} should be number"]
-        if t in self._TYPE_MAP and t not in ("integer", "number") and not isinstance(val, self._TYPE_MAP[t]):
+        if (
+            t in self._TYPE_MAP
+            and t not in ("integer", "number")
+            and not isinstance(val, self._TYPE_MAP[t])
+        ):
             return [f"{label} should be {t}"]
 
         errors = []
@@ -170,16 +178,25 @@ class Tool(ABC):
                 )
         return errors
 
-    def to_schema(self) -> dict[str, Any]:
-        """Convert tool to OpenAI function schema format."""
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self.parameters,
-            },
-        }
+    def to_langchain_tool(self) -> BaseTool:
+        """Convert tool to LangChain BaseTool."""
+
+        class WrappedTool(BaseTool):
+            name: str = self.name
+            description: str = self.description
+            args_schema: Type[BaseModel] | None = getattr(self, "args_schema", None)
+
+            async def _arun(self, *args: Any, **kwargs: Any) -> str:
+                return await self.execute(**kwargs)
+
+            def _run(self, *args: Any, **kwargs: Any) -> str:
+                raise NotImplementedError("AmberClaw tools are async-only")
+
+        return WrappedTool()
+
+    def to_openai_tool(self) -> dict[str, Any]:
+        """Alias for to_schema for consistency."""
+        return self.to_schema()
 
 
 T = TypeVar("T", bound=BaseModel)
@@ -232,4 +249,3 @@ class PydanticTool(Tool, ABC):
         Inner execution logic with validated Pydantic model.
         """
         pass
-

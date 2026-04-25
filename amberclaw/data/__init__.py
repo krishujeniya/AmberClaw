@@ -17,8 +17,8 @@ from amberclaw.data.ml_agents import (
 )
 
 from amberclaw.data.multiagents import (
-    SQLDataAnalyst, 
-    PandasDataAnalyst, 
+    SQLDataAnalyst,
+    PandasDataAnalyst,
 )
 
 __all__ = [
@@ -34,4 +34,3 @@ __all__ = [
     "SQLDataAnalyst",
     "PandasDataAnalyst",
 ]
-

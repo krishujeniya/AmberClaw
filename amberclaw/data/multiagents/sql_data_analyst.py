@@ -83,9 +83,7 @@ class SQLDataAnalyst(BaseAgent):
         return make_sql_data_analyst(
             model=self._params["model"],
             sql_database_agent=self._params["sql_database_agent"]._compiled_graph,
-            data_visualization_agent=self._params[
-                "data_visualization_agent"
-            ]._compiled_graph,
+            data_visualization_agent=self._params["data_visualization_agent"]._compiled_graph,
             checkpointer=self._params["checkpointer"],
         )
 
@@ -167,9 +165,7 @@ class SQLDataAnalyst(BaseAgent):
 
         self.response = response
 
-    def invoke_agent(
-        self, user_instructions, max_retries: int = 3, retry_count: int = 0, **kwargs
-    ):
+    def invoke_agent(self, user_instructions, max_retries: int = 3, retry_count: int = 0, **kwargs):
         """
         Invokes the SQL Data Analyst Multi-Agent.
 
@@ -330,9 +326,7 @@ class SQLDataAnalyst(BaseAgent):
         if self.response:
             if self.response.get("sql_query_code"):
                 if markdown:
-                    return Markdown(
-                        f"```sql\n{self.response.get('sql_query_code')}\n```"
-                    )
+                    return Markdown(f"```sql\n{self.response.get('sql_query_code')}\n```")
                 return self.response.get("sql_query_code")
 
     def get_sql_database_function(self, markdown=False):
@@ -348,9 +342,7 @@ class SQLDataAnalyst(BaseAgent):
         if self.response:
             if self.response.get("sql_database_function"):
                 if markdown:
-                    return Markdown(
-                        f"```python\n{self.response.get('sql_database_function')}\n```"
-                    )
+                    return Markdown(f"```python\n{self.response.get('sql_database_function')}\n```")
                 return self.response.get("sql_database_function")
 
     def get_data_visualization_function(self, markdown=False):
@@ -395,9 +387,7 @@ class SQLDataAnalyst(BaseAgent):
                     seen.add(role)
                 if role in allowed and role not in role_to_content:
                     role_to_content[role] = getattr(msg, "content", "")
-            agent_labels = [
-                f"- **Agent {i + 1}:** {role}\n" for i, role in enumerate(agents)
-            ]
+            agent_labels = [f"- **Agent {i + 1}:** {role}\n" for i, role in enumerate(agents)]
             header = (
                 f"# SQL Data Analyst Workflow Summary\n\nThis workflow contains {len(agents)} agents:\n\n"
                 + "\n".join(agent_labels)
@@ -543,18 +533,12 @@ def make_sql_data_analyst(
             "user_instructions_data_visualization": response.get(
                 "user_instructions_data_visualization"
             ),
-            "routing_preprocessor_decision": response.get(
-                "routing_preprocessor_decision", "table"
-            ),
+            "routing_preprocessor_decision": response.get("routing_preprocessor_decision", "table"),
         }
 
     def router_chart_or_table(state: PrimaryState):
         print("---ROUTER: CHART OR TABLE---")
-        return (
-            "chart"
-            if state.get("routing_preprocessor_decision") == "chart"
-            else "table"
-        )
+        return "chart" if state.get("routing_preprocessor_decision") == "chart" else "table"
 
     def invoke_sql_database_agent(state: PrimaryState):
         response = sql_database_agent.invoke(

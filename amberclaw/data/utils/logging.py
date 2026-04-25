@@ -1,10 +1,16 @@
-
 import os
 
-def log_ai_function(response: str, file_name: str, log: bool = True, log_path: str = './logs/', overwrite: bool = True):
+
+def log_ai_function(
+    response: str,
+    file_name: str,
+    log: bool = True,
+    log_path: str = "./logs/",
+    overwrite: bool = True,
+):
     """
     Logs the response of an AI function to a file.
-    
+
     Parameters
     ----------
     response : str
@@ -17,15 +23,15 @@ def log_ai_function(response: str, file_name: str, log: bool = True, log_path: s
         The path to save the log file. The default is './logs/'.
     overwrite : bool, optional
         Whether to overwrite the file if it already exists. The default is True.
-        - If True, the file will be overwritten. 
+        - If True, the file will be overwritten.
         - If False, a unique file name will be created.
-    
+
     Returns
     -------
     tuple
-        The path and name of the log file.    
+        The path and name of the log file.
     """
-    
+
     if log:
         # Ensure the directory exists
         os.makedirs(log_path, exist_ok=True)
@@ -50,18 +56,24 @@ def log_ai_function(response: str, file_name: str, log: bool = True, log_path: s
                     i += 1
 
         # Write the file
-        with open(file_path, 'w', encoding='utf-8') as file:
+        with open(file_path, "w", encoding="utf-8") as file:
             file.write(response)
 
         print(f"      File saved to: {file_path}")
-        
+
         return (file_path, file_name)
-    
+
     else:
         return (None, None)
 
 
-def log_ai_error(error_message: str, file_name: str = "errors.log", log: bool = True, log_path: str = "./logs/", overwrite: bool = False):
+def log_ai_error(
+    error_message: str,
+    file_name: str = "errors.log",
+    log: bool = True,
+    log_path: str = "./logs/",
+    overwrite: bool = False,
+):
     """
     Logs an error message to a file.
 

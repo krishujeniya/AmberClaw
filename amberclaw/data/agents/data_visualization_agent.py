@@ -46,6 +46,29 @@ from amberclaw.data.utils.messages import get_last_user_message_content
 # Setup
 AGENT_NAME = "data_visualization_agent"
 LOG_PATH = os.path.join(os.getcwd(), "logs/")
+MAX_SUMMARY_COLUMNS = 30
+MAX_SUMMARY_CHARS = 5000
+
+# State Definition
+class GraphState(TypedDict):
+    messages: Annotated[Sequence[BaseMessage], operator.add]
+    user_instructions: str
+    user_instructions_processed: str
+    recommended_steps: str
+    data_raw: dict
+    plotly_graph: dict
+    all_datasets_summary: str
+    data_visualization_function: str
+    data_visualization_function_path: str
+    data_visualization_function_file_name: str
+    data_visualization_function_name: str
+    data_visualization_error: str
+    data_visualization_error_log_path: str
+    data_visualization_summary: str
+    data_visualization_warning: str
+    max_retries: int
+    retry_count: int
+
 
 # Class
 
@@ -398,9 +421,7 @@ class DataVisualizationAgent(BaseAgent):
         Retrieves the agent's workflow summary, if logging is enabled.
         """
         if self.response and self.response.get("messages"):
-            summary = get_generic_summary(
-                json.loads(self.response.get("messages")[-1].content)
-            )
+            summary = get_generic_summary(json.loads(self.response.get("messages")[-1].content))
             if markdown:
                 return Markdown(summary)
             else:
@@ -596,9 +617,6 @@ def make_data_visualization_agent(
 
     llm = model
 
-    MAX_SUMMARY_COLUMNS = 30
-    MAX_SUMMARY_CHARS = 5000
-
     DEFAULT_VISUALIZATION_INSTRUCTIONS = """
 Use an appropriate chart type based on column types (categorical vs numeric). Derive columns from the provided schema; do not hardcode names. Handle missing values gracefully. Prefer plotly express for simplicity. Do not save files or print; just return a JSON-serializable Plotly figure dictionary. Always set chart title and axis labels; use unit hints when available.
     """
@@ -683,8 +701,10 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
     def _format_profile_for_prompt(profile: dict) -> str:
         if not isinstance(profile, dict):
             return ""
+
         def _fmt(values: list[str]) -> str:
             return ", ".join(values[:12]) if values else "None"
+
         return "\n".join(
             [
                 f"Rows: {profile.get('n_rows')}",
@@ -743,9 +763,7 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
         items = [f"{k} -> {v}" for k, v in list(aliases.items())[:12]]
         return ", ".join(items)
 
-    def _build_prompt_context(
-        df: pd.DataFrame, user_text: str | None
-    ) -> tuple[str, dict]:
+    def _build_prompt_context(df: pd.DataFrame, user_text: str | None) -> tuple[str, dict]:
         base = _summarize_df_for_prompt(df)
         profile = _profile_dataframe(df)
         units = _infer_units(profile.get("columns") or [])
@@ -811,7 +829,7 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
             if not isinstance(old, str) or not isinstance(new, str):
                 continue
             patched = re.sub(rf"'{re.escape(old)}'", f"'{new}'", patched)
-            patched = re.sub(rf"\\\"{re.escape(old)}\\\"", f'\"{new}\"', patched)
+            patched = re.sub(rf"\\\"{re.escape(old)}\\\"", f'"{new}"', patched)
         return patched, patched != code
 
     def _build_fallback_chart(df: pd.DataFrame, profile: dict) -> tuple[dict | None, str | None]:
@@ -878,9 +896,7 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
         return fig_dict, note
 
     def _summarize_df_for_prompt(df: pd.DataFrame) -> str:
-        df_limited = (
-            df.iloc[:, :MAX_SUMMARY_COLUMNS] if df.shape[1] > MAX_SUMMARY_COLUMNS else df
-        )
+        df_limited = df.iloc[:, :MAX_SUMMARY_COLUMNS] if df.shape[1] > MAX_SUMMARY_COLUMNS else df
         summary = "\n\n".join(
             get_dataframe_summary(
                 [df_limited],
@@ -909,27 +925,7 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
         if not os.path.exists(log_path):
             os.makedirs(log_path)
 
-    # Define GraphState for the router
-    class GraphState(TypedDict):
-        messages: Annotated[Sequence[BaseMessage], operator.add]
-        user_instructions: str
-        user_instructions_processed: str
-        recommended_steps: str
-        data_raw: dict
-        plotly_graph: dict
-        all_datasets_summary: str
-        data_visualization_function: str
-        data_visualization_function_path: str
-        data_visualization_function_file_name: str
-        data_visualization_function_name: str
-        data_visualization_error: str
-        data_visualization_error_log_path: str
-        data_visualization_summary: str
-        data_visualization_warning: str
-        max_retries: int
-        retry_count: int
-
-    def chart_instructor(state: GraphState):
+    def chart_instructor(state: GraphState) -> dict[str, Any]:
         print(format_agent_name(AGENT_NAME))
         print("    * CREATE CHART GENERATOR INSTRUCTIONS")
 
@@ -1010,7 +1006,7 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
             "all_datasets_summary": all_datasets_summary_str,
         }
 
-    def chart_generator(state: GraphState):
+    def chart_generator(state: GraphState) -> dict[str, Any]:
         print("    * CREATE DATA VISUALIZATION CODE")
 
         if bypass_recommended_steps:
@@ -1147,7 +1143,7 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
                 code_snippet_key="data_visualization_function",
             )
 
-    def execute_data_visualization_code(state):
+    def execute_data_visualization_code(state: GraphState) -> dict[str, Any]:
         print("    * EXECUTE DATA VISUALIZATION CODE (SANDBOXED)")
 
         data_raw = state.get("data_raw") or {}
@@ -1169,12 +1165,8 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
         if error:
             missing_cols = _extract_missing_columns(error)
             if missing_cols:
-                suggestions = _suggest_column_fallbacks(
-                    missing_cols, profile.get("columns") or []
-                )
-                patched_code, changed = _patch_missing_columns(
-                    code_snippet or "", suggestions
-                )
+                suggestions = _suggest_column_fallbacks(missing_cols, profile.get("columns") or [])
+                patched_code, changed = _patch_missing_columns(code_snippet or "", suggestions)
                 if changed:
                     result, error = run_code_sandboxed_subprocess(
                         code_snippet=patched_code,
@@ -1185,12 +1177,8 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
                         data_format="dataframe",
                     )
                     if error is None and suggestions:
-                        replaced = ", ".join(
-                            [f"{k} -> {v}" for k, v in suggestions.items()]
-                        )
-                        warning_message = (
-                            "Auto-substituted missing columns: " + replaced
-                        )
+                        replaced = ", ".join([f"{k} -> {v}" for k, v in suggestions.items()])
+                        warning_message = "Auto-substituted missing columns: " + replaced
                         patched_code_used = True
                         code_snippet = patched_code
 
@@ -1249,7 +1237,11 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
                         mismatch = None
                         if "violin" in expected and "violin" not in actual_types:
                             mismatch = "violin"
-                        elif "box" in expected and "violin" not in expected and "box" not in actual_types:
+                        elif (
+                            "box" in expected
+                            and "violin" not in expected
+                            and "box" not in actual_types
+                        ):
                             mismatch = "box"
                         elif "histogram" in expected and "histogram" not in actual_types:
                             mismatch = "histogram"
@@ -1263,11 +1255,7 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
                             mismatch = "line"
 
                         if mismatch:
-                            got = (
-                                ", ".join(sorted(actual_types))
-                                if actual_types
-                                else "unknown"
-                            )
+                            got = ", ".join(sorted(actual_types)) if actual_types else "unknown"
                             warning_message = (
                                 "Chart type warning. "
                                 f"User requested '{mismatch}' style, but got '{got}'. "
@@ -1316,7 +1304,7 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
             output["data_visualization_function"] = code_snippet
         return output
 
-    def fix_data_visualization_code(state: GraphState):
+    def fix_data_visualization_code(state: GraphState) -> dict[str, Any]:
         prompt = """
         You are a Data Visualization Agent. Your job is to create a {function_name}() function that can be run on the data provided. The function is currently broken and needs to be fixed.
         
@@ -1350,7 +1338,7 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
         )
 
     # Final reporting node
-    def report_agent_outputs(state: GraphState):
+    def report_agent_outputs(state: GraphState) -> dict[str, Any]:
         return node_func_report_agent_outputs(
             state=state,
             keys_to_include=[

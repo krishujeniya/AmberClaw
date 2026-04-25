@@ -221,9 +221,7 @@ class DataLoaderToolsAgent(BaseAgent):
             isinstance(v, dict) and "data" in v for v in artifact.values()
         ):
             dataframes = {
-                k: pd.DataFrame(v["data"])
-                if v.get("data") is not None
-                else pd.DataFrame()
+                k: pd.DataFrame(v["data"]) if v.get("data") is not None else pd.DataFrame()
                 for k, v in artifact.items()
             }
             return dataframes if as_dataframe else dataframes
@@ -284,6 +282,13 @@ class DataLoaderToolsAgent(BaseAgent):
         return self.response["tool_calls"]
 
 
+class GraphState(AgentState):
+    user_instructions: str
+    messages: Annotated[Sequence[BaseMessage], operator.add]
+    data_loader_artifacts: dict
+    tool_calls: List[str]
+
+
 def make_data_loader_tools_agent(
     model: Any,
     create_react_agent_kwargs: Optional[Dict] = {},
@@ -319,12 +324,6 @@ def make_data_loader_tools_agent(
         **create_react_agent_kwargs,
     )
 
-    class GraphState(AgentState):
-        user_instructions: str
-        messages: Annotated[Sequence[BaseMessage], operator.add]
-        data_loader_artifacts: dict
-        tool_calls: List[str]
-
     def prepare_messages(state: GraphState):
         print(format_agent_name(AGENT_NAME))
         print("    * PREPARE MESSAGES")
@@ -343,9 +342,7 @@ def make_data_loader_tools_agent(
             "- Use load_directory only when the user explicitly asks to load ALL files in a directory.\n"
             "Prefer search_files_by_pattern for extension filters (e.g., pattern='*.csv')."
         )
-        base_messages = state.get("messages", []) or [
-            ("user", state.get("user_instructions"))
-        ]
+        base_messages = state.get("messages", []) or [("user", state.get("user_instructions"))]
         messages = [("system", system_hint)] + base_messages
         input_payload = {"messages": messages}
         return react_agent.invoke(input_payload, invoke_react_agent_kwargs)
