@@ -91,7 +91,7 @@ class MCPToolWrapper(Tool):
         content = getattr(result, "content", [])
         if not isinstance(content, list):
             content = [content] if content else []
-            
+
         for block in content:
             if isinstance(block, types.TextContent):
                 parts.append(block.text)

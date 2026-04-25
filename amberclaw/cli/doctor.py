@@ -1,7 +1,6 @@
 """System health check and diagnostic tool."""
 
 import os
-from pathlib import Path
 
 from rich.console import Console
 from rich.table import Table

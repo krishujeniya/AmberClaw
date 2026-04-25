@@ -5,10 +5,9 @@ from rich.console import Console
 
 from amberclaw.config.schema import Config
 
-console = Console()
-
-
 from amberclaw.providers.base import LLMProvider
+
+console = Console()
 
 
 def make_provider(config: Config) -> LLMProvider:
