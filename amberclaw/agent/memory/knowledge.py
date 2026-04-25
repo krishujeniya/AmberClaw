@@ -37,7 +37,7 @@ class KnowledgeStore:
             """)
             # FTS for search
             conn.execute("""
-                CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts 
+                CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts
                 USING fts5(category, content, content='knowledge', content_rowid='id')
             """)
             # Triggers to keep FTS in sync
