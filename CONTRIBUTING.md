@@ -1,6 +1,6 @@
 # Contributing to AmberClaw
 
-Thank you for your interest in contributing to AmberClaw! This guide will help you get started.
+Thanks for considering a contribution! Here is everything you need to know to get going.
 
 ## Table of Contents
 
@@ -14,17 +14,17 @@ Thank you for your interest in contributing to AmberClaw! This guide will help y
 
 ## Code of Conduct
 
-By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
+All participants must follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Getting Started
 
-1. **Fork** the repository on GitHub
-2. **Clone** your fork locally:
+1. **Fork** this repository on GitHub.
+2. **Clone** your fork:
    ```bash
    git clone https://github.com/<your-username>/AmberClaw.git
    cd AmberClaw
    ```
-3. **Add** the upstream remote:
+3. **Add the upstream remote**:
    ```bash
    git remote add upstream https://github.com/krishujeniya/AmberClaw.git
    ```
@@ -33,43 +33,41 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 ### Prerequisites
 
-- Python 3.11 or higher
-- [uv](https://github.com/astral-sh/uv) (recommended) or pip
+- Python 3.11 or later
+- [uv](https://github.com/astral-sh/uv) (preferred) or pip
 - Git
 
-### Install Dependencies
+### Installing dependencies
 
 ```bash
-# Using uv (recommended)
+# With uv (preferred)
 uv sync --all-extras --dev
 
-# Using pip
+# With pip
 pip install -e ".[dev]"
 ```
 
-### Verify Setup
+### Verifying your setup
 
 ```bash
-# Run type checking
+# Type checking
 uv run pyright amberclaw
 
-# Run linting
+# Linting
 uv run ruff check amberclaw
 
-# Run tests
+# Tests
 uv run pytest
 ```
 
 ## Making Changes
 
-1. **Create a branch** from `main`:
+1. **Branch off `main`**:
    ```bash
    git checkout -b feat/your-feature-name
    ```
 
-2. **Make your changes** with clear, focused commits.
-
-3. **Follow the commit convention**:
+2. **Write clear, focused commits.** Follow these prefixes:
    ```
    feat: add new provider integration
    fix: resolve memory leak in agent loop
@@ -80,7 +78,7 @@ uv run pytest
    ci: improve workflow caching
    ```
 
-4. **Ensure quality** before pushing:
+3. **Run quality checks before pushing**:
    ```bash
    uv run ruff check amberclaw
    uv run pyright amberclaw
@@ -89,99 +87,94 @@ uv run pytest
 
 ## Coding Standards
 
-### Python Style
+### Python style
 
-- **Line length**: 100 characters max
-- **Target version**: Python 3.11+
-- **Formatter**: [ruff](https://docs.astral.sh/ruff/)
-- **Type checker**: [pyright](https://github.com/microsoft/pyright)
-- **Imports**: Use absolute imports; group stdlib → third-party → local
+- Maximum line length is 100 characters.
+- Target Python 3.11 and above.
+- Format with [ruff](https://docs.astral.sh/ruff/).
+- Type-check with [pyright](https://github.com/microsoft/pyright).
+- Imports: standard library first, then third-party, then local. Use absolute imports.
 
-### Type Annotations
+### Type annotations
 
-- All public functions **must** have type annotations
-- Use `from __future__ import annotations` where appropriate
-- Prefer `X | None` over `Optional[X]`
+- Every public function must carry type hints.
+- Use `from __future__ import annotations` where it helps.
+- Prefer `X | None` over `Optional[X]`.
 
-### Documentation
+### Docstrings
 
-- All public modules, classes, and functions **must** have docstrings
-- Use Google-style docstrings:
+- Every public module, class, and function needs a docstring.
+- Use Google-style format:
   ```python
   def process(data: str, timeout: int = 30) -> dict[str, Any]:
-      """Process incoming data with timeout.
+      """Process incoming data within a timeout window.
 
       Args:
           data: Raw input string to process.
-          timeout: Maximum seconds to wait.
+          timeout: Maximum wait time in seconds.
 
       Returns:
-          Parsed result dictionary.
+          Parsed result as a dictionary.
 
       Raises:
-          ValueError: If data is empty.
+          ValueError: When data is empty.
       """
   ```
 
-### Architecture Principles
+### Architecture principles
 
-- Keep the codebase **ultra-lightweight** — avoid unnecessary abstractions
-- New tools must implement the `BaseTool` abstract class
-- Providers must follow the `ProviderSpec` registry pattern
-- Configuration uses Pydantic models in `amberclaw/config/schema.py`
+- Keep things ultra-lightweight — skip unnecessary abstractions.
+- New tools must implement `BaseTool`.
+- Providers must use the `ProviderSpec` registry pattern.
+- Configuration lives in Pydantic models under `amberclaw/config/schema.py`.
 
 ## Submitting a Pull Request
 
-1. **Push** your branch to your fork:
+1. **Push your branch**:
    ```bash
    git push origin feat/your-feature-name
    ```
 
-2. **Open a Pull Request** against `krishujeniya/AmberClaw:main`
+2. **Open a PR** against `krishujeniya/AmberClaw:main`.
 
-3. **Fill in the PR template** with:
-   - Summary of changes
-   - Related issue (if any)
-   - Testing done
-   - Breaking changes (if any)
+3. **Fill out the template**: summary, related issue, tests run, breaking changes.
 
-4. **Wait for CI** — all checks must pass before merge
+4. **Wait for CI** — everything must go green before merging.
 
-5. **Address review feedback** promptly
+5. **Respond to review comments** quickly.
 
-### PR Checklist
+### PR checklist
 
-- [ ] Code follows the project's coding standards
-- [ ] Type checking passes (`pyright`)
-- [ ] Linting passes (`ruff`)
-- [ ] Tests pass (`pytest`)
-- [ ] Documentation updated (if applicable)
-- [ ] No merge conflicts with `main`
+- [ ] Follows project coding standards
+- [ ] Passes type checking (pyright)
+- [ ] Passes linting (ruff)
+- [ ] Passes tests (pytest)
+- [ ] Documentation updated where relevant
+- [ ] No merge conflicts with main
 
 ## Reporting Issues
 
-### Bug Reports
+### Bugs
 
-Use the [Bug Report template](https://github.com/krishujeniya/AmberClaw/issues/new?template=bug_report.md) and include:
+Open a [Bug Report](https://github.com/krishujeniya/AmberClaw/issues/new?template=bug_report.md) with:
 
 - **Environment**: OS, Python version, AmberClaw version
-- **Steps to reproduce**: Clear, minimal reproduction steps
-- **Expected behavior**: What you expected to happen
-- **Actual behavior**: What actually happened
-- **Logs**: Relevant error output or stack traces
+- **Steps to reproduce**: minimal and clear
+- **Expected vs actual behavior**
+- **Logs**: relevant error output or stack traces
 
-### Feature Requests
+### Feature requests
 
-Use the [Feature Request template](https://github.com/krishujeniya/AmberClaw/issues/new?template=feature_request.md) and describe:
+Open a [Feature Request](https://github.com/krishujeniya/AmberClaw/issues/new?template=feature_request.md) explaining:
 
-- **Problem**: What limitation or need does this address?
-- **Proposed solution**: How should it work?
-- **Alternatives considered**: Other approaches you evaluated
+- The problem or limitation you hit
+- Your proposed solution
+- Alternatives you weighed
 
-### Security Vulnerabilities
+### Security issues
 
-**DO NOT** open a public issue. Follow the [Security Policy](SECURITY.md) for responsible disclosure.
+**Do not** file a public issue. Follow our [Security Policy](SECURITY.md) instead.
 
 ## License
 
-By contributing to AmberClaw, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+Contributions fall under the [MIT License](LICENSE).

@@ -1,7 +1,6 @@
 <div align="center">
   <img src="LogoAC.png" alt="AmberClaw" width="400">
 
-  <h1>AmberClaw</h1>
   <p><strong>Ultra-Lightweight Personal AI Assistant Framework</strong></p>
 
   <p>
@@ -24,19 +23,19 @@
 
 ---
 
-**AmberClaw** is a production-grade, ultra-lightweight personal AI assistant that delivers core agentic functionality with ~4,000 lines of code. Connect it to any LLM provider, plug it into your favorite chat platform, and let it work for you.
+AmberClaw is a production-ready, minimal-footprint personal AI assistant built in roughly four thousand lines of Python. Hook it up to any LLM backend, wire it into the chat platforms you already use, and let it handle the rest.
 
 ## ✨ Features
 
-| Category | Capabilities |
+| Category | What you get |
 |----------|-------------|
-| 🧠 **Agent Core** | Agentic loop, tool execution, sub-agent spawning, memory, skills |
-| 🤖 **Multi-Provider** | OpenRouter, Anthropic, OpenAI, Gemini, DeepSeek, Groq, Azure, vLLM, and more |
+| 🧠 **Agent Core** | Agentic loop with tool execution, sub-agent spawning, persistent memory, and a skills system |
+| 🤖 **Multi-Provider** | Works with OpenRouter, Anthropic, OpenAI, Gemini, DeepSeek, Groq, Azure, vLLM, and others |
 | 💬 **Chat Platforms** | Telegram, Discord, WhatsApp, Slack, Feishu, DingTalk, Email, QQ, Matrix |
-| 🔌 **MCP Support** | Model Context Protocol for external tool servers |
-| ⏰ **Automation** | Heartbeat tasks, cron jobs, scheduled workflows |
-| 🐳 **Deployment** | Docker, docker-compose, systemd, multi-instance |
-| 🔒 **Security** | Allow-list access control, command filtering, path traversal protection |
+| 🔌 **MCP** | Model Context Protocol support for plugging in external tool servers |
+| ⏰ **Automation** | Heartbeat tasks, cron scheduling, automated workflows |
+| 🐳 **Deployment** | Ready for Docker, docker-compose, systemd, and multi-instance setups |
+| 🔒 **Security** | Allow-list access control, command filtering, path traversal guards |
 
 ## 🏗️ Architecture
 
@@ -46,7 +45,7 @@
 
 ## 📦 Installation
 
-### From Source (recommended for development)
+### From source (recommended for hacking)
 
 ```bash
 git clone https://github.com/krishujeniya/AmberClaw.git
@@ -54,7 +53,7 @@ cd AmberClaw
 pip install -e .
 ```
 
-### With uv (fast, recommended)
+### Via uv (fast)
 
 ```bash
 uv tool install amberclaw-ai
@@ -66,7 +65,7 @@ uv tool install amberclaw-ai
 pip install amberclaw-ai
 ```
 
-### Update
+### Upgrade
 
 ```bash
 # pip
@@ -78,21 +77,21 @@ uv tool upgrade amberclaw-ai
 
 ## 🚀 Quick Start
 
-### One-Line Interactive Setup
+### Interactive setup (one command)
 
 ```bash
 python setup.py
 ```
 
-This configures your AI provider, chat integration, and launches AmberClaw automatically.
+Walks you through provider configuration, chat integration, and launches AmberClaw.
 
-### Manual CLI Chat
+### Manual CLI chat
 
 ```bash
 amberclaw agent
 ```
 
-### Start Gateway (for chat integrations)
+### Launch the gateway (connects chat platforms)
 
 ```bash
 amberclaw gateway
@@ -100,24 +99,24 @@ amberclaw gateway
 
 ## 💬 Chat Integrations
 
-| Platform | Setup Required |
-|----------|---------------|
+| Platform | What you need |
+|----------|--------------|
 | **Telegram** | Bot token from @BotFather |
-| **Discord** | Bot token + Message Content intent |
-| **WhatsApp** | QR code scan (requires Node.js ≥18) |
-| **Slack** | Bot token + App-Level token (Socket Mode) |
-| **Feishu** | App ID + App Secret (WebSocket) |
-| **DingTalk** | App Key + App Secret (Stream Mode) |
-| **Email** | IMAP/SMTP credentials |
-| **QQ** | App ID + App Secret |
-| **Matrix** | User ID + Access Token |
-| **Mochat** | Auto-setup via agent message |
+| **Discord** | Bot token plus Message Content intent enabled |
+| **WhatsApp** | QR code scan (Node.js 18 or newer required) |
+| **Slack** | Bot token and App-Level token with Socket Mode |
+| **Feishu** | App ID and App Secret using WebSocket |
+| **DingTalk** | App Key and App Secret via Stream Mode |
+| **Email** | IMAP and SMTP credentials |
+| **QQ** | App ID and App Secret |
+| **Matrix** | User ID and Access Token |
+| **Mochat** | Automatic setup through agent message |
 
 <details>
 <summary><b>Telegram Setup</b></summary>
 
-1. Create a bot via `@BotFather` on Telegram → copy the token
-2. Add to `~/.AmberClaw/config.json`:
+1. Talk to `@BotFather` on Telegram and create a bot — grab the token.
+2. Drop it into `~/.AmberClaw/config.json`:
 
 ```json
 {
@@ -131,16 +130,16 @@ amberclaw gateway
 }
 ```
 
-3. Run `amberclaw gateway`
+3. Fire up `amberclaw gateway`
 
 </details>
 
 <details>
 <summary><b>Discord Setup</b></summary>
 
-1. Create application at [discord.com/developers](https://discord.com/developers/applications)
-2. Enable **MESSAGE CONTENT INTENT** in Bot settings
-3. Add to config:
+1. Head over to [discord.com/developers](https://discord.com/developers/applications) and create an application.
+2. Flip on **MESSAGE CONTENT INTENT** under Bot settings.
+3. Add this to your config:
 
 ```json
 {
@@ -155,7 +154,7 @@ amberclaw gateway
 }
 ```
 
-4. Invite bot to server → run `amberclaw gateway`
+4. Invite the bot to your server, then run `amberclaw gateway`
 
 </details>
 
@@ -163,11 +162,11 @@ amberclaw gateway
 <summary><b>WhatsApp Setup</b></summary>
 
 ```bash
-amberclaw channels login    # Scan QR code
-amberclaw gateway           # Start gateway
+amberclaw channels login    # Scan the QR code
+amberclaw gateway           # Start the gateway
 ```
 
-Config:
+Config snippet:
 ```json
 {
   "channels": {
@@ -184,37 +183,37 @@ Config:
 <details>
 <summary><b>Other Platforms</b></summary>
 
-See the full configuration reference in `~/.AmberClaw/config.json`. Each platform follows the same pattern:
-1. Obtain credentials from the platform
-2. Add channel config with `enabled: true` and `allowFrom` list
+Check the full configuration reference in `~/.AmberClaw/config.json`. Every platform follows the same three-step pattern:
+1. Get credentials from the platform
+2. Add a channel entry with `enabled: true` and an `allowFrom` whitelist
 3. Run `amberclaw gateway`
 
 </details>
 
 ## ⚙️ Configuration
 
-Config file: `~/.AmberClaw/config.json`
+Config lives at `~/.AmberClaw/config.json`.
 
 ### Providers
 
-| Provider | Purpose | Get API Key |
-|----------|---------|-------------|
-| `openrouter` | LLM (all models) | [openrouter.ai](https://openrouter.ai) |
-| `anthropic` | Claude direct | [console.anthropic.com](https://console.anthropic.com) |
-| `openai` | GPT direct | [platform.openai.com](https://platform.openai.com) |
-| `gemini` | Gemini direct | [aistudio.google.com](https://aistudio.google.com) |
-| `deepseek` | DeepSeek direct | [platform.deepseek.com](https://platform.deepseek.com) |
-| `groq` | LLM + Whisper | [console.groq.com](https://console.groq.com) |
+| Provider | Use case | Get a key |
+|----------|----------|-----------|
+| `openrouter` | LLM access to all models | [openrouter.ai](https://openrouter.ai) |
+| `anthropic` | Claude directly | [console.anthropic.com](https://console.anthropic.com) |
+| `openai` | GPT directly | [platform.openai.com](https://platform.openai.com) |
+| `gemini` | Gemini directly | [aistudio.google.com](https://aistudio.google.com) |
+| `deepseek` | DeepSeek directly | [platform.deepseek.com](https://platform.deepseek.com) |
+| `groq` | LLM plus Whisper | [console.groq.com](https://console.groq.com) |
 | `azure_openai` | Azure OpenAI | [portal.azure.com](https://portal.azure.com) |
-| `custom` | Any OpenAI-compatible | — |
-| `vllm` | Local/self-hosted | — |
+| `custom` | Any OpenAI-compatible endpoint | — |
+| `vllm` | Self-hosted or local models | — |
 
 <details>
 <summary><b>Adding a New Provider</b></summary>
 
-Two-step process:
+Two files to touch:
 
-1. Add `ProviderSpec` to `amberclaw/providers/registry.py`:
+1. Register a `ProviderSpec` in `amberclaw/providers/registry.py`:
 
 ```python
 ProviderSpec(
@@ -226,13 +225,13 @@ ProviderSpec(
 )
 ```
 
-2. Add field to `ProvidersConfig` in `amberclaw/config/schema.py`:
+2. Add the matching field to `ProvidersConfig` in `amberclaw/config/schema.py`:
 
 ```python
 myprovider: ProviderConfig = ProviderConfig()
 ```
 
-Everything else (env vars, model prefixing, status display) works automatically.
+After that, environment variables, model prefixing, and status display all work out of the box.
 
 </details>
 
@@ -257,42 +256,42 @@ Everything else (env vars, model prefixing, status display) works automatically.
 
 ### Security
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `tools.restrictToWorkspace` | `false` | Sandbox all agent tools to workspace directory |
-| `channels.*.allowFrom` | `[]` (deny all) | Whitelist of user IDs. Use `["*"]` to allow everyone |
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| `tools.restrictToWorkspace` | `false` | Confine all tool operations to the workspace directory |
+| `channels.*.allowFrom` | `[]` (blocks everyone) | Whitelist of permitted user IDs — use `["*"]` to open access |
 
 ## 💻 CLI Reference
 
-| Command | Description |
+| Command | What it does |
 |---------|-------------|
-| `amberclaw onboard` | Initialize config & workspace |
-| `amberclaw agent` | Interactive chat mode |
-| `amberclaw agent -m "..."` | Single message |
-| `amberclaw gateway` | Start gateway (connects chat platforms) |
-| `amberclaw status` | Show status |
-| `amberclaw provider login openai-codex` | OAuth login |
-| `amberclaw channels login` | Link WhatsApp |
-| `amberclaw channels status` | Show channel status |
+| `amberclaw onboard` | Set up config and workspace |
+| `amberclaw agent` | Start an interactive chat session |
+| `amberclaw agent -m "..."` | Send a single message |
+| `amberclaw gateway` | Launch the gateway for chat integrations |
+| `amberclaw status` | Print current status |
+| `amberclaw provider login openai-codex` | OAuth login flow |
+| `amberclaw channels login` | Link WhatsApp via QR |
+| `amberclaw channels status` | Show connection status for all channels |
 
 ## 🐳 Docker
 
-### Docker Compose
+### docker-compose
 
 ```bash
 docker compose run --rm amberclaw-cli onboard   # First-time setup
-vim ~/.AmberClaw/config.json                     # Add API keys
-docker compose up -d amberclaw-gateway           # Start gateway
+vim ~/.AmberClaw/config.json                     # Add your API keys
+docker compose up -d amberclaw-gateway           # Run the gateway
 ```
 
-### Docker
+### Plain Docker
 
 ```bash
 docker build -t amberclaw .
 docker run -v ~/.AmberClaw:/root/.amberclaw -p 18790:18790 amberclaw gateway
 ```
 
-## 🐧 Linux Service
+## 🐧 Running as a Linux service
 
 ```ini
 # ~/.config/systemd/user/amberclaw-gateway.service
@@ -315,42 +314,42 @@ systemctl --user daemon-reload
 systemctl --user enable --now amberclaw-gateway
 ```
 
-## 📁 Project Structure
+## 📁 Project Layout
 
 ```
 amberclaw/
-├── agent/          # 🧠 Core agent logic (loop, context, memory, skills, tools)
-├── bus/            # 🚌 Message routing
-├── channels/       # 📱 Chat platform integrations
-├── cli/            # 🖥️ CLI commands
-├── config/         # ⚙️ Configuration (Pydantic models)
-├── cron/           # ⏰ Scheduled tasks
-├── data/           # 📊 Data science module (optional)
-├── engine/         # ⚡ Execution engine
-├── features/       # 🎯 Feature modules
-├── heartbeat/      # 💓 Proactive wake-up system
-├── platforms/      # 🌐 Platform adapters
-├── providers/      # 🤖 LLM provider registry
-├── session/        # 💬 Conversation sessions
-├── skills/         # 🎯 Bundled skills
-├── superpowers/    # 🦸 Extended capabilities
-├── templates/      # 📝 Prompt templates
-└── utils/          # 🔧 Utilities
+├── agent/          # Core agent logic (loop, context, memory, skills, tools)
+├── bus/            # Message routing
+├── channels/       # Chat platform integrations
+├── cli/            # CLI commands
+├── config/         # Configuration via Pydantic models
+├── cron/           # Scheduled tasks
+├── data/           # Data science module (optional)
+├── engine/         # Execution engine
+├── features/       # Feature modules
+├── heartbeat/      # Proactive wake-up system
+├── platforms/      # Platform adapters
+├── providers/      # LLM provider registry
+├── session/        # Conversation sessions
+├── skills/         # Bundled skills
+├── superpowers/    # Extended capabilities
+├── templates/      # Prompt templates
+└── utils/          # Utilities
 ```
 
 ## 🤝 Contributing
 
-PRs welcome! The codebase is intentionally small and readable.
+Pull requests are welcome. The codebase is intentionally compact and easy to read.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guidelines.
 
 ### Roadmap
 
-- [ ] **Multi-modal** — Images, voice, video understanding
-- [ ] **Long-term memory** — Never forget important context
-- [ ] **Better reasoning** — Multi-step planning and reflection
-- [ ] **More integrations** — Calendar, productivity tools
-- [ ] **Self-improvement** — Learn from feedback and mistakes
+- [ ] Multi-modal inputs — images, voice, video
+- [ ] Persistent long-term memory
+- [ ] Multi-step planning and reflection
+- [ ] Calendar, productivity, and third-party tool integrations
+- [ ] Self-improvement through feedback loops
 
 ### Contributors
 
@@ -377,5 +376,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ---
 
 <p align="center">
-  <sub>AmberClaw is for educational, research, and technical exchange purposes only</sub>
+  <sub>AmberClaw is intended for educational, research, and technical exchange purposes</sub>
 </p>
