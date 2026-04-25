@@ -1,5 +1,4 @@
-"""DataAgent Exploratory Data Analysis tool."""
-
+from typing import Any
 from pydantic import BaseModel, Field
 
 from loguru import logger
@@ -18,6 +17,9 @@ class EDAArgs(BaseModel):
 
 class DataEDATool(PydanticTool):
     """Run exploratory data analysis using the DataAgent EDAToolsAgent."""
+
+    def __init__(self, model: Any = None):
+        self._model = model
 
     @property
     def name(self) -> str:
@@ -39,7 +41,7 @@ class DataEDATool(PydanticTool):
     async def run(self, args: EDAArgs) -> str:
         try:
             import pandas as pd
-            from amberclaw.data.ds_agents import EDAToolsAgent
+            from amberclaw.data.ds_agents.eda_tools_agent import EDAToolsAgent
 
             file_path = args.file_path
             df = (
@@ -48,8 +50,9 @@ class DataEDATool(PydanticTool):
                 else pd.read_excel(file_path)
             )
 
-            agent = EDAToolsAgent()
+            agent = EDAToolsAgent(model=self._model)
             agent.invoke_agent(user_instructions=args.instructions, data_raw=df)
+
 
             ai_msg = agent.get_ai_message()
             if ai_msg:

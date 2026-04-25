@@ -37,15 +37,23 @@ class CouncilArgs(BaseModel):
 class CouncilTool(PydanticTool):
     """Multi-model consensus tool — ask multiple LLMs, rank answers, synthesize best response."""
 
-    name = "council_consensus"
-    description = (
-        "Run a multi-model council to get a high-confidence answer. "
-        "Stage 1: each model answers independently. "
-        "Stage 2: models anonymously rank each other's answers. "
-        "Stage 3: the primary model synthesizes the final response. "
-        "Use for complex, high-stakes questions where one model's blind spot could be costly."
-    )
-    args_schema = CouncilArgs
+    @property
+    def name(self) -> str:
+        return "council_consensus"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Run a multi-model council to get a high-confidence answer. "
+            "Stage 1: each model answers independently. "
+            "Stage 2: models anonymously rank each other's answers. "
+            "Stage 3: the primary model synthesizes the final response. "
+            "Use for complex, high-stakes questions where one model's blind spot could be costly."
+        )
+
+    @property
+    def args_schema(self) -> type[CouncilArgs]:
+        return CouncilArgs
 
     def __init__(self, provider: Any, model: str, temperature: float = 0.1, max_tokens: int = 2048):
         super().__init__()

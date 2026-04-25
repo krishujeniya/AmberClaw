@@ -88,9 +88,15 @@ class MCPToolWrapper(Tool):
                 return f"(MCP tool initiated task {task_id}, but polling failed or not supported by SDK)"
 
         parts = []
-        for block in result.content:
+        content = getattr(result, "content", [])
+        if not isinstance(content, list):
+            content = [content] if content else []
+            
+        for block in content:
             if isinstance(block, types.TextContent):
                 parts.append(block.text)
+            elif hasattr(block, "text"):
+                parts.append(getattr(block, "text"))
             else:
                 parts.append(str(block))
         return "\n".join(parts) or "(no output)"

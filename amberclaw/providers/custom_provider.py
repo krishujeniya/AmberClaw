@@ -54,16 +54,18 @@ class CustomProvider(LLMProvider):
     def _parse(self, response: Any) -> LLMResponse:
         choice = response.choices[0]
         msg = choice.message
-        tool_calls = [
-            ToolCallRequest(
-                id=tc.id,
-                name=tc.function.name,
-                arguments=json_repair.loads(tc.function.arguments)
-                if isinstance(tc.function.arguments, str)
-                else tc.function.arguments,
+        tool_calls = []
+        for tc in msg.tool_calls or []:
+            args = tc.function.arguments
+            if isinstance(args, str):
+                args = json_repair.loads(args)
+            tool_calls.append(
+                ToolCallRequest(
+                    id=tc.id,
+                    name=tc.function.name,
+                    arguments=args if isinstance(args, dict) else {"raw": str(args)},
+                )
             )
-            for tc in (msg.tool_calls or [])
-        ]
         u = response.usage
         return LLMResponse(
             content=msg.content,
@@ -81,3 +83,15 @@ class CustomProvider(LLMProvider):
 
     def get_default_model(self) -> str:
         return self.default_model
+
+    def to_langchain_chat(self, model: str | None = None, **kwargs: Any) -> Any:
+        """Convert this provider to a LangChain ChatOpenAI model."""
+        from langchain_openai import ChatOpenAI
+        from pydantic import SecretStr
+
+        return ChatOpenAI(
+            model=model or self.default_model,
+            api_key=SecretStr(self.api_key) if self.api_key else None,
+            base_url=self.api_base,
+            **kwargs,
+        )

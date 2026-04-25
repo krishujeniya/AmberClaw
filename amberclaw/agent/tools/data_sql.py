@@ -1,5 +1,6 @@
 """DataAgent SQL Database tool — natural language SQL queries."""
 
+from typing import Any
 from pydantic import BaseModel, Field
 
 import pandas as pd
@@ -21,6 +22,9 @@ class SQLArgs(BaseModel):
 
 class DataSQLTool(PydanticTool):
     """Query SQL databases using natural language via DataAgent SQLDatabaseAgent."""
+
+    def __init__(self, model: Any = None):
+        self._model = model
 
     @property
     def name(self) -> str:
@@ -48,6 +52,7 @@ class DataSQLTool(PydanticTool):
             conn = engine.connect()
 
             agent = SQLDatabaseAgent(
+                model=self._model,
                 connection=conn,
                 bypass_recommended_steps=True,
                 bypass_explain_code=True,
@@ -69,3 +74,4 @@ class DataSQLTool(PydanticTool):
         except Exception as e:
             logger.error("DataSQLTool error: {}", e)
             return f"Error: {e}"
+

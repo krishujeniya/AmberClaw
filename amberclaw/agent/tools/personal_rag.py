@@ -95,12 +95,20 @@ class KnowledgeToolBase(PydanticTool):
 class KnowledgeSearchTool(KnowledgeToolBase):
     """Search your local personal knowledge base using Hybrid RAG."""
 
-    name = "knowledge_search"
-    description = (
-        "Advanced search through indexed information in your local knowledge base. "
-        "Uses keyword (BM25) and semantic similarity (vectors) for high recall."
-    )
-    args_schema = KnowledgeSearchArgs
+    @property
+    def name(self) -> str:
+        return "knowledge_search"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Advanced search through indexed information in your local knowledge base. "
+            "Uses keyword (BM25) and semantic similarity (vectors) for high recall."
+        )
+
+    @property
+    def args_schema(self) -> type[KnowledgeSearchArgs]:
+        return KnowledgeSearchArgs
 
     async def run(self, args: KnowledgeSearchArgs) -> str:
         kb = self._load_kb()
@@ -158,8 +166,10 @@ class KnowledgeSearchTool(KnowledgeToolBase):
                     documents=[e["content"] for e in candidate_entries],
                     top_n=args.limit,
                 )
-                for res in rerank_resp.results:
-                    final_results.append(candidate_entries[res.index])
+                for res in getattr(rerank_resp, "results", []):
+                    idx = getattr(res, "index", None)
+                    if idx is not None and idx < len(candidate_entries):
+                        final_results.append(candidate_entries[idx])
             except Exception as e:
                 logger.debug("Reranking failed: {}. Falling back to fusion results.", e)
                 final_results = candidate_entries[: args.limit]
@@ -180,11 +190,17 @@ class KnowledgeSearchTool(KnowledgeToolBase):
 class KnowledgeAddTool(KnowledgeToolBase):
     """Add information to your local personal knowledge base with vector indexing."""
 
-    name = "knowledge_add"
-    description = (
-        "Save new information, facts, or notes. Automatically indexes for semantic search."
-    )
-    args_schema = KnowledgeAddArgs
+    @property
+    def name(self) -> str:
+        return "knowledge_add"
+
+    @property
+    def description(self) -> str:
+        return "Save new information, facts, or notes. Automatically indexes for semantic search."
+
+    @property
+    def args_schema(self) -> type[KnowledgeAddArgs]:
+        return KnowledgeAddArgs
 
     async def run(self, args: KnowledgeAddArgs) -> str:
         kb = self._load_kb()

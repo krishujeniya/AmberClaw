@@ -33,9 +33,17 @@ class CronArgs(BaseModel):
 class CronTool(PydanticTool):
     """Tool to schedule reminders and recurring tasks."""
 
-    name = "cron"
-    description = "Schedule reminders and recurring tasks. Actions: add, list, remove."
-    args_schema = CronArgs
+    @property
+    def name(self) -> str:
+        return "cron"
+
+    @property
+    def description(self) -> str:
+        return "Schedule reminders and recurring tasks. Actions: add, list, remove."
+
+    @property
+    def args_schema(self) -> type[CronArgs]:
+        return CronArgs
 
     def __init__(self, cron_service: CronService):
         super().__init__()

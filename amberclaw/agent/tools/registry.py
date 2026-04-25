@@ -29,6 +29,10 @@ class ToolRegistry:
         """Get a tool by name."""
         return self._tools.get(name)
 
+    def values(self):
+        """Get all registered tools."""
+        return self._tools.values()
+
     def has(self, name: str) -> bool:
         """Check if a tool is registered."""
         return name in self._tools

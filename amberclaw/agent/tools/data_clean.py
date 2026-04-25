@@ -1,5 +1,6 @@
 """DataAgent Data Cleaning tool — AI-powered dataset cleaning."""
 
+from typing import Any
 from pydantic import BaseModel, Field
 
 import pandas as pd
@@ -41,9 +42,10 @@ class DataCleanTool(PydanticTool):
     def args_schema(self) -> type[CleanArgs]:
         return CleanArgs
 
-    def __init__(self, output_dir: str | None = None):
+    def __init__(self, output_dir: str | None = None, model: Any = None):
         super().__init__()
         self._output_dir = output_dir
+        self._model = model
 
     async def run(self, args: CleanArgs) -> str:
         try:
@@ -52,15 +54,20 @@ class DataCleanTool(PydanticTool):
 
             df = await asyncio.to_thread(_load_data, args.file_path)
 
-            agent = DataCleaningAgent(bypass_recommended_steps=True, bypass_explain_code=True)
+            agent = DataCleaningAgent(
+                model=self._model,
+                bypass_recommended_steps=True,
+                bypass_explain_code=True
+            )
 
             # Offload the heavy AI/Data processing to a thread
             await asyncio.to_thread(
                 agent.invoke_agent,
                 data_raw=df,
-                user_instructions=args.instructions or None,
+                user_instructions=args.instructions or "",
                 max_retries=2,
             )
+
 
             cleaned = agent.get_data_cleaned()
             if cleaned is not None:

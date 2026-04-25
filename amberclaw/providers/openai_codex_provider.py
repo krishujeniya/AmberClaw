@@ -36,7 +36,7 @@ class OpenAICodexProvider(LLMProvider):
         system_prompt, input_items = _convert_messages(messages)
 
         token = await asyncio.to_thread(get_codex_token)
-        headers = _build_headers(token.account_id, token.access)
+        headers = _build_headers(str(token.account_id), str(token.access))
 
         body: dict[str, Any] = {
             "model": _strip_model_prefix(model),
@@ -293,7 +293,7 @@ async def _consume_sse(response: httpx.Response) -> tuple[str, list[ToolCallRequ
                 tool_calls.append(
                     ToolCallRequest(
                         id=f"{call_id}|{buf.get('id') or item.get('id') or 'fc_0'}",
-                        name=buf.get("name") or item.get("name"),
+                        name=str(buf.get("name") or item.get("name") or "unknown"),
                         arguments=args,
                     )
                 )

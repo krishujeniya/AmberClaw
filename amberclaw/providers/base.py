@@ -228,3 +228,7 @@ class LLMProvider(ABC):
     def get_default_model(self) -> str:
         """Get the default model for this provider."""
         pass
+
+    def to_langchain_chat(self, model: str | None = None, **kwargs: Any) -> Any:
+        """Convert this provider to a LangChain-compatible ChatModel."""
+        raise NotImplementedError("to_langchain_chat not implemented for this provider")

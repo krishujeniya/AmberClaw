@@ -8,7 +8,10 @@ from amberclaw.config.schema import Config
 console = Console()
 
 
-def make_provider(config: Config):
+from amberclaw.providers.base import LLMProvider
+
+
+def make_provider(config: Config) -> LLMProvider:
     """Create the appropriate LLM provider from config."""
     from amberclaw.providers.azure_openai_provider import AzureOpenAIProvider
     from amberclaw.providers.custom_provider import CustomProvider
@@ -58,7 +61,7 @@ def make_provider(config: Config):
             default_model=model,
         )
 
-    spec = find_by_name(provider_name)
+    spec = find_by_name(provider_name or "openai")
     if not model.startswith("bedrock/") and not (p and p.api_key) and not (spec and spec.is_oauth):
         console.print("[red]Error: No API key configured.[/red]")
         console.print("Set one in ~/.amberclaw/config.json under providers section")

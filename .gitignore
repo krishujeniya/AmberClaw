@@ -46,9 +46,16 @@ logs/
 temp/
 *.log
 botpy.log
+pyright_errors.json
+*.json
+!pyproject.toml
+!*.json.example
 
 # Project Specific
 .planning/
+amberclaw.db
+*.db
+mem0_db/
 
 # IDEs
 .idea/

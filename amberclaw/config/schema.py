@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Base(BaseModel):
@@ -477,4 +477,4 @@ class Config(BaseSettings):
                 return spec.default_api_base
         return None
 
-    model_config = ConfigDict(env_prefix="AMBERCLAW_", env_nested_delimiter="__")
+    model_config = SettingsConfigDict(env_prefix="AMBERCLAW_", env_nested_delimiter="__")

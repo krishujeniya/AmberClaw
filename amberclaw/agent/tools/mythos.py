@@ -30,14 +30,22 @@ class MythosArgs(BaseModel):
 class MythosTool(PydanticTool):
     """Deep recursive reasoning tool — forces multi-layer analysis before finalizing answer."""
 
-    name = "mythos_think"
-    description = (
-        "Perform deep, multi-layer reasoning on a complex question. "
-        "Each depth level re-examines the problem for hidden assumptions, edge cases, "
-        "and deeper insights. Returns a synthesized final answer from all reasoning layers. "
-        "Use for hard problems, critical decisions, or when the first answer feels incomplete."
-    )
-    args_schema = MythosArgs
+    @property
+    def name(self) -> str:
+        return "mythos_think"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Perform deep, multi-layer reasoning on a complex question. "
+            "Each depth level re-examines the problem for hidden assumptions, edge cases, "
+            "and deeper insights. Returns a synthesized final answer from all reasoning layers. "
+            "Use for hard problems, critical decisions, or when the first answer feels incomplete."
+        )
+
+    @property
+    def args_schema(self) -> type[MythosArgs]:
+        return MythosArgs
 
     def __init__(self, provider: Any, model: str, temperature: float = 0.1, max_tokens: int = 2048):
         super().__init__()

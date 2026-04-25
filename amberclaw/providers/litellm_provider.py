@@ -4,7 +4,7 @@ import hashlib
 import os
 import secrets
 import string
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 import json_repair
 import litellm
@@ -225,7 +225,7 @@ class LiteLLMProvider(LLMProvider):
         max_tokens: int = 4096,
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
-        on_token: Any | None = None,
+        on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
         """Send a chat completion request via LiteLLM (supports streaming)."""
         original_model = model or self.default_model
@@ -274,11 +274,13 @@ class LiteLLMProvider(LLMProvider):
 
             if kwargs.get("stream"):
                 full_content = []
-                async for chunk in response:
+                # response is an async iterator when stream=True
+                async for chunk in response: # type: ignore
                     content = chunk.choices[0].delta.content or ""
                     if content:
                         full_content.append(content)
-                        await on_token(content)
+                        if on_token and callable(on_token):
+                            await on_token(content)
 
                 # Mock a final response object enough for _parse_response
                 # Since streaming responses don't have all data, we reconstruct what we need.
@@ -332,7 +334,7 @@ class LiteLLMProvider(LLMProvider):
                 ToolCallRequest(
                     id=_short_tool_id(),
                     name=tc.function.name,
-                    arguments=args,
+                    arguments=args if isinstance(args, dict) else {"raw": str(args)},
                 )
             )
 
@@ -359,3 +361,20 @@ class LiteLLMProvider(LLMProvider):
     def get_default_model(self) -> str:
         """Get the default model."""
         return self.default_model
+
+    def to_langchain_chat(self, model: str | None = None, **kwargs: Any) -> Any:
+        """Convert this provider to a LangChain ChatLiteLLM model."""
+        from langchain_community.chat_models import ChatLiteLLM
+        from pydantic import SecretStr
+
+        target_model = model or self.default_model
+        resolved = self._resolve_model(target_model)
+
+        chat_kwargs = {
+            "model": resolved,
+            "api_key": SecretStr(self.api_key) if self.api_key else None,
+            "api_base": self.api_base,
+            "extra_headers": self.extra_headers,
+            **kwargs,
+        }
+        return ChatLiteLLM(**chat_kwargs)

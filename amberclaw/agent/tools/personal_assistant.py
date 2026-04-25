@@ -32,12 +32,20 @@ class AssistantArgs(BaseModel):
 class AssistantTool(PydanticTool):
     """Personal conversational assistant with persistent long-term memory and session context via Mem0."""
 
-    name = "personal_assistant"
-    description = (
-        "Talk to your personal AI assistant. Remembers facts across sessions and "
-        "maintains conversational context. Automatically extracts and recalls personal preferences."
-    )
-    args_schema = AssistantArgs
+    @property
+    def name(self) -> str:
+        return "personal_assistant"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Talk to your personal AI assistant. Remembers facts across sessions and "
+            "maintains conversational context. Automatically extracts and recalls personal preferences."
+        )
+
+    @property
+    def args_schema(self) -> type[AssistantArgs]:
+        return AssistantArgs
 
     def __init__(
         self,
@@ -147,8 +155,16 @@ class AssistantTool(PydanticTool):
                 # We use session_id as user_id for isolation, or swap for global user_id
                 memories = self._memory.search(args.message, user_id=args.session_id)
                 if memories:
-                    facts = [m["memory"] for m in memories]
-                    memories_text = "\n[RECALLED FACTS]:\n- " + "\n- ".join(facts)
+                    facts = []
+                    for m in memories:
+                        if isinstance(m, dict):
+                            val = m.get("memory")
+                        else:
+                            val = getattr(m, "memory", None)
+                        if val:
+                            facts.append(str(val))
+                    if facts:
+                        memories_text = "\n[RECALLED FACTS]:\n- " + "\n- ".join(facts)
             except Exception as e:
                 logger.debug("Mem0 search failed: {}", e)
 

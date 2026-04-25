@@ -190,7 +190,7 @@ class OllamaProvider(LLMProvider):
                 ToolCallRequest(
                     id=tc.get("id", f"call_{len(tool_calls)}"),
                     name=func.get("name"),
-                    arguments=args,
+                    arguments=args if isinstance(args, dict) else {"raw": str(args)},
                 )
             )
 
@@ -215,7 +215,7 @@ class OllamaProvider(LLMProvider):
                     ToolCallRequest(
                         id=tc.get("id", f"call_{len(tool_calls)}"),
                         name=func.get("name"),
-                        arguments=args,
+                        arguments=args if isinstance(args, dict) else {"raw": str(args)},
                     )
                 )
 
@@ -234,3 +234,17 @@ class OllamaProvider(LLMProvider):
 
     def get_default_model(self) -> str:
         return self.default_model
+
+    def to_langchain_chat(self, model: str | None = None, **kwargs: Any) -> Any:
+        """Convert this provider to a LangChain ChatOllama model."""
+        from langchain_ollama import ChatOllama
+
+        target_model = model or self.default_model
+        if "/" in target_model and target_model.startswith("ollama/"):
+            target_model = target_model.split("/", 1)[1]
+
+        return ChatOllama(
+            model=target_model,
+            base_url=self.api_base,
+            **kwargs,
+        )

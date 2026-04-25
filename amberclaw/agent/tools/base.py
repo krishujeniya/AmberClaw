@@ -138,15 +138,16 @@ class Tool(ABC):
         return self._validate(params, {**schema, "type": "object"}, "")
 
     def _validate(self, val: Any, schema: dict[str, Any], path: str) -> list[str]:
+        from typing import Sized, Iterable, Mapping
         t, label = schema.get("type"), path or "parameter"
         if t == "integer" and (not isinstance(val, int) or isinstance(val, bool)):
             return [f"{label} should be integer"]
-        if t == "number" and (not isinstance(val, self._TYPE_MAP[t]) or isinstance(val, bool)):
+        if t == "number" and (not isinstance(val, (int, float)) or isinstance(val, bool)):
             return [f"{label} should be number"]
         if (
             t in self._TYPE_MAP
             and t not in ("integer", "number")
-            and not isinstance(val, self._TYPE_MAP[t])
+            and not isinstance(val, self._TYPE_MAP[t]) # type: ignore
         ):
             return [f"{label} should be {t}"]
 
@@ -158,12 +159,12 @@ class Tool(ABC):
                 errors.append(f"{label} must be >= {schema['minimum']}")
             if "maximum" in schema and val > schema["maximum"]:
                 errors.append(f"{label} must be <= {schema['maximum']}")
-        if t == "string":
+        if t == "string" and isinstance(val, str):
             if "minLength" in schema and len(val) < schema["minLength"]:
                 errors.append(f"{label} must be at least {schema['minLength']} chars")
             if "maxLength" in schema and len(val) > schema["maxLength"]:
                 errors.append(f"{label} must be at most {schema['maxLength']} chars")
-        if t == "object":
+        if t == "object" and isinstance(val, Mapping):
             props = schema.get("properties", {})
             for k in schema.get("required", []):
                 if k not in val:
@@ -171,7 +172,7 @@ class Tool(ABC):
             for k, v in val.items():
                 if k in props:
                     errors.extend(self._validate(v, props[k], path + "." + k if path else k))
-        if t == "array" and "items" in schema:
+        if t == "array" and "items" in schema and isinstance(val, Iterable):
             for i, item in enumerate(val):
                 errors.extend(
                     self._validate(item, schema["items"], f"{path}[{i}]" if path else f"[{i}]")
@@ -180,19 +181,31 @@ class Tool(ABC):
 
     def to_langchain_tool(self) -> BaseTool:
         """Convert tool to LangChain BaseTool."""
+        outer_self = self
 
         class WrappedTool(BaseTool):
-            name: str = self.name
-            description: str = self.description
-            args_schema: Type[BaseModel] | None = getattr(self, "args_schema", None)
+            name: str = outer_self.name
+            description: str = outer_self.description
+            args_schema: Type[BaseModel] | None = getattr(outer_self, "args_schema", None)
 
             async def _arun(self, *args: Any, **kwargs: Any) -> str:
-                return await self.execute(**kwargs)
+                return await outer_self.execute(**kwargs)
 
             def _run(self, *args: Any, **kwargs: Any) -> str:
                 raise NotImplementedError("AmberClaw tools are async-only")
 
         return WrappedTool()
+
+    def to_schema(self) -> dict[str, Any]:
+        """Get OpenAI-compatible tool definition."""
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.parameters,
+            },
+        }
 
     def to_openai_tool(self) -> dict[str, Any]:
         """Alias for to_schema for consistency."""

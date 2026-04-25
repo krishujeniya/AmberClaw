@@ -69,11 +69,19 @@ class DriveSearchInput(BaseModel):
 
 
 class DriveSearchTool(PydanticTool):
-    name: str = "drive_search"
-    description: str = "Search for files and folders in Google Drive by name."
-    args_schema: Type[BaseModel] = DriveSearchInput
+    @property
+    def name(self) -> str:
+        return "drive_search"
 
-    def _execute(self, query: str) -> str:
+    @property
+    def description(self) -> str:
+        return "Search for files and folders in Google Drive by name."
+
+    @property
+    def args_schema(self) -> Type[BaseModel]:
+        return DriveSearchInput
+
+    async def run(self, args: DriveSearchInput) -> str:
         config = load_config()
         if not config.tools.drive.enabled:
             return "Google Drive tool is disabled in config."
@@ -81,7 +89,7 @@ class DriveSearchTool(PydanticTool):
         manager = DriveManager(config.tools.drive)
         service = manager._get_service()
 
-        q = f"name contains '{query}'"
+        q = f"name contains '{args.query}'"
         results = (
             service.files()
             .list(q=q, fields="files(id, name, mimeType, modifiedTime)", pageSize=10)
@@ -90,7 +98,7 @@ class DriveSearchTool(PydanticTool):
 
         files = results.get("files", [])
         if not files:
-            return "No files matching the query were found."
+            return f"No files matching the query '{args.query}' were found."
 
         output = ["Files found in Google Drive:"]
         for f in files:
@@ -106,23 +114,31 @@ class DriveUploadInput(BaseModel):
 
 
 class DriveUploadTool(PydanticTool):
-    name: str = "drive_upload"
-    description: str = "Upload a local file to Google Drive."
-    args_schema: Type[BaseModel] = DriveUploadInput
+    @property
+    def name(self) -> str:
+        return "drive_upload"
 
-    def _execute(self, file_path: str, folder_id: str = "root") -> str:
+    @property
+    def description(self) -> str:
+        return "Upload a local file to Google Drive."
+
+    @property
+    def args_schema(self) -> Type[BaseModel]:
+        return DriveUploadInput
+
+    async def run(self, args: DriveUploadInput) -> str:
         config = load_config()
         if not config.tools.drive.enabled:
             return "Google Drive tool is disabled in config."
 
-        path = Path(file_path).expanduser()
+        path = Path(args.file_path).expanduser()
         if not path.exists():
-            return f"Error: Local file {file_path} does not exist."
+            return f"Error: Local file {args.file_path} does not exist."
 
         manager = DriveManager(config.tools.drive)
         service = manager._get_service()
 
-        file_metadata = {"name": path.name, "parents": [folder_id]}
+        file_metadata = {"name": path.name, "parents": [args.folder_id]}
         media = MediaFileUpload(str(path), resumable=True)
         file = (
             service.files()

@@ -221,7 +221,7 @@ class AgentLoop:
                 KnowledgeSearchTool(
                     workspace=self.workspace,
                     provider=self.provider,
-                    embedding_model=self.embedding_model,
+                    embedding_model=self.embedding_model or "openai/text-embedding-3-small",
                     reranker_model=self.reranker_model,
                 )
             )
@@ -229,7 +229,7 @@ class AgentLoop:
                 KnowledgeAddTool(
                     workspace=self.workspace,
                     provider=self.provider,
-                    embedding_model=self.embedding_model,
+                    embedding_model=self.embedding_model or "openai/text-embedding-3-small",
                 )
             )
             logger.info("Knowledge RAG tools registered")
@@ -249,11 +249,13 @@ class AgentLoop:
         try:
             data_cfg = getattr(_cfg, "data", None)
             out_dir = getattr(data_cfg, "output_dir", None) if data_cfg else None
-            self.tools.register(DataCleanTool(output_dir=out_dir))
-            self.tools.register(DataVizTool())
-            self.tools.register(DataSQLTool())
-            self.tools.register(DataEDATool())
+            lc_model = self.provider.to_langchain_chat(self.model, temperature=0.1)
+            self.tools.register(DataCleanTool(output_dir=out_dir, model=lc_model))
+            self.tools.register(DataVizTool(model=lc_model))
+            self.tools.register(DataSQLTool(model=lc_model))
+            self.tools.register(DataEDATool(model=lc_model))
             logger.info("DataAgent tools registered")
+
         except Exception as exc:
             logger.debug("DataAgent tools skipped: {}", exc)
 
@@ -284,8 +286,10 @@ class AgentLoop:
         """Update context for all tools that need routing info."""
         for name in ("message", "spawn", "cron"):
             if tool := self.tools.get(name):
+                # Use getattr to avoid Pyright errors on abstract Tool class
                 if hasattr(tool, "set_context"):
-                    tool.set_context(channel, chat_id, *([message_id] if name == "message" else []))
+                    set_context = getattr(tool, "set_context")
+                    set_context(channel, chat_id, *([message_id] if name == "message" else []))
 
     @staticmethod
     def _strip_think(text: str | None) -> str | None:
@@ -322,14 +326,14 @@ class AgentLoop:
             role = m.get("role")
             content = m.get("content")
             if role == "user":
-                lc_msgs.append(HumanMessage(content=content))
+                lc_msgs.append(HumanMessage(content=content or ""))
             elif role == "assistant":
                 ai_m = AIMessage(content=content or "")
                 if m.get("tool_calls"):
                     ai_m.additional_kwargs["tool_calls"] = m["tool_calls"]
                 lc_msgs.append(ai_m)
             elif role == "tool":
-                lc_msgs.append(ToolMessage(content=content, tool_call_id=m["tool_call_id"]))
+                lc_msgs.append(ToolMessage(content=content or "", tool_call_id=m.get("tool_call_id") or ""))
 
         # Execute graph with streaming for tokens
         final_state = None
@@ -352,7 +356,10 @@ class AgentLoop:
 
         # Use invoke for now to keep it simple, while we verify plumbing
         # We can move to astream_events later for more granular control
-        final_state = await self._graph.runnable.ainvoke(inputs)
+        from typing import cast
+        from amberclaw.agent.graph import AgentState
+        assert self._graph is not None, "Graph must be initialized"
+        final_state = await self._graph.runnable.ainvoke(cast(AgentState, inputs))
 
         # Extract results
         final_messages = final_state["messages"]
@@ -389,7 +396,7 @@ class AgentLoop:
                 tools_used.append("tool")
 
         return (
-            last_msg.content if isinstance(last_msg, AIMessage) else None,
+            str(last_msg.content) if isinstance(last_msg, AIMessage) else None,
             tools_used,
             all_msgs_dict,
         )

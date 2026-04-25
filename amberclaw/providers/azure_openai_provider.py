@@ -62,7 +62,7 @@ class AzureOpenAIProvider(LLMProvider):
         """Build headers for Azure OpenAI API with api-key header."""
         return {
             "Content-Type": "application/json",
-            "api-key": self.api_key,  # Azure OpenAI uses api-key header, not Authorization
+            "api-key": self.api_key or "",  # Azure OpenAI uses api-key header, not Authorization
             "x-session-affinity": uuid.uuid4().hex,  # For cache locality
         }
 
@@ -175,7 +175,7 @@ class AzureOpenAIProvider(LLMProvider):
                         ToolCallRequest(
                             id=tc["id"],
                             name=tc["function"]["name"],
-                            arguments=args,
+                            arguments=args if isinstance(args, dict) else {"raw": str(args)},
                         )
                     )
 
@@ -207,3 +207,17 @@ class AzureOpenAIProvider(LLMProvider):
     def get_default_model(self) -> str:
         """Get the default model (also used as default deployment name)."""
         return self.default_model
+
+    def to_langchain_chat(self, model: str | None = None, **kwargs: Any) -> Any:
+        """Convert this provider to a LangChain AzureChatOpenAI model."""
+        from langchain_openai import AzureChatOpenAI
+        from pydantic import SecretStr
+
+        deployment_name = model or self.default_model
+        return AzureChatOpenAI(
+            azure_deployment=deployment_name,
+            api_version=self.api_version,
+            azure_endpoint=self.api_base,
+            api_key=SecretStr(self.api_key) if self.api_key else None,
+            **kwargs,
+        )

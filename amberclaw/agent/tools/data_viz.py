@@ -1,5 +1,6 @@
 """DataAgent Data Visualization tool — AI-powered chart generation."""
 
+from typing import Any
 import json
 from pydantic import BaseModel, Field
 
@@ -19,6 +20,9 @@ class VizArgs(BaseModel):
 
 class DataVizTool(PydanticTool):
     """Generate Plotly visualizations using the DataAgent DataVisualizationAgent."""
+
+    def __init__(self, model: Any = None):
+        self._model = model
 
     @property
     def name(self) -> str:
@@ -46,10 +50,15 @@ class DataVizTool(PydanticTool):
             file_path = args.file_path
             df = await asyncio.to_thread(load_data, file_path)
 
-            agent = DataVisualizationAgent(bypass_recommended_steps=True, bypass_explain_code=True)
+            agent = DataVisualizationAgent(
+                model=self._model,
+                bypass_recommended_steps=True,
+                bypass_explain_code=True
+            )
             await asyncio.to_thread(
                 agent.invoke_agent, data_raw=df, user_instructions=args.instructions, max_retries=2
             )
+
 
             plot = agent.get_plotly_graph()
             if plot is not None:

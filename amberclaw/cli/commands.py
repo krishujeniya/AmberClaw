@@ -174,12 +174,12 @@ class TokenStreamer:
             self.header_printed = True
 
         self.content += token
-        if self.render_markdown:
-            from rich.markdown import Markdown
-
-            self.live.update(Markdown(self.content))
-        else:
-            self.live.update(self.content)
+        if self.live:
+            if self.render_markdown:
+                from rich.markdown import Markdown
+                self.live.update(Markdown(self.content))
+            else:
+                self.live.update(self.content)
 
     def stop(self) -> None:
         if self.live:
@@ -292,7 +292,7 @@ def gateway(
     from amberclaw.cron.types import CronJob
     from amberclaw.session.manager import SessionManager
     from amberclaw.channels.manager import ChannelManager
-    from amberclaw.cron.heartbeat import HeartbeatService
+    from amberclaw.cron import HeartbeatService
 
     if verbose:
         import logging
@@ -463,7 +463,7 @@ def gateway(
             console.print("\nShutting down...")
         finally:
             await agent.close_mcp()
-            heartbeat.stop()
+            await heartbeat.stop()
             cron.stop()
             agent.stop()
             await channels.stop_all()

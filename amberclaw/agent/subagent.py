@@ -58,13 +58,24 @@ class SubagentManager:
         origin_channel: str = "cli",
         origin_chat_id: str = "direct",
         session_key: str | None = None,
+        model: str | None = None,
+        reasoning_effort: str | None = None,
     ) -> str:
         """Spawn a subagent to execute a task in the background."""
         task_id = str(uuid.uuid4())[:8]
         display_label = label or task[:30] + ("..." if len(task) > 30 else "")
         origin = {"channel": origin_channel, "chat_id": origin_chat_id}
 
-        bg_task = asyncio.create_task(self._run_subagent(task_id, task, display_label, origin))
+        bg_task = asyncio.create_task(
+            self._run_subagent(
+                task_id,
+                task,
+                display_label,
+                origin,
+                model=model,
+                reasoning_effort=reasoning_effort,
+            )
+        )
         self._running_tasks[task_id] = bg_task
         if session_key:
             self._session_tasks.setdefault(session_key, set()).add(task_id)
@@ -87,6 +98,8 @@ class SubagentManager:
         task: str,
         label: str,
         origin: dict[str, str],
+        model: str | None = None,
+        reasoning_effort: str | None = None,
     ) -> None:
         """Execute the subagent task and announce the result."""
         logger.info("Subagent [{}] starting task: {}", task_id, label)
@@ -127,10 +140,10 @@ class SubagentManager:
                 response = await self.provider.chat_with_retry(
                     messages=messages,
                     tools=tools.get_definitions(),
-                    model=self.model,
+                    model=model or self.model,
                     temperature=self.temperature,
                     max_tokens=self.max_tokens,
-                    reasoning_effort=self.reasoning_effort,
+                    reasoning_effort=reasoning_effort or self.reasoning_effort,
                 )
 
                 if response.has_tool_calls:

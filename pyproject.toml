@@ -36,6 +36,15 @@ dependencies = [
     "PyYAML>=6.0.0",
     "prompt-toolkit>=3.0.43",
     "oauth-cli-kit>=0.1.0",
+    "croniter>=6.0.0",
+    "mcp>=1.0.0",
+    "google-auth>=2.30.0",
+    "google-api-python-client>=2.130.0",
+    "setuptools",
+    "google-auth-oauthlib>=1.3.1",
+    "langchain-community>=0.3.31",
+    "langchain-openai>=0.3.35",
+    "langchain-ollama>=0.3.10",
 ]
 
 [project.optional-dependencies]

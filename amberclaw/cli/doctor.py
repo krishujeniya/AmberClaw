@@ -26,7 +26,7 @@ def run_doctor() -> None:
 
     # 2. Workspace Check
     config = load_config()
-    workspace = Path(config.workspace)
+    workspace = config.workspace_path
     if workspace.exists():
         status_ws = "[green]OK[/green]"
     else:
@@ -65,7 +65,7 @@ def run_doctor() -> None:
     console.print(table)
 
     # 4. Core dependencies
-    import pkg_resources
+    import importlib.metadata
 
     deps = ["litellm", "pydantic", "typer", "rich", "loguru"]
     dep_table = Table(title="Core Dependencies", show_header=True, header_style="bold blue")
@@ -74,9 +74,9 @@ def run_doctor() -> None:
 
     for d in deps:
         try:
-            ver = pkg_resources.get_distribution(d).version
+            ver = importlib.metadata.version(d)
             dep_table.add_row(d, f"[green]{ver}[/green]")
-        except Exception:
+        except importlib.metadata.PackageNotFoundError:
             dep_table.add_row(d, "[red]NOT INSTALLED[/red]")
 
     console.print(dep_table)

@@ -71,9 +71,17 @@ class WebSearchArgs(BaseModel):
 class WebSearchTool(PydanticTool):
     """Search the web using Brave Search API."""
 
-    name = "web_search"
-    description = "Search the web. Returns titles, URLs, and snippets."
-    args_schema = WebSearchArgs
+    @property
+    def name(self) -> str:
+        return "web_search"
+
+    @property
+    def description(self) -> str:
+        return "Search the web. Returns titles, URLs, and snippets."
+
+    @property
+    def args_schema(self) -> type[WebSearchArgs]:
+        return WebSearchArgs
 
     def __init__(self, api_key: str | None = None, max_results: int = 5, proxy: str | None = None):
         super().__init__()
@@ -97,7 +105,8 @@ class WebSearchTool(PydanticTool):
         try:
             n = args.count or self.max_results
             logger.debug("WebSearch: {}", "proxy enabled" if self.proxy else "direct connection")
-            async with httpx.AsyncClient(proxy=self.proxy) as client:
+            from typing import cast
+            async with httpx.AsyncClient(proxy=cast(str, self.proxy)) as client:
                 r = await client.get(
                     "https://api.search.brave.com/res/v1/web/search",
                     params={"q": args.query, "count": n},
@@ -144,9 +153,17 @@ class WebFetchArgs(BaseModel):
 class WebFetchTool(PydanticTool):
     """Fetch and extract content from a URL using Readability."""
 
-    name = "web_fetch"
-    description = "Fetch URL and extract readable content (HTML → markdown/text)."
-    args_schema = WebFetchArgs
+    @property
+    def name(self) -> str:
+        return "web_fetch"
+
+    @property
+    def description(self) -> str:
+        return "Fetch URL and extract readable content (HTML → markdown/text)."
+
+    @property
+    def args_schema(self) -> type[WebFetchArgs]:
+        return WebFetchArgs
 
     def __init__(self, max_chars: int = 50000, proxy: str | None = None):
         super().__init__()
@@ -166,11 +183,12 @@ class WebFetchTool(PydanticTool):
 
         try:
             logger.debug("WebFetch: {}", "proxy enabled" if self.proxy else "direct connection")
+            from typing import cast
             async with httpx.AsyncClient(
                 follow_redirects=True,
                 max_redirects=MAX_REDIRECTS,
                 timeout=30.0,
-                proxy=self.proxy,
+                proxy=cast(str, self.proxy),
             ) as client:
                 r = await client.get(args.url, headers={"User-Agent": USER_AGENT})
                 r.raise_for_status()
