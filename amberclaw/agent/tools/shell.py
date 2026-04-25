@@ -22,9 +22,18 @@ class ExecArgs(BaseModel):
 class ExecTool(PydanticTool):
     """Tool to execute shell commands."""
 
-    name = "exec"
-    description = "Execute a shell command and return its output. Use with caution."
-    args_schema = ExecArgs
+    @property
+    def name(self) -> str:
+        return "exec"
+
+    @property
+    def description(self) -> str:
+        return "Execute a shell command and return its output. Use with caution."
+
+    @property
+    def args_schema(self) -> type[ExecArgs]:
+        return ExecArgs
+
 
     def __init__(
         self,

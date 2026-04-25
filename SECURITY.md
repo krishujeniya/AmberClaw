@@ -252,7 +252,7 @@ Before deploying AmberClaw:
 
 ## Updates
 
-**Last Updated**: 2026-02-03
+**Last Updated**: 2026-04-25
 
 For the latest security updates and announcements, check:
 - GitHub Security Advisories: https://github.com/krishujeniya/AmberClaw/security/advisories

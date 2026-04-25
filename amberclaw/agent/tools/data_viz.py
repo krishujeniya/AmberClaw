@@ -20,13 +20,22 @@ class VizArgs(BaseModel):
 class DataVizTool(PydanticTool):
     """Generate Plotly visualizations using the DataAgent DataVisualizationAgent."""
 
-    name = "data_visualize"
-    description = (
-        "Generate Plotly visualizations from a dataset. "
-        "Creates scatter plots, bar charts, histograms, line charts, etc. "
-        "Returns the visualization as a JSON file path."
-    )
-    args_schema = VizArgs
+    @property
+    def name(self) -> str:
+        return "data_visualize"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Generate Plotly visualizations from a dataset. "
+            "Creates scatter plots, bar charts, histograms, line charts, etc. "
+            "Returns the visualization as a JSON file path."
+        )
+
+    @property
+    def args_schema(self) -> type[VizArgs]:
+        return VizArgs
+
 
     async def run(self, args: VizArgs) -> str:
         try:

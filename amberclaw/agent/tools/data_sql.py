@@ -22,13 +22,22 @@ class SQLArgs(BaseModel):
 class DataSQLTool(PydanticTool):
     """Query SQL databases using natural language via DataAgent SQLDatabaseAgent."""
 
-    name = "data_sql_query"
-    description = (
-        "Query a SQL database using natural language. "
-        "Generates and executes SQL queries, returns results as text. "
-        "Supports SQLite, PostgreSQL, MySQL."
-    )
-    args_schema = SQLArgs
+    @property
+    def name(self) -> str:
+        return "data_sql_query"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Query a SQL database using natural language. "
+            "Generates and executes SQL queries, returns results as text. "
+            "Supports SQLite, PostgreSQL, MySQL."
+        )
+
+    @property
+    def args_schema(self) -> type[SQLArgs]:
+        return SQLArgs
+
 
     async def run(self, args: SQLArgs) -> str:
         try:

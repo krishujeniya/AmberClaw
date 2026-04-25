@@ -25,14 +25,21 @@ def _load_data(path: str) -> pd.DataFrame:
 class DataCleanTool(PydanticTool):
     """Clean datasets using the DataAgent DataCleaningAgent."""
 
-    name = "data_clean_data"
-    description = (
-        "Clean a CSV/Excel dataset using AI-powered data cleaning. "
-        "Handles missing values, type conversions, outlier removal, "
-        "deduplication, and custom cleaning instructions. "
-        "Returns a summary of changes made."
-    )
-    args_schema = CleanArgs
+    @property
+    def name(self) -> str:
+        return "data_clean_data"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Clean a dataset automatically using AI. "
+            "Handles missing values, duplicates, outliers, and type normalization. "
+            "Returns the path to the cleaned file."
+        )
+
+    @property
+    def args_schema(self) -> type[CleanArgs]:
+        return CleanArgs
 
     def __init__(self, output_dir: str | None = None):
         super().__init__()

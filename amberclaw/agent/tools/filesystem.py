@@ -36,9 +36,18 @@ class ReadFileTool(PydanticTool):
 
     _MAX_CHARS = 128_000  # ~128 KB — prevents OOM from reading huge files into LLM context
 
-    name = "read_file"
-    description = "Read the contents of a file at the given path."
-    args_schema = ReadFileArgs
+    @property
+    def name(self) -> str:
+        return "read_file"
+
+    @property
+    def description(self) -> str:
+        return "Read the contents of a file at the given path."
+
+    @property
+    def args_schema(self) -> type[ReadFileArgs]:
+        return ReadFileArgs
+
 
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
         super().__init__()
@@ -83,9 +92,18 @@ class WriteFileArgs(BaseModel):
 class WriteFileTool(PydanticTool):
     """Tool to write content to a file."""
 
-    name = "write_file"
-    description = "Write content to a file at the given path. Creates parent directories if needed."
-    args_schema = WriteFileArgs
+    @property
+    def name(self) -> str:
+        return "write_file"
+
+    @property
+    def description(self) -> str:
+        return "Write content to a file at the given path. Creates parent directories if needed."
+
+    @property
+    def args_schema(self) -> type[WriteFileArgs]:
+        return WriteFileArgs
+
 
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
         super().__init__()
@@ -115,9 +133,18 @@ class EditFileArgs(BaseModel):
 class EditFileTool(PydanticTool):
     """Tool to edit a file by replacing text."""
 
-    name = "edit_file"
-    description = "Edit a file by replacing old_text with new_text. The old_text must exist exactly in the file."
-    args_schema = EditFileArgs
+    @property
+    def name(self) -> str:
+        return "edit_file"
+
+    @property
+    def description(self) -> str:
+        return "Edit a file by replacing old_text with new_text. The old_text must exist exactly in the file."
+
+    @property
+    def args_schema(self) -> type[EditFileArgs]:
+        return EditFileArgs
+
 
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
         super().__init__()
@@ -187,9 +214,18 @@ class ListDirArgs(BaseModel):
 class ListDirTool(PydanticTool):
     """Tool to list directory contents."""
 
-    name = "list_dir"
-    description = "List the contents of a directory."
-    args_schema = ListDirArgs
+    @property
+    def name(self) -> str:
+        return "list_dir"
+
+    @property
+    def description(self) -> str:
+        return "List the contents of a directory."
+
+    @property
+    def args_schema(self) -> type[ListDirArgs]:
+        return ListDirArgs
+
 
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
         super().__init__()

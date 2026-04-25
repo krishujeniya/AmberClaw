@@ -209,7 +209,8 @@ class PydanticTool(Tool, ABC):
 
     @property
     @abstractmethod
-    def args_schema(self) -> Type[BaseModel]:
+    def args_schema(self) -> type[BaseModel]:
+
         """Pydantic model for tool parameters."""
         pass
 
@@ -249,3 +250,4 @@ class PydanticTool(Tool, ABC):
         Inner execution logic with validated Pydantic model.
         """
         pass
+

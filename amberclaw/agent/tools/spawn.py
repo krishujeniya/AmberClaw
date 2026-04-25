@@ -25,13 +25,22 @@ class SpawnArgs(BaseModel):
 class SpawnTool(PydanticTool):
     """Tool to spawn a subagent for background task execution."""
 
-    name = "spawn"
-    description = (
-        "Spawn a subagent to handle a task in the background. "
-        "Use this for complex or time-consuming tasks that can run independently. "
-        "The subagent will complete the task and report back when done."
-    )
-    args_schema = SpawnArgs
+    @property
+    def name(self) -> str:
+        return "spawn"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Spawn a subagent to handle a task in the background. "
+            "Use this for complex or time-consuming tasks that can run independently. "
+            "The subagent will complete the task and report back when done."
+        )
+
+    @property
+    def args_schema(self) -> type[SpawnArgs]:
+        return SpawnArgs
+
 
     def __init__(self, manager: "SubagentManager"):
         super().__init__()

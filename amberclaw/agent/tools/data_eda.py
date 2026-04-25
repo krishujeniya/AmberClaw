@@ -19,13 +19,22 @@ class EDAArgs(BaseModel):
 class DataEDATool(PydanticTool):
     """Run exploratory data analysis using the DataAgent EDAToolsAgent."""
 
-    name = "data_eda"
-    description = (
-        "Run exploratory data analysis on a dataset. "
-        "Generates summary statistics, correlation analysis, "
-        "missing value reports, and distribution insights."
-    )
-    args_schema = EDAArgs
+    @property
+    def name(self) -> str:
+        return "data_eda"
+
+    @property
+    def description(self) -> str:
+        return (
+            "Run exploratory data analysis on a dataset. "
+            "Generates summary statistics, correlation analysis, "
+            "missing value reports, and distribution insights."
+        )
+
+    @property
+    def args_schema(self) -> type[EDAArgs]:
+        return EDAArgs
+
 
     async def run(self, args: EDAArgs) -> str:
         try:

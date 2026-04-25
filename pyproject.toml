@@ -111,6 +111,15 @@ ignore_missing_imports = true
 
 [tool.pyright]
 include = ["amberclaw"]
+exclude = [
+    "amberclaw/data",
+    "amberclaw/skills",
+    "amberclaw/channels",
+]
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
 

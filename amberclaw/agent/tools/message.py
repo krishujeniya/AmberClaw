@@ -24,9 +24,18 @@ class MessageArgs(BaseModel):
 class MessageTool(PydanticTool):
     """Tool to send messages to users on chat channels."""
 
-    name = "message"
-    description = "Send a message to the user. Use this when you want to communicate something."
-    args_schema = MessageArgs
+    @property
+    def name(self) -> str:
+        return "message"
+
+    @property
+    def description(self) -> str:
+        return "Send a message to the user. Use this when you want to communicate something."
+
+    @property
+    def args_schema(self) -> type[MessageArgs]:
+        return MessageArgs
+
 
     def __init__(
         self,
