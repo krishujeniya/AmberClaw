@@ -83,7 +83,11 @@ def _migrate_config(data: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(tools, dict):
         tools = {}
     exec_cfg = tools.get("exec", {})
-    if isinstance(exec_cfg, dict) and "restrictToWorkspace" in exec_cfg and "restrictToWorkspace" not in tools:
+    if (
+        isinstance(exec_cfg, dict)
+        and "restrictToWorkspace" in exec_cfg
+        and "restrictToWorkspace" not in tools
+    ):
         tools["restrictToWorkspace"] = exec_cfg.pop("restrictToWorkspace")
     return data
 

@@ -36,7 +36,6 @@ class MessageTool(PydanticTool):
     def args_schema(self) -> type[MessageArgs]:
         return MessageArgs
 
-
     def __init__(
         self,
         send_callback: Callable[[OutboundMessage], Awaitable[None]] | None = None,

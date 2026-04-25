@@ -106,6 +106,7 @@ class WebSearchTool(PydanticTool):
             n = args.count or self.max_results
             logger.debug("WebSearch: {}", "proxy enabled" if self.proxy else "direct connection")
             from typing import cast
+
             async with httpx.AsyncClient(proxy=cast(str, self.proxy)) as client:
                 r = await client.get(
                     "https://api.search.brave.com/res/v1/web/search",
@@ -184,6 +185,7 @@ class WebFetchTool(PydanticTool):
         try:
             logger.debug("WebFetch: {}", "proxy enabled" if self.proxy else "direct connection")
             from typing import cast
+
             async with httpx.AsyncClient(
                 follow_redirects=True,
                 max_redirects=MAX_REDIRECTS,

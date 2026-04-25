@@ -70,6 +70,7 @@ class MCPToolWrapper(Tool):
         parts = []
         try:
             from mcp import types
+
             for block in content:
                 if isinstance(block, types.TextContent):
                     parts.append(block.text)

@@ -34,7 +34,6 @@ class ExecTool(PydanticTool):
     def args_schema(self) -> type[ExecArgs]:
         return ExecArgs
 
-
     def __init__(
         self,
         timeout: int = 60,

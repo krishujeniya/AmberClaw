@@ -48,7 +48,6 @@ class ReadFileTool(PydanticTool):
     def args_schema(self) -> type[ReadFileArgs]:
         return ReadFileArgs
 
-
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
         super().__init__()
         self._workspace = workspace
@@ -104,7 +103,6 @@ class WriteFileTool(PydanticTool):
     def args_schema(self) -> type[WriteFileArgs]:
         return WriteFileArgs
 
-
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
         super().__init__()
         self._workspace = workspace
@@ -144,7 +142,6 @@ class EditFileTool(PydanticTool):
     @property
     def args_schema(self) -> type[EditFileArgs]:
         return EditFileArgs
-
 
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
         super().__init__()
@@ -225,7 +222,6 @@ class ListDirTool(PydanticTool):
     @property
     def args_schema(self) -> type[ListDirArgs]:
         return ListDirArgs
-
 
     def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
         super().__init__()

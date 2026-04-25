@@ -55,9 +55,7 @@ class DataCleanTool(PydanticTool):
             df = await asyncio.to_thread(_load_data, args.file_path)
 
             agent = DataCleaningAgent(
-                model=self._model,
-                bypass_recommended_steps=True,
-                bypass_explain_code=True
+                model=self._model, bypass_recommended_steps=True, bypass_explain_code=True
             )
 
             # Offload the heavy AI/Data processing to a thread
@@ -67,7 +65,6 @@ class DataCleanTool(PydanticTool):
                 user_instructions=args.instructions or "",
                 max_retries=2,
             )
-
 
             cleaned = agent.get_data_cleaned()
             if cleaned is not None:

@@ -139,6 +139,7 @@ class Tool(ABC):
 
     def _validate(self, val: Any, schema: dict[str, Any], path: str) -> list[str]:
         from typing import Iterable, Mapping
+
         t, label = schema.get("type"), path or "parameter"
         if t == "integer" and (not isinstance(val, int) or isinstance(val, bool)):
             return [f"{label} should be integer"]
@@ -147,7 +148,7 @@ class Tool(ABC):
         if (
             t in self._TYPE_MAP
             and t not in ("integer", "number")
-            and not isinstance(val, self._TYPE_MAP[t]) # type: ignore
+            and not isinstance(val, self._TYPE_MAP[t])  # type: ignore
         ):
             return [f"{label} should be {t}"]
 
@@ -223,7 +224,6 @@ class PydanticTool(Tool, ABC):
     @property
     @abstractmethod
     def args_schema(self) -> type[BaseModel]:
-
         """Pydantic model for tool parameters."""
         pass
 
@@ -263,4 +263,3 @@ class PydanticTool(Tool, ABC):
         Inner execution logic with validated Pydantic model.
         """
         pass
-

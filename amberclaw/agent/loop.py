@@ -333,7 +333,9 @@ class AgentLoop:
                     ai_m.additional_kwargs["tool_calls"] = m["tool_calls"]
                 lc_msgs.append(ai_m)
             elif role == "tool":
-                lc_msgs.append(ToolMessage(content=content or "", tool_call_id=m.get("tool_call_id") or ""))
+                lc_msgs.append(
+                    ToolMessage(content=content or "", tool_call_id=m.get("tool_call_id") or "")
+                )
 
         # Execute graph with streaming for tokens
         final_state = None
@@ -358,6 +360,7 @@ class AgentLoop:
         # We can move to astream_events later for more granular control
         from typing import cast
         from amberclaw.agent.graph import AgentState
+
         assert self._graph is not None, "Graph must be initialized"
         final_state = await self._graph.runnable.ainvoke(cast(AgentState, inputs))
 

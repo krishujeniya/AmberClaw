@@ -40,7 +40,6 @@ class DataVizTool(PydanticTool):
     def args_schema(self) -> type[VizArgs]:
         return VizArgs
 
-
     async def run(self, args: VizArgs) -> str:
         try:
             import asyncio
@@ -51,14 +50,11 @@ class DataVizTool(PydanticTool):
             df = await asyncio.to_thread(load_data, file_path)
 
             agent = DataVisualizationAgent(
-                model=self._model,
-                bypass_recommended_steps=True,
-                bypass_explain_code=True
+                model=self._model, bypass_recommended_steps=True, bypass_explain_code=True
             )
             await asyncio.to_thread(
                 agent.invoke_agent, data_raw=df, user_instructions=args.instructions, max_retries=2
             )
-
 
             plot = agent.get_plotly_graph()
             if plot is not None:

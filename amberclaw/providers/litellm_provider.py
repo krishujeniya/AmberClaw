@@ -275,7 +275,7 @@ class LiteLLMProvider(LLMProvider):
             if kwargs.get("stream"):
                 full_content = []
                 # response is an async iterator when stream=True
-                async for chunk in response: # type: ignore
+                async for chunk in response:  # type: ignore
                     content = chunk.choices[0].delta.content or ""
                     if content:
                         full_content.append(content)

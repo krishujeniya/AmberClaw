@@ -169,6 +169,7 @@ class TokenStreamer:
             self.console.print()
             self.console.print(f"[cyan]{__logo__} AmberClaw[/cyan]")
             from rich.live import Live
+
             self.live = Live("", console=self.console, refresh_per_second=12, auto_refresh=True)
             self.live.start()
             self.header_printed = True
@@ -177,6 +178,7 @@ class TokenStreamer:
         if self.live:
             if self.render_markdown:
                 from rich.markdown import Markdown
+
                 self.live.update(Markdown(self.content))
             else:
                 self.live.update(self.content)

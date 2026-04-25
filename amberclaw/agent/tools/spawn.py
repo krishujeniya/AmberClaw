@@ -41,7 +41,6 @@ class SpawnTool(PydanticTool):
     def args_schema(self) -> type[SpawnArgs]:
         return SpawnArgs
 
-
     def __init__(self, manager: "SubagentManager"):
         super().__init__()
         self._manager = manager

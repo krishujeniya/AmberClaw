@@ -38,7 +38,6 @@ class DataEDATool(PydanticTool):
     def args_schema(self) -> type[EDAArgs]:
         return EDAArgs
 
-
     async def run(self, args: EDAArgs) -> str:
         try:
             import pandas as pd
@@ -55,7 +54,6 @@ class DataEDATool(PydanticTool):
             await asyncio.to_thread(
                 agent.invoke_agent, user_instructions=args.instructions, data_raw=df
             )
-
 
             ai_msg = agent.get_ai_message()
             if ai_msg:

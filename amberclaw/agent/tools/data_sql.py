@@ -44,7 +44,6 @@ class DataSQLTool(PydanticTool):
     def args_schema(self) -> type[SQLArgs]:
         return SQLArgs
 
-
     async def run(self, args: SQLArgs) -> str:
         try:
             import sqlalchemy as sql
@@ -82,4 +81,3 @@ class DataSQLTool(PydanticTool):
         except Exception as e:
             logger.error("DataSQLTool error: {}", e)
             return f"Error: {e}"
-
