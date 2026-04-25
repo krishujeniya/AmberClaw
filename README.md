@@ -1,6 +1,7 @@
 <div align="center">
   <img src="LogoAC.png" alt="AmberClaw" width="400">
 
+  <h1>AmberClaw</h1>
   <p><strong>Ultra-Lightweight Personal AI Assistant Framework</strong></p>
 
   <p>
