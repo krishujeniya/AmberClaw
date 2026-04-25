@@ -124,6 +124,6 @@ pythonVersion = "3.11"
 typeCheckingMode = "basic"
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+select = ["E", "F", "W"]
 ignore = ["E501"]
 
