@@ -1,7 +1,7 @@
 """LLM provider factory."""
 
-from rich.console import Console
 import typer
+from rich.console import Console
 
 from amberclaw.config.schema import Config
 
@@ -10,10 +10,10 @@ console = Console()
 
 def make_provider(config: Config):
     """Create the appropriate LLM provider from config."""
-    from amberclaw.providers.openai_codex_provider import OpenAICodexProvider
     from amberclaw.providers.azure_openai_provider import AzureOpenAIProvider
     from amberclaw.providers.custom_provider import CustomProvider
     from amberclaw.providers.litellm_provider import LiteLLMProvider
+    from amberclaw.providers.openai_codex_provider import OpenAICodexProvider
     from amberclaw.providers.registry import find_by_name
 
     model = config.agents.defaults.model

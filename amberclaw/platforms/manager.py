@@ -1,7 +1,7 @@
 """AmberClaw Platforms: Cross-platform bridge and manager."""
 
-import sys
 import os
+import sys
 
 
 class PlatformManager:
