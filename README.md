@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/og-image.png" alt="AmberClaw" width="400">
+  <img src="assets/og-image.png" alt="AmberClaw">
 
   <p>
     <a href="https://github.com/krishujeniya/AmberClaw/actions/workflows/ci.yml"><img src="https://github.com/krishujeniya/AmberClaw/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
