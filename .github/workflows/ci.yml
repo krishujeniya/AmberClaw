@@ -7,16 +7,19 @@ on:
     branches: [ main, master ]
 
 jobs:
-  lint:
-    name: Lint & Typecheck
+  lint-and-test:
+    name: Lint, Typecheck & Test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -30,3 +33,34 @@ jobs:
       - name: Typecheck (pyright)
         continue-on-error: true
         run: uv run pyright amberclaw
+
+      - name: Run Tests & Coverage
+        run: uv run pytest
+
+  test-install-paths:
+    name: Test Install Paths
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Test uv tool install
+        run: |
+          uv tool install .
+          amberclaw --help
+          onboard --help
+
+      - name: Test pip install
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install .
+          amberclaw --help
+          onboard --help

@@ -4,22 +4,27 @@ version = "1.0.0"
 description = "AmberClaw: A production-grade, unified AI agentic framework and product."
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
 authors = [
-    {name = "Krish Ujeniya"}
+    { name = "Krish Ujeniya" },
 ]
-keywords = ["ai", "agent", "amberclaw", "intelligent-systems"]
+keywords = [
+    "ai",
+    "agent",
+    "amberclaw",
+    "intelligent-systems",
+]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3.13",
 ]
-
 dependencies = [
     "typer>=0.20.0",
-    "litellm>=1.81.5",
+    "litellm>=1.81.5,<2.0.0",
     "pydantic>=2.12.0",
     "pydantic-settings>=2.12.0",
     "httpx>=0.28.0",
@@ -29,7 +34,7 @@ dependencies = [
     "json-repair>=0.57.0",
     "chardet>=3.0.2",
     "openai>=2.8.0",
-    "langchain>=0.3.0,<1.0.0",
+    "langchain>=0.3.0,<0.4.0",
     "langgraph>=0.2.0",
     "keyring>=25.0.0",
     "cryptography>=42.0.0",
@@ -46,6 +51,9 @@ dependencies = [
     "langchain-openai>=0.3.35",
     "langchain-ollama>=0.3.10",
 ]
+
+[project.license]
+text = "MIT"
 
 [project.optional-dependencies]
 data = [
@@ -96,26 +104,52 @@ dev = [
     "mypy>=1.10.0",
     "pyright>=1.1.360",
 ]
+vectordb = [
+    "chroma",
+    "lancedb",
+    "qdrant-client",
+]
 
 [project.scripts]
 amberclaw = "amberclaw.cli.commands:app"
+onboard = "amberclaw.cli.commands:run_onboard"
+
+[project.urls]
+Homepage = "https://github.com/krishujeniya/AmberClaw"
+Repository = "https://github.com/krishujeniya/AmberClaw.git"
+Documentation = "https://github.com/krishujeniya/AmberClaw"
+"Bug Tracker" = "https://github.com/krishujeniya/AmberClaw/issues"
 
 [build-system]
-requires = ["hatchling"]
+requires = [
+    "hatchling",
+]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["amberclaw"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = [
-    "amberclaw/data",
-    "amberclaw/skills",
+extend-exclude = []
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "W",
+]
+ignore = [
+    "E501",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
-addopts = "--cov=amberclaw --cov-report=term-missing"
+testpaths = [
+    "tests",
+]
+addopts = "--cov=amberclaw --cov-report=term-missing --cov-fail-under=70"
 
 [tool.mypy]
 python_version = "3.11"
@@ -123,16 +157,15 @@ strict = true
 ignore_missing_imports = true
 
 [tool.pyright]
-include = ["amberclaw"]
-exclude = [
-    "amberclaw/data",
-    "amberclaw/skills",
-    "amberclaw/channels",
+include = [
+    "amberclaw",
 ]
+exclude = []
 pythonVersion = "3.11"
 typeCheckingMode = "basic"
 
-[tool.ruff.lint]
-select = ["E", "F", "W"]
-ignore = ["E501"]
-
+[dependency-groups]
+dev = [
+    "hypothesis>=6.152.3",
+    "locust>=2.43.4",
+]
