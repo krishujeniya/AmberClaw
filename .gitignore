@@ -52,7 +52,6 @@ pyright_errors.json
 !package.json
 !tsconfig.json
 !*.json.example
-!**/.planning/*.json
 
 # Project Specific
 .planning/
