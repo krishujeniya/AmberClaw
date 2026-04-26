@@ -1,0 +1,26 @@
+name: Skill Request
+description: Request a new tool or skill for the AmberClaw ecosystem
+labels: ["skill-request"]
+body:
+  - type: textarea
+    id: skill
+    attributes:
+      label: Skill Name & Purpose
+      description: What should the skill be called and what task should it perform?
+    validations:
+      required: true
+  - type: textarea
+    id: tools
+    attributes:
+      label: Tools Included
+      description: List the specific tools or functions this skill should provide.
+  - type: textarea
+    id: api
+    attributes:
+      label: External APIs / Requirements
+      description: Does this skill require any external APIs or libraries?
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Example Use Case
+      description: Provide an example of how a user would interact with this skill.

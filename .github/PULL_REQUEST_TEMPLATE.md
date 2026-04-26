@@ -1,36 +1,22 @@
 ## Summary
-
-Brief description of the changes.
-
-## Related Issue
-
-Closes #(issue number)
+Briefly describe the changes and the rationale behind them.
 
 ## Type of Change
-
-- [ ] Bug fix (non-breaking change that fixes an issue)
-- [ ] New feature (non-breaking change that adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to change)
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] Documentation update
-- [ ] Refactoring (no functional changes)
-- [ ] CI/CD improvement
-
-## Changes Made
-
-- ...
-- ...
-
-## Testing
-
-- [ ] Type checking passes (`pyright`)
-- [ ] Linting passes (`ruff`)
-- [ ] Existing tests pass (`pytest`)
-- [ ] New tests added (if applicable)
-- [ ] Manual testing performed
+- [ ] Refactor / Performance improvement
 
 ## Checklist
+- [ ] My code follows the style guidelines of this project
+- [ ] I have performed a self-review of my own code
+- [ ] I have commented my code, particularly in hard-to-understand areas
+- [ ] I have made corresponding changes to the documentation
+- [ ] My changes generate no new warnings
+- [ ] I have added tests that prove my fix is effective or that my feature works
+- [ ] New and existing unit tests pass locally with my changes
+- [ ] Any dependent changes have been merged and published in downstream modules
 
-- [ ] My code follows the project's coding standards
-- [ ] I have updated documentation (if applicable)
-- [ ] I have added entries to CHANGELOG.md (if applicable)
-- [ ] No sensitive data (API keys, tokens) is committed
+## Screenshots (if applicable)
+Add any relevant screenshots or terminal output here.
