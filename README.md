@@ -1,8 +1,5 @@
 <div align="center">
-  <img src="LogoAC.png" alt="AmberClaw" width="400">
-
-  <h1>AmberClaw</h1>
-  <p><strong>Ultra-Lightweight Personal AI Assistant Framework</strong></p>
+  <img src="assets/og-image.png" alt="AmberClaw" width="400">
 
   <p>
     <a href="https://github.com/krishujeniya/AmberClaw/actions/workflows/ci.yml"><img src="https://github.com/krishujeniya/AmberClaw/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -47,7 +44,7 @@ AmberClaw is a production-ready, minimal-footprint personal AI assistant built i
 ## 🏗️ Architecture
 
 <p align="center">
-  <img src="AmberClaw_arch.png" alt="AmberClaw Architecture" width="800">
+  <img src="assets/AmberClaw_arch.png" alt="AmberClaw Architecture" width="800">
 </p>
 
 ## 📦 Installation
