@@ -1,3 +1,15 @@
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+compose.yaml
+.dockerignore
+tests/test_docker.sh
+
+# Python
 __pycache__
 *.pyc
 *.pyo
@@ -5,9 +17,21 @@ __pycache__
 *.egg-info
 dist/
 build/
-.git
+.venv
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov/
+
+# App Data
 .env
-.assets
-node_modules/
-bridge/dist/
 workspace/
+.amberclaw/
+~/.amberclaw
+
+# Misc
+.github
+.vscode
+.idea
+node_modules/

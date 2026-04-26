@@ -55,7 +55,7 @@ pyright_errors.json
 !**/.planning/*.json
 
 # Project Specific
-# .planning/  <-- Keep in repo for agentic context
+.planning/
 amberclaw.db
 *.db
 mem0_db/
