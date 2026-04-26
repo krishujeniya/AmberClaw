@@ -28,7 +28,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --all-extras
 
 # Stage 2: Production image
-FROM python:3.12-slim-bookworm AS final
+FROM python:3.14-slim-bookworm AS final
 
 # Set runtime environment
 ENV PYTHONUNBUFFERED=1 \
