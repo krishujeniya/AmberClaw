@@ -169,13 +169,16 @@ def mock_agent_runtime(tmp_path):
 
 
 def test_agent_help_shows_workspace_and_config_options():
+    import re
     result = runner.invoke(app, ["agent", "--help"])
 
     assert result.exit_code == 0
-    assert "--workspace" in result.stdout
-    assert "-w" in result.stdout
-    assert "--config" in result.stdout
-    assert "-c" in result.stdout
+    # Strip ANSI escape codes
+    clean_stdout = re.compile(r'\x1b[^m]*m').sub('', result.stdout)
+    assert "--workspace" in clean_stdout
+    assert "-w" in clean_stdout
+    assert "--config" in clean_stdout
+    assert "-c" in clean_stdout
 
 
 def test_agent_uses_default_config_when_no_workspace_or_config_flags(mock_agent_runtime):
