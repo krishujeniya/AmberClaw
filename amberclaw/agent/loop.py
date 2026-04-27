@@ -444,7 +444,7 @@ class AgentLoop:
         # Use astream to support progress callbacks for intermediate steps
         final_state = inputs
         last_msg_count = len(lc_msgs)
-        
+
         async for state in self._graph.runnable.astream(cast(AgentState, inputs), stream_mode="values"):
             final_state = state
             if on_progress:
@@ -457,11 +457,11 @@ class AgentLoop:
                             content = str(m.content)
                             if "<think>" in content:
                                 content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
-                            
+
                             # Only report content as progress if it's intermediate (has tool calls)
                             if content and hasattr(m, "tool_calls") and m.tool_calls:
                                 await on_progress(content, tool_hint=False)
-                            
+
                             # Report tool hints in formatted style
                             if hasattr(m, "tool_calls") and m.tool_calls:
                                 for tc in m.tool_calls:

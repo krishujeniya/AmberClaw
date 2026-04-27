@@ -141,7 +141,7 @@ class KnowledgeSearchTool(KnowledgeToolBase):
         try:
             from sklearn.feature_extraction.text import TfidfVectorizer
             from sklearn.metrics.pairwise import cosine_similarity
-            
+
             vectorizer = TfidfVectorizer(stop_words="english")
             tfidf_matrix = vectorizer.fit_transform(corpus)
             query_vec = vectorizer.transform([args.query])
