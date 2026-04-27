@@ -5,7 +5,7 @@ import os
 import re
 import shutil
 from pathlib import Path
-from typing import List, Dict, Optional, Any, cast
+from typing import Any, cast
 
 # Default builtin skills directory (relative to this file)
 BUILTIN_SKILLS_DIR = Path(__file__).parent.parent / "skills"

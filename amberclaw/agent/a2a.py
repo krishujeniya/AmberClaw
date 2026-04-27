@@ -1,6 +1,5 @@
 """Agent-to-Agent (A2A) Protocol implementation."""
 
-import asyncio
 import uuid
 from typing import Any, Optional, Callable
 from pydantic import BaseModel, Field
@@ -32,7 +31,7 @@ class A2AResponse(BaseModel):
 
 class A2AManager:
     """Manages A2A communication and peer discovery."""
-    
+
     def __init__(self, card: AgentCard):
         self.card = card
         self.peers: dict[str, AgentCard] = {}
@@ -70,7 +69,7 @@ class A2AManager:
                     error={"code": -32601, "message": "Method not found"},
                     id=msg.id
                 ).model_dump()
-            
+
             result = await handler(msg.params)
             return A2AResponse(result=result, id=msg.id).model_dump()
         except Exception as e:

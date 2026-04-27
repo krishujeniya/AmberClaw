@@ -4,7 +4,7 @@ import html
 import json
 import os
 import re
-from typing import Optional, Literal, Type, cast
+from typing import Optional, Literal, cast
 from urllib.parse import urlparse
 
 import httpx
