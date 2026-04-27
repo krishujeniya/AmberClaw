@@ -49,6 +49,7 @@ class MemoryStore:
         self.memory_dir = ensure_dir(workspace / "memory")
         self.memory_file = self.memory_dir / "MEMORY.md"
         self.history_file = self.memory_dir / "HISTORY.md"
+        self.feedback_file = self.memory_dir / "FEEDBACK.md"
 
     def read_long_term(self) -> str:
         if self.memory_file.exists():
@@ -62,9 +63,26 @@ class MemoryStore:
         with open(self.history_file, "a", encoding="utf-8") as f:
             f.write(entry.rstrip() + "\n\n")
 
+    def append_feedback(self, feedback: str) -> None:
+        """Store user corrections and feedback for self-improvement (AC-053)."""
+        with open(self.feedback_file, "a", encoding="utf-8") as f:
+            f.write(f"- {feedback.rstrip()}\n")
+
+    def read_feedback(self) -> str:
+        """Retrieve historical user feedback."""
+        if self.feedback_file.exists():
+            return self.feedback_file.read_text(encoding="utf-8")
+        return ""
+
     def get_memory_context(self) -> str:
         long_term = self.read_long_term()
-        return f"## Long-term Memory\n{long_term}" if long_term else ""
+        feedback = self.read_feedback()
+        res = ""
+        if long_term:
+            res += f"## Long-term Memory\n{long_term}\n\n"
+        if feedback:
+            res += f"## User Feedback & Self-Improvement\n{feedback}\n\n"
+        return res
 
     async def consolidate(
         self,

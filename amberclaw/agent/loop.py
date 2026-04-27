@@ -7,7 +7,7 @@ import re
 import weakref
 from contextlib import AsyncExitStack
 from pathlib import Path
-from typing import TYPE_CHECKING, Awaitable, Callable
+from typing import TYPE_CHECKING, Awaitable, Callable, Any
 
 from loguru import logger
 
@@ -15,13 +15,16 @@ from amberclaw.agent.context import ContextBuilder
 from amberclaw.agent.graph import AgentGraph
 from amberclaw.agent.memory import MemoryStore
 from amberclaw.agent.subagent import SubagentManager
+from amberclaw.agent.a2a import A2AManager, AgentCard
 from amberclaw.agent.tools.cron import CronTool
 from amberclaw.agent.tools.filesystem import EditFileTool, ListDirTool, ReadFileTool, WriteFileTool
+from amberclaw.agent.tools.gui import BrowserActionTool, DesktopAutomationTool
 from amberclaw.agent.tools.message import MessageTool
 from amberclaw.agent.tools.registry import ToolRegistry
 from amberclaw.agent.tools.shell import ExecTool
 from amberclaw.agent.tools.spawn import SpawnTool
 from amberclaw.agent.tools.web import WebFetchTool, WebSearchTool
+from amberclaw.agent.tools.skills import SkillSearchTool, SkillInstallTool, SkillListTool
 from amberclaw.agent.tools.personal_rag import KnowledgeSearchTool, KnowledgeAddTool
 from amberclaw.agent.tools.drive import DriveSearchTool, DriveUploadTool
 from amberclaw.agent.tools.data_clean import DataCleanTool
@@ -31,6 +34,14 @@ from amberclaw.agent.tools.data_eda import DataEDATool
 from amberclaw.agent.tools.council import CouncilTool
 from amberclaw.agent.tools.mythos import MythosTool
 from amberclaw.agent.tools.personal_assistant import AssistantTool
+from amberclaw.agent.tools.multimodal import (
+    VisionTool,
+    TranscriptionTool,
+    TTSTool,
+    DocumentIngestionTool,
+    VideoAnalysisTool,
+    SensorInputTool,
+)
 from amberclaw.bus.events import InboundMessage, OutboundMessage
 from amberclaw.bus.queue import MessageBus
 from amberclaw.providers.base import LLMProvider
@@ -65,6 +76,7 @@ class AgentLoop:
         temperature: float = 0.1,
         max_tokens: int = 4096,
         memory_window: int = 100,
+        mode: str = "react",
         reasoning_effort: str | None = None,
         brave_api_key: str | None = None,
         web_proxy: str | None = None,
@@ -72,7 +84,7 @@ class AgentLoop:
         cron_service: CronService | None = None,
         restrict_to_workspace: bool = False,
         session_manager: SessionManager | None = None,
-        mcp_servers: dict | None = None,
+        mcp_servers: dict[str, Any] | None = None,
         channels_config: ChannelsConfig | None = None,
         fallback_models: list[str] | None = None,
         embedding_model: str | None = None,
@@ -86,6 +98,7 @@ class AgentLoop:
         self.workspace = workspace
         self.model = model or provider.get_default_model()
         self.max_iterations = max_iterations
+        self.mode = mode
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.memory_window = memory_window
@@ -118,12 +131,23 @@ class AgentLoop:
 
         self._running = False
         self._mcp_servers = mcp_servers or {}
+        self._mcp_discovery_task: asyncio.Task[Any] | None = None
+
+        # Initialize A2A
+        self.a2a_manager = A2AManager(
+            AgentCard(
+                name="AmberClaw",
+                capabilities=["rag", "data", "web", "mcp"],
+                endpoints={"a2a": getattr(channels_config, "a2a_url", "") if channels_config else ""}
+            )
+        )
 
         # Initialize LangGraph engine
         self._graph = AgentGraph(
             provider=self.provider,
             tools=list(self.tools.values()),
             max_iterations=self.max_iterations,
+            mode=self.mode,
         )
 
         self._mcp_stack: AsyncExitStack | None = None
@@ -163,6 +187,17 @@ class AgentLoop:
         # ── Web ───────────────────────────────────────────────────────────────
         self.tools.register(WebSearchTool(api_key=self.brave_api_key, proxy=self.web_proxy))
         self.tools.register(WebFetchTool(proxy=self.web_proxy))
+        self.tools.register(BrowserActionTool())
+        self.tools.register(DesktopAutomationTool())
+
+        # ── Skills ────────────────────────────────────────────────────────────
+        self.tools.register(SkillSearchTool())
+        self.tools.register(
+            SkillInstallTool(
+                workspace=str(self.workspace), loader=self.context.skills
+            )
+        )
+        self.tools.register(SkillListTool(workspace=str(self.workspace)))
 
         # ── Messaging / Scheduling ────────────────────────────────────────────
         self.tools.register(MessageTool(send_callback=self.bus.publish_outbound))
@@ -245,7 +280,20 @@ class AgentLoop:
         except Exception as exc:
             logger.debug("Drive tools skipped: {}", exc)
 
+        # ── Multimodal (Vision, Audio, Video, Sensors) ────────────────────────
+        try:
+            self.tools.register(VisionTool(provider=self.provider))
+            self.tools.register(TranscriptionTool())
+            self.tools.register(TTSTool())
+            self.tools.register(DocumentIngestionTool())
+            self.tools.register(VideoAnalysisTool(provider=self.provider))
+            self.tools.register(SensorInputTool())
+            logger.info("Multimodal tools registered")
+        except Exception as exc:
+            logger.error("Multimodal tools failed to register: {}", exc)
+
         # ── DataAgent (data science suite) — always core ──────────────────────
+
         try:
             data_cfg = getattr(_cfg, "data", None)
             out_dir = getattr(data_cfg, "output_dir", None) if data_cfg else None
@@ -258,6 +306,12 @@ class AgentLoop:
 
         except Exception as exc:
             logger.debug("DataAgent tools skipped: {}", exc)
+
+        # ── A2A (Agent-to-Agent) ──────────────────────────────────────────────
+        from amberclaw.agent.tools.a2a import A2ATool, A2ADiscoveryTool
+        self.tools.register(A2ATool(self.a2a_manager))
+        self.tools.register(A2ADiscoveryTool(self.a2a_manager))
+        logger.info("A2A tools registered")
 
     async def _connect_mcp(self) -> None:
         """Connect to configured MCP servers (one-time, lazy)."""
@@ -281,6 +335,27 @@ class AgentLoop:
                 self._mcp_stack = None
         finally:
             self._mcp_connecting = False
+
+    async def _mcp_discovery_loop(self) -> None:
+        """Periodically scan for new MCP servers."""
+        from amberclaw.agent.tools.mcp import connect_mcp_servers
+
+        while self._running:
+            try:
+                # Only discover if specifically requested or on local network
+                # For now, we scan configured discovery URLs
+                discovery_servers = {}
+                for name, cfg in self._mcp_servers.items():
+                    if getattr(cfg, "discover", False) and cfg.url:
+                        discovery_servers[name] = cfg
+
+                if discovery_servers and self._mcp_stack:
+                    logger.debug("Running dynamic MCP discovery...")
+                    await connect_mcp_servers(discovery_servers, self.tools, self._mcp_stack)
+            except Exception as e:
+                logger.error("Dynamic MCP discovery failed: {}", e)
+
+            await asyncio.sleep(300)  # Scan every 5 minutes
 
     def _set_tool_context(self, channel: str, chat_id: str, message_id: str | None = None) -> None:
         """Update context for all tools that need routing info."""
@@ -344,6 +419,9 @@ class AgentLoop:
         inputs = {
             "messages": lc_msgs,
             "iterations": 0,
+            "mode": self.mode,
+            "plan": [],
+            "current_task": None,
             "config": {
                 "model": self.model,
                 "llm_kwargs": {
@@ -408,6 +486,11 @@ class AgentLoop:
         """Run the agent loop, dispatching messages as tasks to stay responsive to /stop."""
         self._running = True
         await self._connect_mcp()
+
+        # Start background discovery
+        if not self._mcp_discovery_task:
+            self._mcp_discovery_task = asyncio.create_task(self._mcp_discovery_loop())
+
         logger.info("Agent loop started")
 
         while self._running:
@@ -582,7 +665,15 @@ class AgentLoop:
             return OutboundMessage(
                 channel=msg.channel,
                 chat_id=msg.chat_id,
-                content="🐈 amberclaw commands:\n/new — Start a new conversation\n/stop — Stop the current task\n/help — Show available commands",
+                content="🐈 amberclaw commands:\n/new — Start a new conversation\n/stop — Stop the current task\n/feedback <msg> — Provide self-improvement feedback\n/help — Show available commands",
+            )
+        if cmd.startswith("/feedback "):
+            feedback = msg.content[len("/feedback "):].strip()
+            MemoryStore(self.workspace).append_feedback(feedback)
+            return OutboundMessage(
+                channel=msg.channel,
+                chat_id=msg.chat_id,
+                content="Feedback stored for future self-improvement.",
             )
 
         unconsolidated = len(session.messages) - session.last_consolidated
@@ -617,6 +708,19 @@ class AgentLoop:
             chat_id=msg.chat_id,
         )
 
+        # Token and Context Budget System (AC-059)
+        # Rough estimation: 1 token ~= 4 chars
+        approx_tokens = sum(len(str(m.get("content", ""))) for m in initial_messages) // 4
+        limit = self.max_tokens or 128000
+
+        warning_msg = None
+        if approx_tokens > limit * 0.95:
+            # Trigger summary consolidation
+            await self._consolidate_memory(session, archive_all=False)
+            warning_msg = "Context window near 95% limit. Triggered automatic summarization."
+        elif approx_tokens > limit * 0.80:
+            warning_msg = f"Context window at {int((approx_tokens/limit)*100)}% capacity. Consider /new soon."
+
         async def _bus_progress(content: str, *, tool_hint: bool = False) -> None:
             meta = dict(msg.metadata or {})
             meta["_progress"] = True
@@ -638,6 +742,9 @@ class AgentLoop:
 
         if final_content is None:
             final_content = "I've completed processing but have no response to give."
+
+        if warning_msg:
+            final_content += f"\n\n[System] {warning_msg}"
 
         self._save_turn(session, all_msgs, 1 + len(history))
         self.sessions.save(session)

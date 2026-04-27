@@ -3,8 +3,9 @@
 
   <p>
     <a href="https://github.com/krishujeniya/AmberClaw/actions/workflows/ci.yml"><img src="https://github.com/krishujeniya/AmberClaw/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-    <a href="https://pypi.org/project/amberclaw-ai/"><img src="https://img.shields.io/pypi/v/amberclaw-ai?color=blue" alt="PyPI"></a>
-    <a href="https://pepy.tech/project/amberclaw-ai"><img src="https://static.pepy.tech/badge/amberclaw-ai" alt="Downloads"></a>
+    <a href="https://github.com/krishujeniya/AmberClaw/actions/workflows/ci.yml"><img src="https://img.shields.io/badge/coverage-70%25-brightgreen.svg" alt="Coverage"></a>
+    <a href="https://pypi.org/project/amberclaw/"><img src="https://img.shields.io/pypi/v/amberclaw?color=blue" alt="PyPI"></a>
+    <a href="https://pepy.tech/project/amberclaw"><img src="https://static.pepy.tech/badge/amberclaw" alt="Downloads"></a>
     <a href="https://hub.docker.com/r/krishujeniya/amberclaw"><img src="https://img.shields.io/docker/pulls/krishujeniya/amberclaw" alt="Docker Pulls"></a>
     <img src="https://img.shields.io/badge/python-≥3.11-3776AB?logo=python&logoColor=white" alt="Python">
     <a href="https://github.com/krishujeniya/AmberClaw/commits/main"><img src="https://img.shields.io/github/last-commit/krishujeniya/AmberClaw" alt="Last Commit"></a>
@@ -18,6 +19,7 @@
   <p>
     <a href="#-quick-start">Quick Start</a> •
     <a href="#-features">Features</a> •
+    <a href="#-tutorials">Tutorials</a> •
     <a href="#-chat-integrations">Integrations</a> •
     <a href="#-configuration">Configuration</a> •
     <a href="#-docker">Docker</a> •
@@ -28,6 +30,17 @@
 ---
 
 AmberClaw is a production-ready, minimal-footprint personal AI assistant built in roughly four thousand lines of Python. Hook it up to any LLM backend, wire it into the chat platforms you already use, and let it handle the rest.
+
+## 🌟 Why AmberClaw?
+
+AmberClaw focuses on a minimal code footprint (~4k LOC) while providing an end-to-end framework. 
+
+| Feature | AmberClaw | LangChain | CrewAI | AutoGen | Open WebUI |
+|---|---|---|---|---|---|
+| **Code Footprint** | ~4k LOC | >50k LOC | ~15k LOC | ~20k LOC | UI-Heavy |
+| **Startup Time** | Instant | Slow | Med | Med | Slow |
+| **Memory Usage** | Minimal | High | Med | Med | High |
+| **Integrations** | Built-in | Plugin | Plugin | Plugin | UI only |
 
 ## ✨ Features
 
@@ -42,6 +55,8 @@ AmberClaw is a production-ready, minimal-footprint personal AI assistant built i
 | 🔒 **Security** | Allow-list access control, command filtering, path traversal guards |
 
 ## 🏗️ Architecture
+
+Message flow: user message → channel → bus → agent → tool → memory → response.
 
 <p align="center">
   <img src="assets/AmberClaw_arch.png" alt="AmberClaw Architecture" width="800">
@@ -60,23 +75,40 @@ pip install -e .
 ### Via uv (fast)
 
 ```bash
-uv tool install amberclaw-ai
+uv tool install amberclaw
 ```
 
 ### From PyPI
 
 ```bash
-pip install amberclaw-ai
+pip install amberclaw
+```
+
+### Optional Dependencies
+
+AmberClaw has optional features you can install:
+
+> **Note**: Persistent cross-session memory requires installing the memory extra.
+
+```bash
+# For persistent memory support
+pip install amberclaw[memory]
+
+# For local RAG support
+pip install amberclaw[vectordb]
+
+# For all features
+pip install amberclaw[all]
 ```
 
 ### Upgrade
 
 ```bash
 # pip
-pip install -U amberclaw-ai
+pip install -U amberclaw
 
 # uv
-uv tool upgrade amberclaw-ai
+uv tool upgrade amberclaw
 ```
 
 ## 🚀 Quick Start
@@ -100,6 +132,13 @@ amberclaw agent
 ```bash
 amberclaw gateway
 ```
+
+## 📺 Tutorials
+
+- [Installation & First Run](https://youtube.com/placeholder-installation)
+- [Creating Your First Skill](https://youtube.com/placeholder-first-skill)
+- [MCP Server Connection](https://youtube.com/placeholder-mcp)
+- [Docker Deployment](https://youtube.com/placeholder-docker)
 
 ## 💬 Chat Integrations
 

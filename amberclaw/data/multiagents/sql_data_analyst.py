@@ -438,21 +438,21 @@ def make_sql_data_analyst(
     routing_preprocessor_prompt = PromptTemplate(
         template="""
         You are an expert in routing decisions for a SQL Database Agent, a Charting Visualization Agent, and a Pandas Table Agent. Your job is to:
-        
+
         1. Determine what the correct format for a Users Question should be for use with a SQL Database Agent based on the incoming user question. Anything related to database and data manipulation should be passed along.
         2. Determine whether or not a chart should be generated or a table should be returned based on the users question.
         3. If a chart is requested, determine the correct format of a Users Question should be used with a Data Visualization Agent. Anything related to plotting and visualization should be passed along.
-        
+
         Use the following criteria on how to route the the initial user question:
-        
+
         From the incoming user question, remove any details about the format of the final response as either a Chart or Table and return only the important part of the incoming user question that is relevant for the SQL generator agent. This will be the 'user_instructions_sql_database'. If 'None' is found, return the original user question.
-        
-        Next, determine if the user would like a data visualization ('chart') or a 'table' returned with the results of the Data Wrangling Agent. If unknown, not specified or 'None' is found, then select 'table'.  
-        
+
+        Next, determine if the user would like a data visualization ('chart') or a 'table' returned with the results of the Data Wrangling Agent. If unknown, not specified or 'None' is found, then select 'table'.
+
         If a 'chart' is requested, return the 'user_instructions_data_visualization'. If 'None' is found, return None.
-        
+
         Return JSON with 'user_instructions_sql_database', 'user_instructions_data_visualization' and 'routing_preprocessor_decision'.
-        
+
         INITIAL_USER_QUESTION: {user_instructions}
         """,
         input_variables=["user_instructions"],

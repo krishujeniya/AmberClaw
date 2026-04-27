@@ -1,0 +1,24 @@
+site_name: AmberClaw Documentation
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - navigation.indexes
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Setup: setup.md
+    - Windows Setup: windows-setup.md
+  - Architecture: architecture.md
+  - Guides:
+    - Troubleshooting: troubleshooting.md
+    - Building Skills: skills.md
+    - Comparisons: comparisons.md
+  - API Reference: api.md

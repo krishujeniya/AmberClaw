@@ -11,6 +11,25 @@ from amberclaw.agent.tools.base import Tool
 from amberclaw.agent.tools.registry import ToolRegistry
 
 
+async def discover_mcp_servers(host_url: str) -> list[dict]:
+    """
+    Discover MCP servers via .well-known/mcp.json.
+    Returns a list of server configurations.
+    """
+    discovery_url = f"{host_url.rstrip('/')}/.well-known/mcp.json"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(discovery_url)
+            if resp.status_code == 200:
+                data = resp.json()
+                servers = data.get("servers", [])
+                logger.info("Found {} MCP servers via discovery at {}", len(servers), host_url)
+                return servers
+    except Exception as e:
+        logger.debug("MCP discovery failed at {}: {}", discovery_url, e)
+    return []
+
+
 class MCPToolWrapper(Tool):
     """Wraps a single MCP server tool as a amberclaw Tool."""
 
@@ -38,10 +57,22 @@ class MCPToolWrapper(Tool):
         from mcp import types
 
         try:
-            result = await asyncio.wait_for(
-                self._session.call_tool(self._original_name, arguments=kwargs),
-                timeout=self._tool_timeout,
+            # Check if this tool should be called as a task (2026 spec)
+            is_task = getattr(self._session, "supports_tasks", False) and hasattr(
+                self._session, "create_task"
             )
+
+            if is_task:
+                # Long-running task support
+                task = await self._session.create_task(self._original_name, arguments=kwargs)
+                logger.info("MCP task '{}' started: {}", self._name, task.id)
+                result = await asyncio.wait_for(task.wait(), timeout=self._tool_timeout)
+            else:
+                # Standard tool call
+                result = await asyncio.wait_for(
+                    self._session.call_tool(self._original_name, arguments=kwargs),
+                    timeout=self._tool_timeout,
+                )
         except asyncio.TimeoutError:
             logger.warning("MCP tool '{}' timed out after {}s", self._name, self._tool_timeout)
             return f"(MCP tool call timed out after {self._tool_timeout}s)"
@@ -99,6 +130,21 @@ async def connect_mcp_servers(
     from mcp.client.sse import sse_client
     from mcp.client.stdio import stdio_client
     from mcp.client.streamable_http import streamable_http_client
+
+    # Expand discovery servers
+    discovery_queue = []
+    for name, cfg in mcp_servers.items():
+        if getattr(cfg, "discover", False) and cfg.url:
+            discovered = await discover_mcp_servers(cfg.url)
+            for d_cfg in discovered:
+                discovery_queue.append((d_cfg.get("name", name), d_cfg))
+
+    # Add discovered to main loop
+    for d_name, d_cfg_dict in discovery_queue:
+        from types import SimpleNamespace
+
+        # Convert dict to namespace to match expected cfg object
+        mcp_servers[d_name] = SimpleNamespace(**d_cfg_dict)
 
     for name, cfg in mcp_servers.items():
         try:

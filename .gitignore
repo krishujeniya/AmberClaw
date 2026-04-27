@@ -58,8 +58,7 @@ pyright_errors.json
 amberclaw.db
 *.db
 mem0_db/
-docs/
-
+.hypothesis/
 # IDEs
 .idea/
 .vscode/

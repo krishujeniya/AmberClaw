@@ -477,7 +477,7 @@ info = aml.training_info
 Experimental Features
 
 Preprocessing
-As of H2O 3.32.0.1, AutoML now has a preprocessing option with minimal support for automated Target Encoding of high cardinality categorical variables. The only currently supported option is preprocessing = ["target_encoding"]: we automatically tune a Target Encoder model and apply it to columns that meet certain cardinality requirements for the tree-based algorithms (XGBoost, H2O GBM and Random Forest). 
+As of H2O 3.32.0.1, AutoML now has a preprocessing option with minimal support for automated Target Encoding of high cardinality categorical variables. The only currently supported option is preprocessing = ["target_encoding"]: we automatically tune a Target Encoder model and apply it to columns that meet certain cardinality requirements for the tree-based algorithms (XGBoost, H2O GBM and Random Forest).
 
 FAQ
 

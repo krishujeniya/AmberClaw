@@ -64,6 +64,60 @@ try:
 except ImportError:
     pass
 
+# ---------------------------------------------------------------------------
+# Skill Management
+# ---------------------------------------------------------------------------
+skills_app = typer.Typer(help="Manage AmberClaw skills")
+app.add_typer(skills_app, name="skill")
+
+
+@skills_app.command("search")
+def skill_search(query: str = typer.Argument(..., help="Search query (natural language)")) -> None:
+    """Search for skills on ClawHub."""
+    import subprocess
+
+    console.print(f"Searching for [bold cyan]{query}[/bold cyan]...")
+    try:
+        subprocess.run(["npx", "--yes", "clawhub@latest", "search", query], check=True)
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]Error: {e}[/red]")
+    except Exception as e:
+        console.print(f"[red]Unexpected error: {e}[/red]")
+
+
+@skills_app.command("install")
+def skill_install(slug: str = typer.Argument(..., help="The unique slug of the skill")) -> None:
+    """Install a skill from ClawHub."""
+    import subprocess
+
+    workspace = get_workspace_path()
+    console.print(f"Installing [bold cyan]{slug}[/bold cyan] to {workspace}...")
+    try:
+        subprocess.run(
+            ["npx", "--yes", "clawhub@latest", "install", slug, "--workdir", str(workspace)],
+            check=True,
+        )
+        console.print(f"[green]✓[/green] Successfully installed {slug}.")
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]Error: {e}[/red]")
+    except Exception as e:
+        console.print(f"[red]Unexpected error: {e}[/red]")
+
+
+@skills_app.command("list")
+def skill_list() -> None:
+    """List installed skills."""
+    import subprocess
+
+    workspace = get_workspace_path()
+    try:
+        subprocess.run(["npx", "--yes", "clawhub@latest", "list", "--workdir", str(workspace)], check=True)
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]Error: {e}[/red]")
+    except Exception as e:
+        console.print(f"[red]Unexpected error: {e}[/red]")
+
+
 # No additional sub-apps — all features are wired directly into the agent loop.
 
 
@@ -1108,5 +1162,97 @@ def _login_github_copilot() -> None:
         raise typer.Exit(1)
 
 
+@app.command()
+def usage(
+    days: int = typer.Option(7, "--days", "-d", help="Number of days to show usage for"),
+    all_time: bool = typer.Option(False, "--all", "-a", help="Show all-time usage"),
+) -> None:
+    """Show token usage and cost monitoring dashboard."""
+    from amberclaw.utils.cost_tracker import get_total_costs
+    from rich.table import Table
+
+    costs = get_total_costs(days=None if all_time else days)
+
+    console.print(f"{__logo__} [bold cyan]Token Usage Dashboard[/bold cyan]\n")
+    if all_time:
+        console.print("[dim]Period: All Time[/dim]\n")
+    else:
+        console.print(f"[dim]Period: Last {days} days[/dim]\n")
+
+    if not costs:
+        console.print("[yellow]No usage data found.[/yellow]")
+        return
+
+    table = Table(box=None, header_style="bold blue")
+    table.add_column("Model", style="cyan")
+    table.add_column("Calls", justify="right")
+    table.add_column("Tokens", justify="right")
+    table.add_column("Cost ($)", justify="right", style="green")
+    table.add_column("Avg Latency", justify="right", style="dim")
+
+    total_calls = 0
+    total_tokens = 0
+    total_cost = 0.0
+
+    # Sort models by cost descending
+    sorted_models = sorted(costs.items(), key=lambda x: x[1]["total_cost"], reverse=True)
+
+    for model, data in sorted_models:
+        table.add_row(
+            model,
+            str(data["calls"]),
+            f"{data['total_tokens']:,}",
+            f"${data['total_cost']:.4f}",
+            f"{data['avg_latency_ms']:.0f}ms",
+        )
+        total_calls += data["calls"]
+        total_tokens += data["total_tokens"]
+        total_cost += data["total_cost"]
+
+    table.add_section()
+    table.add_row(
+        "[bold]TOTAL[/bold]",
+        f"[bold]{total_calls}[/bold]",
+        f"[bold]{total_tokens:,}[/bold]",
+        f"[bold]${total_cost:.4f}[/bold]",
+        "",
+    )
+
+    console.print(table)
+
+
+@app.command()
+def ingest(
+    path: str = typer.Argument(..., help="Path to document or directory to ingest"),
+) -> None:
+    """Ingest documents into the AmberClaw knowledge base."""
+    from pathlib import Path
+    from amberclaw.config.loader import load_config
+    from amberclaw.memory.rag_pipeline import DocumentIngestor, HybridRetriever
+    from loguru import logger
+
+    cfg = load_config()
+    db_dir = cfg.workspace_path / "mem0_db"
+
+    try:
+        logger.info(f"Ingesting documents from {path}...")
+        ingestor = DocumentIngestor()
+        docs = ingestor.load_and_split(Path(path))
+
+        retriever = HybridRetriever(db_dir)
+        retriever.ingest(docs)
+        console.print(f"[green]✓ Successfully ingested {len(docs)} chunks into knowledge base.[/green]")
+    except ImportError as e:
+        console.print(f"[red]Dependency missing: {e}[/red]")
+        console.print("Run: pip install amberclaw[docs,vectordb]")
+    except Exception as e:
+        console.print(f"[red]Ingestion failed: {e}[/red]")
+
+
 if __name__ == "__main__":
+    app()
+
+def run_onboard():
+    import sys
+    sys.argv = ["amberclaw", "onboard"]
     app()

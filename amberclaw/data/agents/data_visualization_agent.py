@@ -15,6 +15,7 @@ from langgraph.types import Command
 from langgraph.checkpoint.memory import MemorySaver
 
 import os
+from typing import Any
 import json
 import difflib
 import re
@@ -931,22 +932,22 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
 
         recommend_steps_prompt = PromptTemplate(
             template="""
-            You are a supervisor that is an expert in providing instructions to a chart generator agent for plotting. 
-    
+            You are a supervisor that is an expert in providing instructions to a chart generator agent for plotting.
+
             You will take a question that a user has and the data that was generated to answer the question, and create instructions to create a chart from the data that will be passed to a chart generator agent.
-            
-            USER QUESTION / INSTRUCTIONS: 
+
+            USER QUESTION / INSTRUCTIONS:
             {user_instructions}
-            
+
             Previously Recommended Instructions (if any):
             {recommended_steps}
-            
-            DATA SUMMARY: 
+
+            DATA SUMMARY:
             {all_datasets_summary}
 
             IMPORTANT:
-            
-            - Formulate chart generator instructions by informing the chart generator of what type of plotly plot to use (e.g. bar, line, scatter, etc) to best represent the data. 
+
+            - Formulate chart generator instructions by informing the chart generator of what type of plotly plot to use (e.g. bar, line, scatter, etc) to best represent the data.
             - Think about how best to convey the information in the data to the user.
             - The data summary includes COLUMN PROFILE, COLUMN ALIASES, and UNIT HINTS; use them when selecting columns and labeling axes.
             - If the user specifies a chart type (e.g., violin, box, scatter, histogram, line), you MUST use that chart type. Do NOT substitute a different chart type.
@@ -954,19 +955,19 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
             - Come up with an informative title from the user's question and data provided. Also provide X and Y axis titles.
             - If the user requests a combined \"violin+box\" plot, instruct the generator to use a violin plot with an embedded box plot (e.g., `plotly.express.violin(..., box=True)`).
             - Only use columns present in the schema (or the alias map). Never guess column names.
-            
+
             CHART TYPE SELECTION TIPS:
-            
+
             - If a numeric column has less than 10 unique values, consider this column to be treated as a categorical column. Pick a chart that is appropriate for categorical data.
-            - If a numeric column has more than 10 unique values, consider this column to be treated as a continuous column. Pick a chart that is appropriate for continuous data.       
-            
-            
+            - If a numeric column has more than 10 unique values, consider this column to be treated as a continuous column. Pick a chart that is appropriate for continuous data.
+
+
             RETURN FORMAT:
-            
+
             Return your instructions in the following format:
-            CHART GENERATOR INSTRUCTIONS: 
+            CHART GENERATOR INSTRUCTIONS:
             FILL IN THE INSTRUCTIONS HERE
-            
+
             Avoid these:
             1. Do not include steps to save files.
             2. Do not include unrelated user instructions that are not related to the chart generation.
@@ -1031,47 +1032,47 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
         prompt_template = PromptTemplate(
             template="""
             You are a chart generator agent that is an expert in generating plotly charts. You must use plotly or plotly.express to produce plots.
-    
+
             Your job is to produce python code to generate visualizations with a function named {function_name}.
-            
+
             You will take instructions from a Chart Instructor and generate a plotly chart from the data provided.
-            
-            CHART INSTRUCTIONS: 
+
+            CHART INSTRUCTIONS:
             {chart_generator_instructions}
-            
-            DATA: 
+
+            DATA:
             {all_datasets_summary}
 
             IMPORTANT:
             - The data summary includes COLUMN PROFILE, COLUMN ALIASES, and UNIT HINTS; use them for column selection and axis labels.
             - Only use columns present in the schema (or alias map). Never guess column names.
-            
+
             RETURN:
-            
+
             Return Python code in ```python ``` format with a single function definition, {function_name}(data_raw), that includes all imports inside the function.
-            
+
             Return the plotly chart as a dictionary.
-            
+
             Return code to provide the data visualization function:
-            
+
             def {function_name}(data_raw):
                 import pandas as pd
                 import numpy as np
                 import json
                 import plotly.graph_objects as go
                 import plotly.io as pio
-                
+
                 ...
-                
+
                 fig_json = pio.to_json(fig)
                 fig_dict = json.loads(fig_json)
-                
+
                 return fig_dict
-            
+
             Avoid these:
             1. Do not include steps to save files.
             2. Do not include unrelated user instructions that are not related to the chart generation.
-            
+
             """,
             input_variables=[
                 "chart_generator_instructions",
@@ -1307,12 +1308,12 @@ Use an appropriate chart type based on column types (categorical vs numeric). De
     def fix_data_visualization_code(state: GraphState) -> dict[str, Any]:
         prompt = """
         You are a Data Visualization Agent. Your job is to create a {function_name}() function that can be run on the data provided. The function is currently broken and needs to be fixed.
-        
+
         Make sure to only return the function definition for {function_name}().
-        
+
         Return Python code in ```python``` format with a single function definition, {function_name}(data_raw), that includes all imports inside the function.
-        
-        This is the broken code (please fix): 
+
+        This is the broken code (please fix):
         {code_snippet}
 
         User instructions:

@@ -509,8 +509,8 @@ def make_h2o_ml_agent(
 
         recommend_steps_prompt = PromptTemplate(
             template="""
-                You are an AutoML Expert using H2O. 
-                
+                You are an AutoML Expert using H2O.
+
                 We have the following dataset summary, user instructions, and H2O AutoML documentation:
 
                 User instructions:
@@ -518,22 +518,22 @@ def make_h2o_ml_agent(
 
                 Data Summary:
                     {all_datasets_summary}
-                    
+
                 H2O AutoML Documentation:
                     {h2o_automl_documentation}
 
                 Please recommend a short list of steps or considerations for performing H2OAutoML on this data. Specifically focus on maximizing model accuracy while remaining flexible to user instructions and the dataset.
-                
+
                 - Recommend any paramters and values that might improve performance (predictive accuracy).
                 - Recommend the Loss Function, Stopping Criteria, and other advanced parameters.
                 - Use the H2O AutoML documentation to your advantage.
                 - Exclude deep learning algorithms since these are typically low performance.
-                
+
                 Avoid these:
-                
+
                 - Do not perform data cleaning or feature engineering here. We will handle that separately.
-                - Do not limit memory size or CPU usage unless the user specifies it. 
-                
+                - Do not limit memory size or CPU usage unless the user specifies it.
+
                 Return as a numbered list. You can return short code snippets to demonstrate actions. But do not return a fully coded solution. The H2O AutoML code will be generated separately by a Coding Agent.
             """,
             input_variables=[
@@ -591,15 +591,15 @@ def make_h2o_ml_agent(
         code_prompt = PromptTemplate(
             template="""
             You are an H2O AutoML agent. Create a Python function named {function_name}(data_raw)
-            that runs H2OAutoML on the provided data with a focus on maximizing model accuracy and 
+            that runs H2OAutoML on the provided data with a focus on maximizing model accuracy and
             incorporating user instructions for flexibility.
-            
+
             Do not perform substantial data cleaning or feature engineering here. We will handle that separately.
 
             We have two variables for deciding where to save the model:
-            model_directory = {model_directory} 
+            model_directory = {model_directory}
             log_path = {log_path}
-            
+
             IMPORTANT: MLflow Parameters if the user wants to enable MLflow with H2O AutoML:
                 enable_mlflow: {enable_mlflow}
                 mlflow_tracking_uri: {mlflow_tracking_uri}
@@ -611,20 +611,20 @@ def make_h2o_ml_agent(
             - Convert `data_raw` (pandas DataFrame) into an H2OFrame.
             - Identify the target variable from {target_variable} (if provided).
             - Start H2O if not already started.
-            - Use Recommended Steps to guide any advanced parameters (e.g., cross-validation folds, 
+            - Use Recommended Steps to guide any advanced parameters (e.g., cross-validation folds,
             balancing classes, extended training time, stacking) that might improve performance.
             - If the user does not specify anything special, use H2OAutoML defaults (including stacked ensembles).
             - Include safe defaults: max_runtime_secs (e.g., 30) and max_models (e.g., 20) to avoid runaway jobs; exclude deep learning by default.
-            - Focus on maximizing accuracy (or the most relevant metric if it's not classification) 
+            - Focus on maximizing accuracy (or the most relevant metric if it's not classification)
             while remaining flexible to user instructions.
             - Return a dict with keys: leaderboard, best_model_id, model_path, and model_results.
             - If enable_mlfow is True, log the top metrics and save the model as an artifact. (See example function)
             - IMPORTANT: if enable_mlflow is True, make sure to set enable_mlflow to True in the function definition.
             - Function signature must be valid Python: place **kwargs at the end of the parameter list.
-            
+
             Initial User Instructions (Disregard any instructions that are unrelated to modeling):
                 {user_instructions}
-            
+
             Recommended Steps:
                 {recommended_steps}
 
@@ -648,8 +648,8 @@ def make_h2o_ml_agent(
                 sort_metric: str ,
                 model_directory: str | None = None,
                 log_path: str | None = None,
-                enable_mlflow: bool, # If use has specified to enable MLflow, make sure to make this True              
-                mlflow_tracking_uri: str | None, 
+                enable_mlflow: bool, # If use has specified to enable MLflow, make sure to make this True
+                mlflow_tracking_uri: str | None,
                 mlflow_experiment_name: str,
                 mlflow_run_name: str,
                 **kwargs # Additional parameters for H2OAutoML (feel free to add these based on user instructions and recommended steps)
@@ -683,7 +683,7 @@ def make_h2o_ml_agent(
                     if enable_mlflow and run is not None:
                         run_id = run.info.run_id
                         import mlflow
-                        
+
 
                     # Initialize H2O
                     h2o.init()
@@ -722,7 +722,7 @@ def make_h2o_ml_agent(
                     leaderboard_dict = leaderboard_df.to_dict()
 
                     # Gather top-model metrics from the first row
-                    top_metrics = leaderboard_df.iloc[0].to_dict()  
+                    top_metrics = leaderboard_df.iloc[0].to_dict()
 
                     # Construct model_results
                     model_results = dict(
@@ -734,7 +734,7 @@ def make_h2o_ml_agent(
 
                     # IMPORTANT: Log these to MLflow if enabled
                     if enable_mlflow and run is not None:
-                        
+
                         # Log the top metrics if numeric
                         numeric_metrics = {{k: v for k, v in top_metrics.items() if isinstance(v, (int, float))}}
                         mlflow.log_metrics(numeric_metrics)
@@ -745,10 +745,10 @@ def make_h2o_ml_agent(
                             mlflow.h2o.log_model(aml.leader, name="model")
                         except TypeError:
                             mlflow.h2o.log_model(aml.leader, artifact_path="model")
-                        
+
                         # Log the leaderboard
                         mlflow.log_table(leaderboard_dict, "leaderboard.json")
-                        
+
                         # Log these parameters (if specified)
                         mlflow.log_params(dict(
                             target= target,
@@ -777,17 +777,17 @@ def make_h2o_ml_agent(
 
                 return output
             ```
-            
+
             Avoid these errors:
-            
+
             - WARNING mlflow.models.model: Model logged without a signature and input example. Please set `input_example` parameter when logging the model to auto infer the model signature.
-            
+
             - 'list' object has no attribute 'tolist'
-            
+
             - with h2o.utils.threading.local_context(polars_enabled=True, datatable_enabled=True):  pandas_df = h2o_df.as_data_frame() # Convert to pandas DataFrame using pd.DataFrame(h2o_df)
-            
+
             - dtype is only supported for one column frames
-            
+
             - h2o.is_running() module 'h2o' has no attribute 'is_running'. Solution: just do h2o.init() and it will check if H2O is running.
 
             Critical requirements (prevents common AutoML failures):
@@ -795,8 +795,8 @@ def make_h2o_ml_agent(
               `data_h2o[target] = data_h2o[target].asfactor()` after creating the H2OFrame.
             - Only use classification metrics (AUC/logloss/AUCPR) when the target is categorical; use regression metrics (RMSE/MAE) only for numeric targets.
             - Do not set extremely small stopping_tolerance; prefer H2O defaults unless the user explicitly requests tuning.
-            
-            
+
+
             """,
             input_variables=[
                 "user_instructions",
@@ -1200,9 +1200,9 @@ def make_h2o_ml_agent(
     # 4) Fix code if there's an error
     def fix_h2o_code(state: GraphState):
         fix_prompt = """
-        You are an H2O AutoML agent. The function {function_name} currently has errors. 
+        You are an H2O AutoML agent. The function {function_name} currently has errors.
         Please fix it. Return only the corrected function in ```python``` format.
-        
+
         Broken code:
         {code_snippet}
 

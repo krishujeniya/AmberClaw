@@ -42,7 +42,7 @@ dependencies = [
     "prompt-toolkit>=3.0.43",
     "oauth-cli-kit>=0.1.0",
     "croniter>=6.0.0",
-    "mcp>=1.0.0",
+    "mcp>=1.27.0",
     "google-auth>=2.30.0",
     "google-api-python-client>=2.130.0",
     "setuptools",
@@ -73,7 +73,8 @@ ml = [
     "langchain-ollama",
 ]
 memory = [
-    "mem0ai>=0.1.0",
+    "mem0ai>=1.0.0",
+    "networkx>=3.0.0",
 ]
 channels = [
     "websockets>=16.0",
@@ -94,6 +95,8 @@ docs = [
     "unstructured>=0.16.0",
     "python-docx>=1.1.0",
     "readability-lxml>=0.8.4",
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=2.2.0",
 ]
 dev = [
     "pytest>=9.0.0",
@@ -103,9 +106,10 @@ dev = [
     "ruff>=0.9.0",
     "mypy>=1.10.0",
     "pyright>=1.1.360",
+    "ragas>=0.1.0",
 ]
 vectordb = [
-    "chroma",
+    "chromadb",
     "lancedb",
     "qdrant-client",
 ]

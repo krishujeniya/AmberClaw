@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Sequence, TypedDict, Annotated, Optional, Dict, Any, List, Union, TYPE_CHECKING
+from typing import Sequence, TypedDict, Annotated, Optional, Dict, Any, List
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from IPython.display import Markdown
@@ -213,7 +213,7 @@ Each worker has specific tools/capabilities (names are a hint for routing):
 - Data_Wrangling_Agent: Can work with one or more datasets, performing operations such as joining/merging multiple datasets, reshaping, aggregating, encoding, creating computed features, and ensuring consistent data types. Capabilities: recommend_wrangling_steps, create_data_wrangling_code, execute_data_wrangling_code (transform/rename/format). Must have data loaded/ready.
 - Data_Cleaning_Agent: Strong in cleaning data, removing anomalies, and fixing data issues. Capabilities: recommend_cleaning_steps, create_data_cleaner_code, execute_data_cleaner_code (impute/clean). Must have data loaded/ready.
 - EDA_Tools_Agent: Strong in exploring data, analysing data, and providing information about the data. Has several powerful tools: describe_dataset, explain_data, visualize_missing, correlation_funnel, sweetviz (use for previews/head/describe). Must have data loaded/ready.
-- Data_Visualization_Agent: Can generate Plotly charts based on user-defined instructions or default visualization steps. Must have data loaded/ready.  
+- Data_Visualization_Agent: Can generate Plotly charts based on user-defined instructions or default visualization steps. Must have data loaded/ready.
 - SQL_Database_Agent: Generate a SQL query based on the recommended steps and user instructions. Executes that SQL query against the provided database connection, returning the data results.
 - Feature_Engineering_Agent: The agent applies various feature engineering techniques, such as encoding categorical variables, scaling numeric variables, creating interaction terms,and generating polynomial features. Must have data loaded/ready.
 - H2O_ML_Agent: A Machine Learning agent that uses H2O's AutoML for training create_h2o_automl_code, execute_h2o_code (AutoML training/eval).

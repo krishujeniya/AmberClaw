@@ -5,6 +5,13 @@ Notable changes to AmberClaw are tracked here.
 This file follows the conventions of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- Prepared documentation site structure (MkDocs)
+- Added API reference using mkdocstrings
+- Expanded README with comparison tables and extra instructions
+- Added examples directory and sample configurations
+
 ## [1.0.0] - 2026-04-25
 
 ### Added

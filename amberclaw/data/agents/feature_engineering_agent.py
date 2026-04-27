@@ -14,6 +14,7 @@ from langgraph.types import Command
 from langgraph.checkpoint.memory import MemorySaver
 
 import os
+from typing import Any
 import json
 import pandas as pd
 
@@ -647,14 +648,14 @@ def make_feature_engineering_agent(
         # Prompt to get recommended steps from the LLM
         recommend_steps_prompt = PromptTemplate(
             template="""
-            You are a Feature Engineering Expert. Given the following information about the data, 
-            recommend a series of numbered steps to take to engineer features. 
-            The steps should be tailored to the data characteristics and should be helpful 
+            You are a Feature Engineering Expert. Given the following information about the data,
+            recommend a series of numbered steps to take to engineer features.
+            The steps should be tailored to the data characteristics and should be helpful
             for a feature engineering agent that will be implemented.
-            
+
             General Steps:
             Things that should be considered in the feature engineering steps:
-            
+
             * Convert features to the appropriate data types based on their sample data values
             * Remove string or categorical features with unique values equal to the size of the dataset
             * Remove constant features with the same value in all rows
@@ -666,26 +667,26 @@ def make_feature_engineering_agent(
                 * If a categorical target variable is provided, encode it using LabelEncoding
                 * All other target variables should be converted to numeric and unscaled
             * Convert any Boolean (True/False) values to integer (1/0) values. This should be performed after one-hot encoding.
-            
+
             Custom Steps:
             * Analyze the data to determine if any additional feature engineering steps are needed.
             * Recommend steps that are specific to the data provided. Include why these steps are necessary or beneficial.
             * If no additional steps are needed, simply state that no additional steps are required.
-            
+
             IMPORTANT:
             Make sure to take into account any additional user instructions that may add, remove or modify some of these steps. Include comments in your code to explain your reasoning for each step. Include comments if something is not done because a user requested. Include comments if something is done because a user requested.
-            
+
             User instructions:
             {user_instructions}
-            
+
             Previously Recommended Steps (if any):
             {recommended_steps}
-            
+
             Below are summaries of all datasets provided:
             {all_datasets_summary}
 
             Return steps as a numbered list. You can return short code snippets to demonstrate actions. But do not return a fully coded solution. The code will be generated separately by a Coding Agent.
-            
+
             Avoid these:
             1. Do not include steps to save files.
             2. Do not include unrelated user instructions that are not related to the feature engineering.
@@ -778,17 +779,17 @@ def make_feature_engineering_agent(
         feature_engineering_prompt = PromptTemplate(
             template="""
             You are a Feature Engineering Agent. Your job is to create a {function_name}() function that can be run on the data provided using the following recommended steps.
-            
+
             Recommended Steps:
             {recommended_steps}
-            
+
             Use the schema summary below to decide appropriate transformations. Keep the prompt small; do not request more data.
 
             Target Variable (if provided): {target_variable}
 
             Dataset Schema Summary (capped columns):
             {all_datasets_summary}
-            
+
             You can use Pandas, Numpy, and Scikit Learn libraries to feature engineer the data.
             Prefer deterministic, dependency-light transforms (use pandas and numpy; avoid external libraries unless necessary). If you must use sklearn, include the import and keep it minimal.
             Do NOT hardcode domain-specific column names or derived features unless explicitly requested by the user. Derive column lists from the schema (dtypes, unique counts) and user instructions only.
@@ -801,7 +802,7 @@ def make_feature_engineering_agent(
             - One-hot encode categorical columns, with high-cardinality bucketing first.
             - Convert booleans to integers after encoding.
             - Return a pandas DataFrame (not fit objects), and do not persist models.
-            
+
             Best Practices and Error Preventions:
             - Handle missing values in numeric and categorical features before transformations.
             - Avoid creating highly correlated features unless explicitly instructed.
@@ -810,15 +811,15 @@ def make_feature_engineering_agent(
             - Do not return fit objects (encoders/imputers); only return the transformed DataFrame.
             - For high-cardinality categoricals: bucket categories with frequency < 5% to 'Other' before encoding.
             - Avoid hardcoded column names; build feature lists programmatically from the schema and user instructions.
-            
+
             Avoid the following errors:
-            
+
             - name 'OneHotEncoder' is not defined
-            
+
             - Shape of passed values is (7043, 48), indices imply (7043, 47)
-            
+
             - name 'numeric_features' is not defined
-            
+
             - name 'categorical_features' is not defined
 
 
@@ -917,12 +918,12 @@ def make_feature_engineering_agent(
     def fix_feature_engineering_code(state: GraphState) -> dict[str, Any]:
         feature_engineer_prompt = """
         You are a Feature Engineering Agent. Your job is to fix the {function_name}() function that currently contains errors.
-        
+
         Provide only the corrected function definition for {function_name}().
-        
+
         Return Python code in ```python``` format with a single function definition, {function_name}(data_raw), that includes all imports inside the function.
-        
-        This is the broken code (please fix): 
+
+        This is the broken code (please fix):
         {code_snippet}
 
         Last Known Error:

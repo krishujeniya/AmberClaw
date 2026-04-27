@@ -1,10 +1,8 @@
 """Subagent manager for background task execution."""
 
 import asyncio
-import json
 import uuid
 from pathlib import Path
-from typing import Any
 
 from loguru import logger
 
@@ -16,6 +14,8 @@ from amberclaw.bus.events import InboundMessage
 from amberclaw.bus.queue import MessageBus
 from amberclaw.config.schema import ExecToolConfig
 from amberclaw.providers.base import LLMProvider
+from amberclaw.agent.graph import AgentGraph, AgentState
+from langchain_core.messages import SystemMessage, HumanMessage
 
 
 class SubagentManager:
@@ -124,70 +124,39 @@ class SubagentManager:
             tools.register(WebFetchTool(proxy=self.web_proxy))
 
             system_prompt = self._build_subagent_prompt()
-            messages: list[dict[str, Any]] = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": task},
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=task),
             ]
 
-            # Run agent loop (limited iterations)
-            max_iterations = 15
-            iteration = 0
-            final_result: str | None = None
+            # Use LangGraph instead of a while loop for subagents (AC-054)
+            graph = AgentGraph(
+                provider=self.provider,
+                tools=list(tools.values()),
+                max_iterations=15,
+                mode="react",
+            )
 
-            while iteration < max_iterations:
-                iteration += 1
+            inputs = {
+                "messages": messages,
+                "iterations": 0,
+                "mode": "react",
+                "plan": [],
+                "current_task": None,
+                "config": {
+                    "model": model or self.model,
+                    "llm_kwargs": {
+                        "temperature": self.temperature,
+                        "max_tokens": self.max_tokens,
+                        "reasoning_effort": reasoning_effort or self.reasoning_effort,
+                    },
+                },
+            }
 
-                response = await self.provider.chat_with_retry(
-                    messages=messages,
-                    tools=tools.get_definitions(),
-                    model=model or self.model,
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens,
-                    reasoning_effort=reasoning_effort or self.reasoning_effort,
-                )
-
-                if response.has_tool_calls:
-                    # Add assistant message with tool calls
-                    tool_call_dicts = [
-                        {
-                            "id": tc.id,
-                            "type": "function",
-                            "function": {
-                                "name": tc.name,
-                                "arguments": json.dumps(tc.arguments, ensure_ascii=False),
-                            },
-                        }
-                        for tc in response.tool_calls
-                    ]
-                    messages.append(
-                        {
-                            "role": "assistant",
-                            "content": response.content or "",
-                            "tool_calls": tool_call_dicts,
-                        }
-                    )
-
-                    # Execute tools
-                    for tool_call in response.tool_calls:
-                        args_str = json.dumps(tool_call.arguments, ensure_ascii=False)
-                        logger.debug(
-                            "Subagent [{}] executing: {} with arguments: {}",
-                            task_id,
-                            tool_call.name,
-                            args_str,
-                        )
-                        result = await tools.execute(tool_call.name, tool_call.arguments)
-                        messages.append(
-                            {
-                                "role": "tool",
-                                "tool_call_id": tool_call.id,
-                                "name": tool_call.name,
-                                "content": result,
-                            }
-                        )
-                else:
-                    final_result = response.content
-                    break
+            from typing import cast
+            final_state = await graph.runnable.ainvoke(cast(AgentState, inputs))
+            final_msg = final_state["messages"][-1]
+            final_result = str(final_msg.content) if final_msg.content else None
 
             if final_result is None:
                 final_result = "Task completed but no final response was generated."

@@ -7,7 +7,6 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.pregel.types import StreamMode
 
 import pandas as pd
-import sqlalchemy as sql
 import json
 
 from typing_extensions import Any, Callable, Dict, Type, Optional, Union, List

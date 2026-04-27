@@ -25,6 +25,9 @@ class LLMResponse:
     tool_calls: list[ToolCallRequest] = field(default_factory=list)
     finish_reason: str = "stop"
     usage: dict[str, int] = field(default_factory=dict)
+    cost: float = 0.0  # Estimated cost in USD
+    latency_ms: float = 0.0  # Total generation time in ms
+    ttft_ms: float = 0.0  # Time to first token in ms
     reasoning_content: str | None = None  # Kimi, DeepSeek-R1 etc.
     thinking_blocks: list[dict] | None = None  # Anthropic extended thinking
 
@@ -199,6 +202,22 @@ class LLMProvider(ABC):
                     )
 
                 if response.finish_reason != "error":
+                    # Check for malformed JSON args (AC-055)
+                    malformed = False
+                    for tc in response.tool_calls:
+                        if "raw" in tc.arguments and len(tc.arguments) == 1:
+                            malformed = True
+                            break
+                    if malformed and attempt < len(self._CHAT_RETRY_DELAYS):
+                        logger.warning("Malformed JSON in tool call, retrying with correction prompt...")
+                        correction_msg = {
+                            "role": "user",
+                            "content": "Your previous tool call contained malformed JSON. Please correct it and output strictly valid JSON without any markdown formatting."
+                        }
+                        messages = messages + [{"role": "assistant", "content": response.content or "", "tool_calls": [
+                            {"id": tc.id, "type": "function", "function": {"name": tc.name, "arguments": str(tc.arguments)}} for tc in response.tool_calls
+                        ]}, correction_msg]
+                        continue
                     return response
                 if not self._is_transient_error(response.content):
                     # For non-transient errors (like 400 Bad Request), we might still want to

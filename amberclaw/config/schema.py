@@ -223,7 +223,7 @@ class AgentDefaults(Base):
     """Default agent configuration."""
 
     workspace: str = "~/.amberclaw/workspace"
-    model: str = "anthropic/claude-opus-4-5"
+    model: str = "anthropic/claude-4-opus"
     provider: str = (
         "auto"  # Provider name (e.g. "anthropic", "openrouter") or "auto" for auto-detection
     )
@@ -275,6 +275,11 @@ class ProvidersConfig(Base):
     volcengine: ProviderConfig = Field(default_factory=ProviderConfig)  # VolcEngine (火山引擎)
     openai_codex: ProviderConfig = Field(default_factory=ProviderConfig)  # OpenAI Codex (OAuth)
     github_copilot: ProviderConfig = Field(default_factory=ProviderConfig)  # Github Copilot (OAuth)
+    xai: ProviderConfig = Field(default_factory=ProviderConfig)
+    cohere: ProviderConfig = Field(default_factory=ProviderConfig)
+    mistral: ProviderConfig = Field(default_factory=ProviderConfig)
+    bedrock: ProviderConfig = Field(default_factory=ProviderConfig)
+    nvidia_nim: ProviderConfig = Field(default_factory=ProviderConfig)
 
 
 class HeartbeatConfig(Base):

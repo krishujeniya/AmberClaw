@@ -179,11 +179,39 @@ class SlackChannel(BaseChannel):
         # Thread-scoped session key for channel/group messages
         session_key = f"slack:{chat_id}:{thread_ts}" if thread_ts and channel_type != "im" else None
 
+        # Handle attachments (AC-074)
+        media_paths: list[str] = []
+        if event.get("files"):
+            from amberclaw.config.paths import get_media_dir
+            media_dir = get_media_dir("slack")
+            media_dir.mkdir(parents=True, exist_ok=True)
+
+            for file_info in event["files"]:
+                file_url = file_info.get("url_private_download")
+                filename = file_info.get("name") or "file"
+                if not file_url or not self._web_client:
+                    continue
+
+                try:
+                    # Download using the bot token
+                    headers = {"Authorization": f"Bearer {self.config.bot_token}"}
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.get(file_url, headers=headers)
+                        resp.raise_for_status()
+
+                        file_path = media_dir / f"{file_info.get('id', 'file')}_{filename}"
+                        file_path.write_bytes(resp.content)
+                        media_paths.append(str(file_path))
+                        text += f"\n[attachment: {file_path}]"
+                except Exception as e:
+                    logger.warning("Failed to download Slack file {}: {}", filename, e)
+
         try:
             await self._handle_message(
                 sender_id=sender_id,
                 chat_id=chat_id,
                 content=text,
+                media=media_paths,
                 metadata={
                     "slack": {
                         "event": event,
@@ -195,6 +223,7 @@ class SlackChannel(BaseChannel):
             )
         except Exception:
             logger.exception("Error handling Slack message from {}", sender_id)
+
 
     def _is_allowed(self, sender_id: str, chat_id: str, channel_type: str) -> bool:
         if channel_type == "im":

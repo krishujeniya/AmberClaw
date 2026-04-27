@@ -7,6 +7,7 @@
 from typing_extensions import TypedDict, Annotated, Sequence, Literal, Union, Optional
 import operator
 import os
+from typing import Any
 import json
 import pandas as pd
 from IPython.display import Markdown
@@ -681,16 +682,16 @@ def make_data_wrangling_agent(
         # The LLM can then use all this info to recommend steps that consider merging/joining.
         recommend_steps_prompt = PromptTemplate(
             template="""
-            You are a Data Wrangling Expert. Given the following data (one or multiple datasets) and user instructions, 
-            recommend a series of numbered steps to wrangle the data based on a user's needs. 
-            
-            You can use any common data wrangling techniques such as joining, reshaping, aggregating, encoding, etc. 
-            
-            If multiple datasets are provided, you may need to recommend how to merge or join them. 
-            
-            Also consider any special transformations requested by the user. If the user instructions 
+            You are a Data Wrangling Expert. Given the following data (one or multiple datasets) and user instructions,
+            recommend a series of numbered steps to wrangle the data based on a user's needs.
+
+            You can use any common data wrangling techniques such as joining, reshaping, aggregating, encoding, etc.
+
+            If multiple datasets are provided, you may need to recommend how to merge or join them.
+
+            Also consider any special transformations requested by the user. If the user instructions
             say to do something else or not to do certain steps, follow those instructions.
-            
+
             User instructions:
             {user_instructions}
 
@@ -701,7 +702,7 @@ def make_data_wrangling_agent(
             {all_datasets_summary}
 
             Return steps as a numbered list. You can return short code snippets to demonstrate actions. But do not return a fully coded solution. The code will be generated separately by a Coding Agent.
-            
+
             Avoid these:
             1. Do not include steps to save files.
             2. Do not include unrelated user instructions that are not related to the data wrangling.
@@ -748,48 +749,48 @@ def make_data_wrangling_agent(
         data_wrangling_prompt = PromptTemplate(
             template="""
             You are a Pandas Data Wrangling Coding Agent. Your job is to create a {function_name}() function that can be run on the provided data. You should use Pandas and NumPy for data wrangling operations.
-            
+
             User instructions:
             {user_instructions}
-            
+
             Follow these recommended steps (if present):
             {recommended_steps}
-            
+
             If multiple datasets are provided, you may need to merge or join them. Make sure to handle that scenario based on the recommended steps and user instructions.
-            
+
             Below are summaries of all datasets provided. If more than one dataset is provided, you may need to merge or join them.:
             {all_datasets_summary}
-            
+
             Return Python code in ```python``` format with a single function definition, {function_name}(), that includes all imports inside the function. And returns a single pandas data frame.
 
             ```python
             def {function_name}(data_list):
                 '''
                 Wrangle the data provided in data.
-                
+
                 data_list: A list of one or more pandas data frames containing the raw data to be wrangled.
                 '''
                 import pandas as pd
                 import numpy as np
                 # Implement the wrangling steps here
-                
-                # Return a single DataFrame 
+
+                # Return a single DataFrame
                 return data_wrangled
             ```
-            
+
             Avoid Errors:
-            1. If the incoming data is not a list. Convert it to a list first. 
+            1. If the incoming data is not a list. Convert it to a list first.
             2. Do not specify data types inside the function arguments.
             3. Do not hardcode column names; derive column usage from the provided data structures and user instructions.
-            
+
             Important Notes:
             1. Do Not use Print statements to display the data. Return the data frame instead with the data wrangling operation performed.
             2. Do not plot graphs. Only return the data frame.
             3. Only return a single pandas DataFrame and nothing else.
-            
+
             Make sure to explain any non-trivial steps with inline comments. Follow user instructions. Comment code thoroughly.
-            
-            
+
+
             """,
             input_variables=[
                 "recommended_steps",
@@ -961,12 +962,12 @@ def make_data_wrangling_agent(
     def fix_data_wrangler_code(state: GraphState) -> dict[str, Any]:
         data_wrangler_prompt = """
         You are a Data Wrangling Agent. Your job is to create a {function_name}() function that can be run on the data provided. The function is currently broken and needs to be fixed.
-        
+
         Make sure to only return the function definition for {function_name}().
-        
+
         Return Python code in ```python``` format with a single function definition, {function_name}(data_raw), that includes all imports inside the function.
-        
-        This is the broken code (please fix): 
+
+        This is the broken code (please fix):
         {code_snippet}
 
         Last Known Error:

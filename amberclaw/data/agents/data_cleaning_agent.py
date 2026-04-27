@@ -16,6 +16,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Checkpointer
 
 import os
+from typing import Any
 import json
 import pandas as pd
 
@@ -528,14 +529,14 @@ def make_data_cleaning_agent(
         # Prompt to get recommended steps from the LLM
         recommend_steps_prompt = PromptTemplate(
             template="""
-            You are a Data Cleaning Expert. Given the following information about the data, 
-            recommend a series of numbered steps to take to clean and preprocess it. 
-            The steps should be tailored to the data characteristics and should be helpful 
+            You are a Data Cleaning Expert. Given the following information about the data,
+            recommend a series of numbered steps to take to clean and preprocess it.
+            The steps should be tailored to the data characteristics and should be helpful
             for a data cleaning agent that will be implemented.
-            
+
             General Steps:
             Things that should be considered in the data cleaning steps:
-            
+
             * Removing columns if more than 40 percent of the data is missing
             * Imputing missing values with the mean of the column if the column is numeric
             * Imputing missing values with the mode of the column if the column is categorical
@@ -543,15 +544,15 @@ def make_data_cleaning_agent(
             * Removing duplicate rows
             * Removing rows with missing values
             * Removing rows with extreme outliers (3X the interquartile range)
-            
+
             Custom Steps:
             * Analyze the data to determine if any additional data cleaning steps are needed.
             * Recommend steps that are specific to the data provided. Include why these steps are necessary or beneficial.
             * If no additional steps are needed, simply state that no additional steps are required.
-            
+
             IMPORTANT:
             Make sure to take into account any additional user instructions that may add, remove or modify some of these steps. Include comments in your code to explain your reasoning for each step. Include comments if something is not done because a user requested. Include comments if something is done because a user requested.
-            
+
             User instructions:
             {user_instructions}
 
@@ -562,7 +563,7 @@ def make_data_cleaning_agent(
             {all_datasets_summary}
 
             Return steps as a numbered list. You can return short code snippets to demonstrate actions. But do not return a fully coded solution. The code will be generated separately by a Coding Agent.
-            
+
             Avoid these:
             1. Do not include steps to save files.
             2. Do not include unrelated user instructions that are not related to the data cleaning.
@@ -638,7 +639,7 @@ def make_data_cleaning_agent(
 
             Always ensure that when assigning the output of fit_transform() from SimpleImputer to a Pandas DataFrame column, you call .ravel() or flatten the array, because fit_transform() returns a 2D array while a DataFrame column is 1D.
             - Do NOT hardcode column names; derive columns programmatically from the provided data and user instructions.
-            
+
             """,
             input_variables=[
                 "recommended_steps",
@@ -786,12 +787,12 @@ def make_data_cleaning_agent(
     def fix_data_cleaner_code(state: GraphState) -> dict[str, Any]:
         data_cleaner_prompt = """
         You are a Data Cleaning Agent. Your job is to create a {function_name}() function that can be run on the data provided. The function is currently broken and needs to be fixed.
-        
+
         Make sure to only return the function definition for {function_name}().
-        
+
         Return Python code in ```python``` format with a single function definition, {function_name}(data_raw), that includes all imports inside the function.
-        
-        This is the broken code (please fix): 
+
+        This is the broken code (please fix):
         {code_snippet}
 
         Last Known Error:

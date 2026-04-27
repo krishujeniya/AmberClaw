@@ -4,7 +4,7 @@ import html
 import json
 import os
 import re
-from typing import Optional, Literal
+from typing import Optional, Literal, Type, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -66,10 +66,13 @@ class WebSearchArgs(BaseModel):
 
     query: str = Field(..., description="Search query")
     count: Optional[int] = Field(None, description="Results (1-10)", ge=1, le=10)
+    provider: Optional[Literal["brave", "tavily", "serpapi"]] = Field(
+        None, description="Search provider (defaults to best available key)"
+    )
 
 
 class WebSearchTool(PydanticTool):
-    """Search the web using Brave Search API."""
+    """Search the web using Brave, Tavily, or SerpAPI."""
 
     @property
     def name(self) -> str:
@@ -89,49 +92,77 @@ class WebSearchTool(PydanticTool):
         self.max_results = max_results
         self.proxy = proxy
 
-    @property
-    def api_key(self) -> str:
-        """Resolve API key at call time so env/config changes are picked up."""
-        return self._init_api_key or os.environ.get("BRAVE_API_KEY", "")
+    def _get_api_key(self, provider: str) -> str:
+        """Resolve API key for a specific provider."""
+        env_map = {
+            "brave": "BRAVE_API_KEY",
+            "tavily": "TAVILY_API_KEY",
+            "serpapi": "SERPAPI_API_KEY",
+        }
+        return os.environ.get(env_map.get(provider, ""), "")
 
     async def run(self, args: WebSearchArgs) -> str:
-        if not self.api_key:
-            return (
-                "Error: Brave Search API key not configured. Set it in "
-                "~/.amberclaw/config.json under tools.web.search.apiKey "
-                "(or export BRAVE_API_KEY), then restart the gateway."
-            )
+        provider = args.provider
+        if not provider:
+            # Detect first available key
+            for p in ["tavily", "brave", "serpapi"]:
+                if self._get_api_key(p):
+                    provider = cast(Literal["brave", "tavily", "serpapi"], p)
+                    break
+
+        provider = provider or "brave" # Default to brave if nothing found
+        api_key = self._get_api_key(provider)
+
+        if not api_key:
+            return f"Error: No API key found for search provider '{provider}'."
 
         try:
             n = args.count or self.max_results
-            logger.debug("WebSearch: {}", "proxy enabled" if self.proxy else "direct connection")
-            from typing import cast
+            async with httpx.AsyncClient(proxy=self.proxy) as client:
+                if provider == "tavily":
+                    r = await client.post(
+                        "https://api.tavily.com/search",
+                        json={"api_key": api_key, "query": args.query, "max_results": n},
+                        timeout=10.0,
+                    )
+                    r.raise_for_status()
+                    results = [
+                        {"title": res.get("title"), "url": res.get("url"), "description": res.get("content")}
+                        for res in r.json().get("results", [])
+                    ]
+                elif provider == "serpapi":
+                    r = await client.get(
+                        "https://serpapi.com/search",
+                        params={"q": args.query, "api_key": api_key, "engine": "google", "num": n},
+                        timeout=10.0,
+                    )
+                    r.raise_for_status()
+                    results = [
+                        {"title": res.get("title"), "url": res.get("link"), "description": res.get("snippet")}
+                        for res in r.json().get("organic_results", [])
+                    ]
+                else:  # brave
+                    r = await client.get(
+                        "https://api.search.brave.com/res/v1/web/search",
+                        params={"q": args.query, "count": n},
+                        headers={"Accept": "application/json", "X-Subscription-Token": api_key},
+                        timeout=10.0,
+                    )
+                    r.raise_for_status()
+                    results = r.json().get("web", {}).get("results", [])
 
-            async with httpx.AsyncClient(proxy=cast(str, self.proxy)) as client:
-                r = await client.get(
-                    "https://api.search.brave.com/res/v1/web/search",
-                    params={"q": args.query, "count": n},
-                    headers={"Accept": "application/json", "X-Subscription-Token": self.api_key},
-                    timeout=10.0,
-                )
-                r.raise_for_status()
-
-            results = r.json().get("web", {}).get("results", [])[:n]
             if not results:
-                return f"No results for: {args.query}"
+                return f"No results for: {args.query} (via {provider})"
 
-            lines = [f"Results for: {args.query}\n"]
-            for i, item in enumerate(results, 1):
+            lines = [f"Results for: {args.query} (via {provider})\n"]
+            for i, item in enumerate(results[:n], 1):
                 lines.append(f"{i}. {item.get('title', '')}\n   {item.get('url', '')}")
                 if desc := item.get("description"):
                     lines.append(f"   {desc}")
             return "\n".join(lines)
-        except httpx.ProxyError as e:
-            logger.error("WebSearch proxy error: {}", e)
-            return f"Proxy error: {e}"
         except Exception as e:
-            logger.error("WebSearch error: {}", e)
-            return f"Error: {e}"
+            logger.error("WebSearch error ({}): {}", provider, e)
+            return f"Error using {provider}: {e}"
 
 
 class WebFetchArgs(BaseModel):

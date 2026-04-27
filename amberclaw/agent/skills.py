@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 from pathlib import Path
+from typing import List, Dict, Optional, Any, cast
 
 # Default builtin skills directory (relative to this file)
 BUILTIN_SKILLS_DIR = Path(__file__).parent.parent / "skills"
@@ -143,7 +144,7 @@ class SkillsLoader:
 
         return "\n".join(lines)
 
-    def _get_missing_requirements(self, skill_meta: dict) -> str:
+    def _get_missing_requirements(self, skill_meta: dict[str, Any]) -> str:
         """Get a description of missing requirements."""
         missing = []
         requires = skill_meta.get("requires", {})
@@ -159,8 +160,8 @@ class SkillsLoader:
         """Get the description of a skill from its frontmatter."""
         meta = self.get_skill_metadata(name)
         if meta and meta.get("description"):
-            return meta["description"]
-        return name  # Fallback to skill name
+            return str(meta["description"])
+        return str(name)  # Fallback to skill name
 
     def _strip_frontmatter(self, content: str) -> str:
         """Remove YAML frontmatter from markdown content."""
@@ -170,15 +171,18 @@ class SkillsLoader:
                 return content[match.end() :].strip()
         return content
 
-    def _parse_amberclaw_metadata(self, raw: str) -> dict:
+    def _parse_amberclaw_metadata(self, raw: str) -> dict[str, Any]:
         """Parse skill metadata JSON from frontmatter (supports amberclaw and openclaw keys)."""
         try:
             data = json.loads(raw)
-            return data.get("amberclaw", data.get("openclaw", {})) if isinstance(data, dict) else {}
+            if isinstance(data, dict):
+                val = data.get("amberclaw", data.get("openclaw", {}))
+                return cast(dict[str, Any], val)
+            return {}
         except (json.JSONDecodeError, TypeError):
             return {}
 
-    def _check_requirements(self, skill_meta: dict) -> bool:
+    def _check_requirements(self, skill_meta: dict[str, Any]) -> bool:
         """Check if skill requirements are met (bins, env vars)."""
         requires = skill_meta.get("requires", {})
         for b in requires.get("bins", []):
@@ -189,7 +193,7 @@ class SkillsLoader:
                 return False
         return True
 
-    def _get_skill_meta(self, name: str) -> dict:
+    def _get_skill_meta(self, name: str) -> dict[str, Any]:
         """Get amberclaw metadata for a skill (cached in frontmatter)."""
         meta = self.get_skill_metadata(name) or {}
         return self._parse_amberclaw_metadata(meta.get("metadata", ""))
@@ -204,7 +208,7 @@ class SkillsLoader:
                 result.append(s["name"])
         return result
 
-    def get_skill_metadata(self, name: str) -> dict | None:
+    def get_skill_metadata(self, name: str) -> dict[str, Any] | None:
         """
         Get metadata from a skill's frontmatter.
 
@@ -230,3 +234,31 @@ class SkillsLoader:
                 return metadata
 
         return None
+
+    def scan_skill(self, name: str) -> list[str]:
+        """
+        Scan a skill for security risks.
+
+        Returns:
+            List of findings (warnings).
+        """
+        content = self.load_skill(name)
+        if not content:
+            return ["Skill not found"]
+
+        warnings = []
+        # Dangerous patterns
+        risks = {
+            r"rm\s+-rf": "Recursive deletion detected",
+            r"curl\s+.*\s*\|\s*bash": "Piping curl to bash detected",
+            r"wget\s+.*\s*\|\s*bash": "Piping wget to bash detected",
+            r">/dev/null\s+2>&1": "Hiding error output (potential obfuscation)",
+            r"sudo\s+": "Sudo usage detected",
+            r"eval\s+\$": "Eval usage with variables detected",
+        }
+
+        for pattern, msg in risks.items():
+            if re.search(pattern, content, re.IGNORECASE):
+                warnings.append(msg)
+
+        return warnings

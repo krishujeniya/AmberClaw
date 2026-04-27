@@ -67,27 +67,8 @@ class AssistantTool(PydanticTool):
             "Be concise, accurate, and use your long-term memory to provide personalized responses."
         )
 
-        # Initialize Mem0
-        try:
-            from mem0 import Memory
-
-            # Local configuration for Mem0
-            config = {
-                "vector_store": {
-                    "provider": "chroma",
-                    "config": {
-                        "path": str(workspace / "mem0_db"),
-                    },
-                }
-            }
-            self._memory = Memory.from_config(config)
-            logger.info("PersonalAssistant: initialized with Mem0 long-term memory.")
-        except Exception as e:
-            logger.warning(
-                "PersonalAssistant: failed to initialize Mem0: {}. Falling back to basic history.",
-                e,
-            )
-            self._memory = None
+        from amberclaw.memory.memory_manager import MemoryManager
+        self._memory = MemoryManager(workspace=workspace, provider="chroma")
 
         # Basic session history (JSON fallback/short-term)
         self._store_dir = workspace / "personal_assistant"
@@ -151,23 +132,9 @@ class AssistantTool(PydanticTool):
         memories_text = ""
         if self._memory:
             try:
-                # Search across all memories for relevant facts
-                # We use session_id as user_id for isolation, or swap for global user_id
-                memories = self._memory.search(args.message, user_id=args.session_id)
-                if memories:
-                    facts = []
-                    for m in memories:
-                        # Mem0 search can return dicts or objects depending on the version/provider
-                        val = None
-                        if isinstance(m, dict):
-                            val = m.get("memory")
-                        elif hasattr(m, "memory"):
-                            val = getattr(m, "memory")
-
-                        if val:
-                            facts.append(str(val))
-                    if facts:
-                        memories_text = "\n[RECALLED FACTS]:\n- " + "\n- ".join(facts)
+                facts = self._memory.search(args.message, session_id=args.session_id)
+                if facts:
+                    memories_text = "\n[RECALLED FACTS]:\n- " + "\n- ".join(facts)
             except Exception as e:
                 logger.debug("Mem0 search failed: {}", e)
 
@@ -201,7 +168,7 @@ class AssistantTool(PydanticTool):
             try:
                 # Add to Mem0 (it auto-extracts facts from the user message)
                 # We do this asynchronously to not block
-                self._memory.add(args.message, user_id=args.session_id)
+                self._memory.add(args.message, session_id=args.session_id)
             except Exception as e:
                 logger.debug("Mem0 add failed: {}", e)
 
