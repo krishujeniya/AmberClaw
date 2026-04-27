@@ -1254,5 +1254,5 @@ if __name__ == "__main__":
 
 def run_onboard():
     import sys
-    sys.argv = ["amberclaw", "onboard"]
+    sys.argv = ["amberclaw", "onboard"] + sys.argv[1:]
     app()

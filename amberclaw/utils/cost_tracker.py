@@ -1,7 +1,6 @@
 """Cost and usage tracking for LLM calls."""
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -15,7 +14,7 @@ def log_usage(model: str, response: LLMResponse) -> None:
     """Log LLM usage and cost to a local file."""
     try:
         _COST_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        
+
         entry = {
             "timestamp": datetime.utcnow().isoformat(),
             "model": model,
@@ -26,7 +25,7 @@ def log_usage(model: str, response: LLMResponse) -> None:
             "latency_ms": response.latency_ms,
             "ttft_ms": response.ttft_ms,
         }
-        
+
         with open(_COST_LOG_PATH, "a") as f:
             f.write(json.dumps(entry) + "\n")
     except Exception:
@@ -38,11 +37,11 @@ def get_total_costs() -> dict[str, Any]:
     """Calculate total costs from logs."""
     if not _COST_LOG_PATH.exists():
         return {"total_cost": 0.0, "total_tokens": 0, "sessions": 0}
-    
+
     total_cost = 0.0
     total_tokens = 0
     calls = 0
-    
+
     try:
         with open(_COST_LOG_PATH, "r") as f:
             for line in f:
@@ -55,7 +54,7 @@ def get_total_costs() -> dict[str, Any]:
                     continue
     except Exception:
         pass
-        
+
     return {
         "total_cost": total_cost,
         "total_tokens": total_tokens,
