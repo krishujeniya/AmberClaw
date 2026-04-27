@@ -12,7 +12,7 @@ class A2ASendArgs(BaseModel):
 
 class A2ATool(PydanticTool):
     """Tool for sending messages to other agents via A2A protocol."""
-    
+
     def __init__(self, manager: A2AManager):
         self._manager = manager
 
@@ -44,7 +44,7 @@ class A2ADiscoverArgs(BaseModel):
 
 class A2ADiscoveryTool(PydanticTool):
     """Tool for discovering other agents."""
-    
+
     def __init__(self, manager: A2AManager):
         self._manager = manager
 

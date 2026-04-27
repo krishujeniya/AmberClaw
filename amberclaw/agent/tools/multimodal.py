@@ -2,7 +2,6 @@
 
 import base64
 import mimetypes
-import os
 from pathlib import Path
 from typing import Any, Literal
 

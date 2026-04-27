@@ -329,7 +329,7 @@ class LiteLLMProvider(LLMProvider):
             kwargs["model"] = model
             # Re-apply overrides for the fallback model
             self._apply_model_overrides(model, kwargs)
-            
+
             try:
                 response = await acompletion(**kwargs)
 
@@ -343,7 +343,7 @@ class LiteLLMProvider(LLMProvider):
                             full_content.append(content)
                             if on_token and callable(on_token):
                                 await on_token(content)
-                    
+
                     latency = (time.perf_counter() - start_time) * 1000
                     res = LLMResponse(
                         content="".join(full_content),
@@ -362,7 +362,7 @@ class LiteLLMProvider(LLMProvider):
 
             except Exception as e:
                 last_error = e
-                logger.warning("Provider {} failed for model {}: {}. Trying fallback...", 
+                logger.warning("Provider {} failed for model {}: {}. Trying fallback...",
                                self.get_provider_name(current_model_id), current_model_id, str(e))
                 # Small sleep before fallback if needed, but requirements say "within 5 seconds"
                 continue
