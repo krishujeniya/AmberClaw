@@ -38,7 +38,7 @@ class TestMessageToolSuppressLogic:
                 LLMResponse(content="Done", tool_calls=[]),
             ]
         )
-        loop.provider.chat = AsyncMock(side_effect=lambda *a, **kw: next(calls))
+        loop.provider.chat_with_retry = AsyncMock(side_effect=lambda *a, **kw: next(calls))
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         sent: list[OutboundMessage] = []
@@ -70,7 +70,7 @@ class TestMessageToolSuppressLogic:
                 LLMResponse(content="I've sent the email.", tool_calls=[]),
             ]
         )
-        loop.provider.chat = AsyncMock(side_effect=lambda *a, **kw: next(calls))
+        loop.provider.chat_with_retry = AsyncMock(side_effect=lambda *a, **kw: next(calls))
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         sent: list[OutboundMessage] = []
@@ -91,7 +91,7 @@ class TestMessageToolSuppressLogic:
     @pytest.mark.asyncio
     async def test_not_suppress_when_no_message_tool_used(self, tmp_path: Path) -> None:
         loop = _make_loop(tmp_path)
-        loop.provider.chat = AsyncMock(return_value=LLMResponse(content="Hello!", tool_calls=[]))
+        loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="Hello!", tool_calls=[]))
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         msg = InboundMessage(channel="feishu", sender_id="user1", chat_id="chat123", content="Hi")
@@ -100,6 +100,7 @@ class TestMessageToolSuppressLogic:
         assert result is not None
         assert "Hello" in result.content
 
+    @pytest.mark.asyncio
     async def test_progress_hides_internal_reasoning(self, tmp_path: Path) -> None:
         loop = _make_loop(tmp_path)
         tool_call = ToolCallRequest(id="call1", name="read_file", arguments={"path": "foo.txt"})
@@ -114,7 +115,7 @@ class TestMessageToolSuppressLogic:
                 LLMResponse(content="Done", tool_calls=[]),
             ]
         )
-        loop.provider.chat = AsyncMock(side_effect=lambda *a, **kw: next(calls))
+        loop.provider.chat_with_retry = AsyncMock(side_effect=lambda *a, **kw: next(calls))
         loop.tools.get_definitions = MagicMock(return_value=[])
         loop.tools.execute = AsyncMock(return_value="ok")
 

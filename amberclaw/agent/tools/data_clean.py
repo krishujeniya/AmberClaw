@@ -3,7 +3,7 @@
 from typing import Any
 from pydantic import BaseModel, Field
 
-import pandas as pd
+# pandas imported lazily in _load_data and run
 from loguru import logger
 
 from amberclaw.agent.tools.base import PydanticTool
@@ -16,8 +16,9 @@ class CleanArgs(BaseModel):
     instructions: str = Field("", description="Optional cleaning instructions.")
 
 
-def _load_data(path: str) -> pd.DataFrame:
+def _load_data(path: str) -> Any:
     """Load CSV or Excel into DataFrame."""
+    import pandas as pd
     if path.endswith((".xlsx", ".xls")):
         return pd.read_excel(path)
     return pd.read_csv(path)

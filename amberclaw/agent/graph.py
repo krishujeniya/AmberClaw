@@ -41,8 +41,9 @@ class AgentGraph:
 
     def __init__(self, provider: Any, tools: List[Any], max_iterations: int = 10, mode: str = "react"):
         self.provider = provider
-        # Wrap tools as LangChain BaseTools
-        self.tools = [t.to_langchain_tool() for t in tools]
+        # Keep original AC tools for OpenAI tool format; wrap for LangChain ToolNode
+        self.ac_tools = list(tools)  # original AmberClaw PydanticTool instances
+        self.tools = [t.to_langchain_tool() for t in tools]  # LangChain-wrapped for ToolNode
         self.max_iterations = max_iterations
         self.mode = mode
         self.runnable = self._build_graph()
@@ -110,13 +111,27 @@ class AgentGraph:
 
         resp = await self.provider.chat_with_retry(
             messages=processed_msgs,
-            tools=[tool.to_openai_tool() for tool in self.tools] if self.tools and self.mode != "simple" else None,
+            tools=[t.to_openai_tool() for t in self.ac_tools] if self.ac_tools and self.mode != "simple" else None,
             model=state["config"].get("model"),
             **state["config"].get("llm_kwargs", {}),
         )
 
         ai_msg = AIMessage(content=resp.content or "")
         if resp.tool_calls:
+            import json as _json
+            lc_tool_calls = [
+                {
+                    "id": tc.id,
+                    "name": tc.name,
+                    "args": tc.arguments if isinstance(tc.arguments, dict) else (
+                        _json.loads(tc.arguments) if isinstance(tc.arguments, str) else {}
+                    ),
+                    "type": "tool_call",
+                }
+                for tc in resp.tool_calls
+            ]
+            ai_msg.tool_calls = lc_tool_calls  # type: ignore[assignment]
+            # Also populate additional_kwargs for should_continue router
             ai_msg.additional_kwargs["tool_calls"] = [
                 {
                     "id": tc.id,

@@ -142,14 +142,6 @@ class AgentLoop:
             )
         )
 
-        # Initialize LangGraph engine
-        self._graph = AgentGraph(
-            provider=self.provider,
-            tools=list(self.tools.values()),
-            max_iterations=self.max_iterations,
-            mode=self.mode,
-        )
-
         self._mcp_stack: AsyncExitStack | None = None
         self._mcp_connected = False
         self._mcp_connecting = False
@@ -160,7 +152,17 @@ class AgentLoop:
         )
         self._active_tasks: dict[str, list[asyncio.Task]] = {}  # session_key -> tasks
         self._processing_lock = asyncio.Lock()
+
+        # Register tools first so AgentGraph ToolNode has the full tool set
         self._register_default_tools()
+
+        # Initialize LangGraph engine with fully populated tools
+        self._graph = AgentGraph(
+            provider=self.provider,
+            tools=list(self.tools.values()),
+            max_iterations=self.max_iterations,
+            mode=self.mode,
+        )
 
     def _register_default_tools(self) -> None:
         """Register all core tools — every feature is always available from user config."""
@@ -439,8 +441,42 @@ class AgentLoop:
         from typing import cast
         from amberclaw.agent.graph import AgentState
 
-        assert self._graph is not None, "Graph must be initialized"
-        final_state = await self._graph.runnable.ainvoke(cast(AgentState, inputs))
+        # Use astream to support progress callbacks for intermediate steps
+        final_state = inputs
+        last_msg_count = len(lc_msgs)
+        
+        async for state in self._graph.runnable.astream(cast(AgentState, inputs), stream_mode="values"):
+            final_state = state
+            if on_progress:
+                current_messages = state.get("messages", [])
+                if len(current_messages) > last_msg_count:
+                    new_msgs = current_messages[last_msg_count:]
+                    for m in new_msgs:
+                        if isinstance(m, AIMessage):
+                            # Clean thinking blocks for progress reporting
+                            content = str(m.content)
+                            if "<think>" in content:
+                                content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+                            
+                            # Only report content as progress if it's intermediate (has tool calls)
+                            if content and hasattr(m, "tool_calls") and m.tool_calls:
+                                await on_progress(content, tool_hint=False)
+                            
+                            # Report tool hints in formatted style
+                            if hasattr(m, "tool_calls") and m.tool_calls:
+                                for tc in m.tool_calls:
+                                    args = tc.get("args", {})
+                                    if isinstance(args, dict) and len(args) == 1:
+                                        val = next(iter(args.values()))
+                                        hint = f"{tc['name']}(\"{val}\")" if isinstance(val, str) else f"{tc['name']}({val})"
+                                    else:
+                                        import json as _json
+                                        try:
+                                            hint = f"{tc['name']}({_json.dumps(args)})"
+                                        except Exception:
+                                            hint = f"{tc['name']}({args})"
+                                    await on_progress(hint, tool_hint=True)
+                    last_msg_count = len(current_messages)
 
         # Extract results
         final_messages = final_state["messages"]
@@ -465,15 +501,13 @@ class AgentLoop:
                         "role": "tool",
                         "content": m.content,
                         "tool_call_id": m.tool_call_id,
-                        "name": m.name or "tool",  # ToolMessage has a name usually
+                        "name": m.name or "tool",
                     }
                 )
 
         # Identify tools used from messages
         for m in final_messages:
             if isinstance(m, ToolMessage):
-                # We don't have the original tool name easily here unless we store it
-                # but we can try to find it or just record that tools were used
                 tools_used.append("tool")
 
         return (

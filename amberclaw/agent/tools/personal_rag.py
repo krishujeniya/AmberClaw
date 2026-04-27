@@ -15,8 +15,7 @@ from typing import List
 import numpy as np
 from loguru import logger
 from pydantic import BaseModel, Field
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+# sklearn imports moved to lazy imports in KnowledgeSearchTool.run
 
 from amberclaw.agent.tools.base import PydanticTool
 from amberclaw.providers.base import LLMProvider
@@ -139,22 +138,35 @@ class KnowledgeSearchTool(KnowledgeToolBase):
         corpus = [e["content"] for e in entries]
 
         # 1. Keyword Search (TF-IDF as proxy for BM25)
-        vectorizer = TfidfVectorizer(stop_words="english")
         try:
+            from sklearn.feature_extraction.text import TfidfVectorizer
+            from sklearn.metrics.pairwise import cosine_similarity
+            
+            vectorizer = TfidfVectorizer(stop_words="english")
             tfidf_matrix = vectorizer.fit_transform(corpus)
             query_vec = vectorizer.transform([args.query])
             keyword_scores = cosine_similarity(query_vec, tfidf_matrix).flatten()
-        except ValueError:  # Empty corpus or stop words issue
+        except (ImportError, ValueError):  # Missing dependency or empty corpus
             keyword_scores = np.zeros(len(corpus))
+            cosine_similarity = None # Signal for vector search
 
         # 2. Vector Search (Semantic)
         vectors = self._load_vectors()
         if vectors is not None and len(vectors) == len(corpus):
             query_embedding = await self._get_embedding(args.query)
             if query_embedding.shape == vectors[0].shape:
-                semantic_scores = cosine_similarity(
-                    query_embedding.reshape(1, -1), vectors
-                ).flatten()
+                if cosine_similarity:
+                    semantic_scores = cosine_similarity(
+                        query_embedding.reshape(1, -1), vectors
+                    ).flatten()
+                else:
+                    # Fallback cosine similarity using numpy
+                    norm_q = np.linalg.norm(query_embedding)
+                    norm_v = np.linalg.norm(vectors, axis=1)
+                    if norm_q > 0:
+                        semantic_scores = np.dot(vectors, query_embedding) / (norm_v * norm_q)
+                    else:
+                        semantic_scores = np.zeros(len(corpus))
             else:
                 semantic_scores = np.zeros(len(corpus))
         else:

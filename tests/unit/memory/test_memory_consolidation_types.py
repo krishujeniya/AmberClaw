@@ -67,13 +67,12 @@ class TestMemoryConsolidationTypeHandling:
         """Normal case: LLM returns string arguments."""
         store = MemoryStore(tmp_path)
         provider = AsyncMock()
-        provider.chat = AsyncMock(
+        provider.chat_with_retry = AsyncMock(
             return_value=_make_tool_response(
                 history_entry="[2026-01-01] User discussed testing.",
                 memory_update="# Memory\nUser likes testing.",
             )
         )
-        provider.chat_with_retry = provider.chat
         session = _make_session(message_count=60)
 
         result = await store.consolidate(session, provider, "test-model", memory_window=50)
@@ -88,13 +87,12 @@ class TestMemoryConsolidationTypeHandling:
         """Issue #1042: LLM returns dict instead of string — must not raise TypeError."""
         store = MemoryStore(tmp_path)
         provider = AsyncMock()
-        provider.chat = AsyncMock(
+        provider.chat_with_retry = AsyncMock(
             return_value=_make_tool_response(
                 history_entry={"timestamp": "2026-01-01", "summary": "User discussed testing."},
                 memory_update={"facts": ["User likes testing"], "topics": ["testing"]},
             )
         )
-        provider.chat_with_retry = provider.chat
         session = _make_session(message_count=60)
 
         result = await store.consolidate(session, provider, "test-model", memory_window=50)
@@ -131,8 +129,7 @@ class TestMemoryConsolidationTypeHandling:
                 )
             ],
         )
-        provider.chat = AsyncMock(return_value=response)
-        provider.chat_with_retry = provider.chat
+        provider.chat_with_retry = AsyncMock(return_value=response)
         session = _make_session(message_count=60)
 
         result = await store.consolidate(session, provider, "test-model", memory_window=50)
@@ -145,10 +142,9 @@ class TestMemoryConsolidationTypeHandling:
         """When LLM doesn't use the save_memory tool, return False."""
         store = MemoryStore(tmp_path)
         provider = AsyncMock()
-        provider.chat = AsyncMock(
+        provider.chat_with_retry = AsyncMock(
             return_value=LLMResponse(content="I summarized the conversation.", tool_calls=[])
         )
-        provider.chat_with_retry = provider.chat
         session = _make_session(message_count=60)
 
         result = await store.consolidate(session, provider, "test-model", memory_window=50)
@@ -161,7 +157,6 @@ class TestMemoryConsolidationTypeHandling:
         """Consolidation should be a no-op when messages < keep_count."""
         store = MemoryStore(tmp_path)
         provider = AsyncMock()
-        provider.chat_with_retry = provider.chat
         session = _make_session(message_count=10)
 
         result = await store.consolidate(session, provider, "test-model", memory_window=50)
@@ -191,8 +186,7 @@ class TestMemoryConsolidationTypeHandling:
                 )
             ],
         )
-        provider.chat = AsyncMock(return_value=response)
-        provider.chat_with_retry = provider.chat
+        provider.chat_with_retry = AsyncMock(return_value=response)
         session = _make_session(message_count=60)
 
         result = await store.consolidate(session, provider, "test-model", memory_window=50)
@@ -217,8 +211,7 @@ class TestMemoryConsolidationTypeHandling:
                 )
             ],
         )
-        provider.chat = AsyncMock(return_value=response)
-        provider.chat_with_retry = provider.chat
+        provider.chat_with_retry = AsyncMock(return_value=response)
         session = _make_session(message_count=60)
 
         result = await store.consolidate(session, provider, "test-model", memory_window=50)
@@ -241,8 +234,7 @@ class TestMemoryConsolidationTypeHandling:
                 )
             ],
         )
-        provider.chat = AsyncMock(return_value=response)
-        provider.chat_with_retry = provider.chat
+        provider.chat_with_retry = AsyncMock(return_value=response)
         session = _make_session(message_count=60)
 
         result = await store.consolidate(session, provider, "test-model", memory_window=50)

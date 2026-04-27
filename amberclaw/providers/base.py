@@ -174,14 +174,18 @@ class LLMProvider(ABC):
         on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
         """Call chat() with retry on transient failures and optional fallbacks."""
-        models_to_try = [model] + (fallback_models or [])
+        actual_model = model or self.get_default_model()
+        models_to_try = [actual_model] + (fallback_models or [])
         last_exception = None
+        last_response = None
 
         for current_model in models_to_try:
             if not current_model:
                 continue
 
-            for attempt, delay in enumerate(self._CHAT_RETRY_DELAYS, start=1):
+            # We try for len(delays) + 1 attempts (initial + one for each delay)
+            num_retries = len(self._CHAT_RETRY_DELAYS)
+            for attempt in range(num_retries + 1):
                 try:
                     response = await self.chat(
                         messages=messages,
@@ -192,6 +196,7 @@ class LLMProvider(ABC):
                         reasoning_effort=reasoning_effort,
                         on_token=on_token,
                     )
+                    last_response = response
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:
@@ -200,6 +205,7 @@ class LLMProvider(ABC):
                         content=f"Error calling LLM ({current_model}): {exc}",
                         finish_reason="error",
                     )
+                    last_response = response
 
                 if response.finish_reason != "error":
                     # Check for malformed JSON args (AC-055)
@@ -208,7 +214,7 @@ class LLMProvider(ABC):
                         if "raw" in tc.arguments and len(tc.arguments) == 1:
                             malformed = True
                             break
-                    if malformed and attempt < len(self._CHAT_RETRY_DELAYS):
+                    if malformed and attempt < num_retries:
                         logger.warning("Malformed JSON in tool call, retrying with correction prompt...")
                         correction_msg = {
                             "role": "user",
@@ -219,24 +225,27 @@ class LLMProvider(ABC):
                         ]}, correction_msg]
                         continue
                     return response
-                if not self._is_transient_error(response.content):
-                    # For non-transient errors (like 400 Bad Request), we might still want to
-                    # try a fallback if it's potentially model-specific, but usually it's better to break.
-                    # However, LiteLLM often maps 429 to Exception, so we mostly rely on transient check.
+
+                # If we're on the last attempt for this model, or if error is not transient, break to next model
+                if attempt >= num_retries or not self._is_transient_error(response.content):
                     break
 
+                delay = self._CHAT_RETRY_DELAYS[attempt]
                 err = (response.content or "").lower()
                 logger.warning(
                     "LLM transient error on {} (attempt {}/{}), retrying in {}s: {}",
                     current_model,
-                    attempt,
-                    len(self._CHAT_RETRY_DELAYS),
+                    attempt + 1,
+                    num_retries + 1,
                     delay,
                     err[:120],
                 )
                 await asyncio.sleep(delay)
 
             logger.warning("Primary model {} failed, checking fallbacks...", current_model)
+
+        if last_response:
+            return last_response
 
         return LLMResponse(
             content=f"LLM call failed after trying all models. Last error: {last_exception}",

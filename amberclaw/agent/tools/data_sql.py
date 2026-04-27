@@ -5,7 +5,7 @@ import asyncio
 from typing import Any
 from pydantic import BaseModel, Field
 
-import pandas as pd
+# pandas imported lazily in run
 from loguru import logger
 
 from amberclaw.agent.tools.base import PydanticTool
@@ -67,6 +67,7 @@ class DataSQLTool(PydanticTool):
                 query = agent.get_sql_query_code()
 
                 if data is not None:
+                    import pandas as pd
                     df = pd.DataFrame(data)
                     result = f"SQL Query:\n```sql\n{query}\n```\n\nResults ({len(df)} rows):\n{df.head(20).to_markdown(index=False)}"
                     if len(df) > 20:
