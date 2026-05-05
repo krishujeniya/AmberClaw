@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+.github
+
+# Architecture & Docs
+.planning/
+.amberclaw_old/
+docs/
+assets/
+examples/
+tests/
+Makefile
+README.md
+SECURITY.md
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+dist/
+build/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.hypothesis/
+
+# App Data & Secrets
+.env
+.env.*
+workspace/
+data/
+chroma/
+
+# Misc
+.vscode/
+.idea/
+node_modules/
