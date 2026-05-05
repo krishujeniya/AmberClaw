@@ -1,13 +1,18 @@
 # Git
 .git
 .gitignore
+.github
 
-# Docker
-Dockerfile
-docker-compose.yml
-compose.yaml
-.dockerignore
-tests/test_docker.sh
+# Architecture & Docs
+.planning/
+.amberclaw_old/
+docs/
+assets/
+examples/
+tests/
+Makefile
+README.md
+SECURITY.md
 
 # Python
 __pycache__
@@ -17,21 +22,23 @@ __pycache__
 *.egg-info
 dist/
 build/
-.venv
-.pytest_cache
-.mypy_cache
-.ruff_cache
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
+.hypothesis/
 
-# App Data
+# App Data & Secrets
 .env
+.env.*
 workspace/
-.amberclaw/
-~/.amberclaw
+data/
+chroma/
 
 # Misc
-.github
-.vscode
-.idea
+.vscode/
+.idea/
 node_modules/
