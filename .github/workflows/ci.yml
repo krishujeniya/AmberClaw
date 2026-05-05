@@ -28,11 +28,11 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Lint (ruff)
-        run: uv run ruff check amberclaw --output-format=github
+        run: uv run ruff check src/ tests/ --output-format=github
 
-      - name: Typecheck (pyright)
+      - name: Typecheck (mypy)
         continue-on-error: true
-        run: uv run pyright amberclaw
+        run: uv run mypy src/
 
       - name: Run Tests & Coverage
         run: uv run pytest
@@ -55,7 +55,6 @@ jobs:
         run: |
           uv tool install .
           amberclaw --help
-          onboard --help
 
       - name: Test pip install
         run: |
@@ -63,4 +62,3 @@ jobs:
           source venv/bin/activate
           pip install .
           amberclaw --help
-          onboard --help
