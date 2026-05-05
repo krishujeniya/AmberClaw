@@ -43,7 +43,8 @@ env.bak/
 # Dependency directories
 node_modules/
 .amberclaw_old/
-.plann
+.planning/
+
 # IDE / Editor
 .idea/
 .vscode/
