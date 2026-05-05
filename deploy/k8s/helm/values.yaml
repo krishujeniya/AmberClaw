@@ -1,0 +1,73 @@
+replicaCount: 2
+
+image:
+  repository: amberclaw/gateway
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 2000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: os.amberclaw.ai
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+    - secretName: amberclaw-os-tls
+      hosts:
+        - os.amberclaw.ai
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1024Mi
+  requests:
+    cpu: 250m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+env:
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"
+  # Use external secrets provider in production, do not hardcode keys here
+  # OPENAI_API_KEY: "secret-reference-here"
+
+# Embedded ChromaDB
+chromadb:
+  enabled: true
+  # Override defaults from sub-chart as necessary

@@ -40,13 +40,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user
+RUN groupadd -g 1000 amberclaw && \
+    useradd -u 1000 -g amberclaw -m -s /bin/bash amberclaw
+
 WORKDIR /app
 
 # Copy virtual environment and app
 COPY --from=builder /app /app
 
-# Create data directory
-RUN mkdir -p /app/data && chmod 777 /app/data
+# Set ownership
+RUN chown -R amberclaw:amberclaw /app
+
+# Create data directory with proper permissions
+RUN mkdir -p /app/data && chown -R amberclaw:amberclaw /app/data
+
+# Switch to non-root user
+USER amberclaw
 
 # Volume for persistent data
 VOLUME ["/app/data"]

@@ -1,0 +1,870 @@
+"""Agent loop: the core processing engine."""
+
+from __future__ import annotations
+
+import asyncio
+import re
+import weakref
+from contextlib import AsyncExitStack
+from pathlib import Path
+from typing import TYPE_CHECKING, Awaitable, Callable, Any
+
+from loguru import logger
+
+from amberclaw.agent.context import ContextBuilder
+from amberclaw.agent.graph import AgentGraph
+from amberclaw.agent.memory import MemoryStore
+from amberclaw.agent.subagent import SubagentManager
+from amberclaw.agent.a2a import A2AManager, AgentCard
+from amberclaw.agent.tools.cron import CronTool
+from amberclaw.agent.tools.filesystem import EditFileTool, ListDirTool, ReadFileTool, WriteFileTool
+from amberclaw.agent.tools.gui import BrowserActionTool, DesktopAutomationTool
+from amberclaw.agent.tools.message import MessageTool
+from amberclaw.agent.tools.registry import ToolRegistry
+from amberclaw.agent.tools.shell import ExecTool
+from amberclaw.agent.tools.spawn import SpawnTool
+from amberclaw.agent.tools.web import WebFetchTool, WebSearchTool
+from amberclaw.agent.tools.skills import SkillSearchTool, SkillInstallTool, SkillListTool
+from amberclaw.agent.tools.personal_rag import KnowledgeSearchTool, KnowledgeAddTool
+from amberclaw.agent.tools.drive import DriveSearchTool, DriveUploadTool
+from amberclaw.agent.tools.data_clean import DataCleanTool
+from amberclaw.agent.tools.data_viz import DataVizTool
+from amberclaw.agent.tools.data_sql import DataSQLTool
+from amberclaw.agent.tools.data_eda import DataEDATool
+from amberclaw.agent.tools.council import CouncilTool
+from amberclaw.agent.tools.mythos import MythosTool
+from amberclaw.agent.tools.personal_assistant import AssistantTool
+from amberclaw.agent.tools.multimodal import (
+    VisionTool,
+    TranscriptionTool,
+    TTSTool,
+    DocumentIngestionTool,
+    VideoAnalysisTool,
+    SensorInputTool,
+)
+from amberclaw.bus.events import InboundMessage, OutboundMessage
+from amberclaw.bus.queue import MessageBus
+from amberclaw.providers.base import LLMProvider
+from amberclaw.session.manager import Session, SessionManager
+
+if TYPE_CHECKING:
+    from amberclaw.config.schema import ChannelsConfig, ExecToolConfig
+    from amberclaw.cron.service import CronService
+
+
+class AgentLoop:
+    """
+    The agent loop is the core processing engine.
+
+    It:
+    1. Receives messages from the bus
+    2. Builds context with history, memory, skills
+    3. Calls the LLM
+    4. Executes tool calls
+    5. Sends responses back
+    """
+
+    _TOOL_RESULT_MAX_CHARS = 500
+
+    def __init__(
+        self,
+        bus: MessageBus,
+        provider: LLMProvider,
+        workspace: Path,
+        model: str | None = None,
+        max_iterations: int = 40,
+        temperature: float = 0.1,
+        max_tokens: int = 4096,
+        memory_window: int = 100,
+        mode: str = "react",
+        reasoning_effort: str | None = None,
+        brave_api_key: str | None = None,
+        web_proxy: str | None = None,
+        exec_config: ExecToolConfig | None = None,
+        cron_service: CronService | None = None,
+        restrict_to_workspace: bool = False,
+        session_manager: SessionManager | None = None,
+        mcp_servers: dict[str, Any] | None = None,
+        channels_config: ChannelsConfig | None = None,
+        fallback_models: list[str] | None = None,
+        embedding_model: str | None = None,
+        reranker_model: str | None = None,
+    ):
+        from amberclaw.config.schema import ExecToolConfig
+
+        self.bus = bus
+        self.channels_config = channels_config
+        self.provider = provider
+        self.workspace = workspace
+        self.model = model or provider.get_default_model()
+        self.max_iterations = max_iterations
+        self.mode = mode
+        self.temperature = temperature
+        self.max_tokens = max_tokens
+        self.memory_window = memory_window
+        self.reasoning_effort = reasoning_effort
+        self.brave_api_key = brave_api_key
+        self.web_proxy = web_proxy
+        self.exec_config = exec_config or ExecToolConfig()
+        self.cron_service = cron_service
+        self.restrict_to_workspace = restrict_to_workspace
+        self.fallback_models = fallback_models or []
+        self.embedding_model = embedding_model
+        self.reranker_model = reranker_model
+
+        self.context = ContextBuilder(workspace)
+        self.sessions = session_manager or SessionManager(workspace)
+        self.tools = ToolRegistry()
+        self.subagents = SubagentManager(
+            provider=provider,
+            workspace=workspace,
+            bus=bus,
+            model=self.model,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            reasoning_effort=reasoning_effort,
+            brave_api_key=brave_api_key,
+            web_proxy=web_proxy,
+            exec_config=self.exec_config,
+            restrict_to_workspace=restrict_to_workspace,
+        )
+
+        self._running = False
+        self._mcp_servers = mcp_servers or {}
+        self._mcp_discovery_task: asyncio.Task[Any] | None = None
+
+        # Initialize A2A
+        self.a2a_manager = A2AManager(
+            AgentCard(
+                name="AmberClaw",
+                capabilities=["rag", "data", "web", "mcp"],
+                endpoints={"a2a": getattr(channels_config, "a2a_url", "") if channels_config else ""}
+            )
+        )
+
+        self._mcp_stack: AsyncExitStack | None = None
+        self._mcp_connected = False
+        self._mcp_connecting = False
+        self._consolidating: set[str] = set()  # Session keys with consolidation in progress
+        self._consolidation_tasks: set[asyncio.Task] = set()  # Strong refs to in-flight tasks
+        self._consolidation_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = (
+            weakref.WeakValueDictionary()
+        )
+        self._active_tasks: dict[str, list[asyncio.Task]] = {}  # session_key -> tasks
+        self._processing_lock = asyncio.Lock()
+
+        # Register tools first so AgentGraph ToolNode has the full tool set
+        self._register_default_tools()
+
+        # Initialize LangGraph engine with fully populated tools
+        self._graph = AgentGraph(
+            provider=self.provider,
+            tools=list(self.tools.values()),
+            max_iterations=self.max_iterations,
+            mode=self.mode,
+        )
+
+    def _register_default_tools(self) -> None:
+        """Register all core tools — every feature is always available from user config."""
+        from amberclaw.config.loader import load_config
+
+        _cfg = load_config()
+
+        allowed_dir = self.workspace if self.restrict_to_workspace else None
+
+        # ── Filesystem ────────────────────────────────────────────────────────
+        for cls in (ReadFileTool, WriteFileTool, EditFileTool, ListDirTool):
+            self.tools.register(cls(workspace=self.workspace, allowed_dir=allowed_dir))
+
+        # ── Shell ─────────────────────────────────────────────────────────────
+        self.tools.register(
+            ExecTool(
+                working_dir=str(self.workspace),
+                timeout=self.exec_config.timeout,
+                restrict_to_workspace=self.restrict_to_workspace,
+                path_append=self.exec_config.path_append,
+            )
+        )
+
+        # ── Web ───────────────────────────────────────────────────────────────
+        self.tools.register(WebSearchTool(api_key=self.brave_api_key, proxy=self.web_proxy))
+        self.tools.register(WebFetchTool(proxy=self.web_proxy))
+        self.tools.register(BrowserActionTool())
+        self.tools.register(DesktopAutomationTool())
+
+        # ── Skills ────────────────────────────────────────────────────────────
+        self.tools.register(SkillSearchTool())
+        self.tools.register(
+            SkillInstallTool(
+                workspace=str(self.workspace), loader=self.context.skills
+            )
+        )
+        self.tools.register(SkillListTool(workspace=str(self.workspace)))
+
+        # ── Messaging / Scheduling ────────────────────────────────────────────
+        self.tools.register(MessageTool(send_callback=self.bus.publish_outbound))
+        self.tools.register(SpawnTool(manager=self.subagents))
+        if self.cron_service:
+            self.tools.register(CronTool(self.cron_service))
+
+        # ── Council (multi-model consensus) — always core ─────────────────────
+        try:
+            self.tools.register(
+                CouncilTool(
+                    provider=self.provider,
+                    model=self.model,
+                    temperature=self.temperature,
+                    max_tokens=min(self.max_tokens, 2048),
+                )
+            )
+            logger.info("Council tool registered")
+        except Exception as exc:
+            logger.debug("Council tool skipped: {}", exc)
+
+        # ── Mythos (recursive deep reasoning) — always core ───────────────────
+        try:
+            self.tools.register(
+                MythosTool(
+                    provider=self.provider,
+                    model=self.model,
+                    temperature=self.temperature,
+                    max_tokens=min(self.max_tokens, 2048),
+                )
+            )
+            logger.info("Mythos tool registered")
+        except Exception as exc:
+            logger.debug("Mythos tool skipped: {}", exc)
+
+        # ── Personal Assistant (session-persisted conversation) ───────────────
+        try:
+            system_prompt = getattr(_cfg.assistant, "system_prompt", "") or ""
+            self.tools.register(
+                AssistantTool(
+                    provider=self.provider,
+                    model=self.model,
+                    workspace=self.workspace,
+                    temperature=0.7,
+                    max_tokens=min(self.max_tokens, 2048),
+                    system_prompt=system_prompt,
+                )
+            )
+            logger.info("PersonalAssistant tool registered")
+        except Exception as exc:
+            logger.debug("PersonalAssistant tool skipped: {}", exc)
+
+        # ── Knowledge RAG ─────────────────────────────────────────────────────
+        try:
+            self.tools.register(
+                KnowledgeSearchTool(
+                    workspace=self.workspace,
+                    provider=self.provider,
+                    embedding_model=self.embedding_model or "openai/text-embedding-3-small",
+                    reranker_model=self.reranker_model,
+                )
+            )
+            self.tools.register(
+                KnowledgeAddTool(
+                    workspace=self.workspace,
+                    provider=self.provider,
+                    embedding_model=self.embedding_model or "openai/text-embedding-3-small",
+                )
+            )
+            logger.info("Knowledge RAG tools registered")
+        except Exception as exc:
+            logger.debug("Knowledge RAG skipped: {}", exc)
+
+        # ── Google Drive (optional — enabled in config) ───────────────────────
+        try:
+            if _cfg.tools.drive.enabled:
+                self.tools.register(DriveSearchTool())
+                self.tools.register(DriveUploadTool())
+                logger.info("Drive tools registered")
+        except Exception as exc:
+            logger.debug("Drive tools skipped: {}", exc)
+
+        # ── Multimodal (Vision, Audio, Video, Sensors) ────────────────────────
+        try:
+            self.tools.register(VisionTool(provider=self.provider))
+            self.tools.register(TranscriptionTool())
+            self.tools.register(TTSTool())
+            self.tools.register(DocumentIngestionTool())
+            self.tools.register(VideoAnalysisTool(provider=self.provider))
+            self.tools.register(SensorInputTool())
+            logger.info("Multimodal tools registered")
+        except Exception as exc:
+            logger.error("Multimodal tools failed to register: {}", exc)
+
+        # ── DataAgent (data science suite) — always core ──────────────────────
+
+        try:
+            data_cfg = getattr(_cfg, "data", None)
+            out_dir = getattr(data_cfg, "output_dir", None) if data_cfg else None
+            lc_model = self.provider.to_langchain_chat(self.model, temperature=0.1)
+            self.tools.register(DataCleanTool(output_dir=out_dir, model=lc_model))
+            self.tools.register(DataVizTool(model=lc_model))
+            self.tools.register(DataSQLTool(model=lc_model))
+            self.tools.register(DataEDATool(model=lc_model))
+            logger.info("DataAgent tools registered")
+
+        except Exception as exc:
+            logger.debug("DataAgent tools skipped: {}", exc)
+
+        # ── A2A (Agent-to-Agent) ──────────────────────────────────────────────
+        from amberclaw.agent.tools.a2a import A2ATool, A2ADiscoveryTool
+        self.tools.register(A2ATool(self.a2a_manager))
+        self.tools.register(A2ADiscoveryTool(self.a2a_manager))
+        logger.info("A2A tools registered")
+
+    async def _connect_mcp(self) -> None:
+        """Connect to configured MCP servers (one-time, lazy)."""
+        if self._mcp_connected or self._mcp_connecting or not self._mcp_servers:
+            return
+        self._mcp_connecting = True
+        from amberclaw.agent.tools.mcp import connect_mcp_servers
+
+        try:
+            self._mcp_stack = AsyncExitStack()
+            await self._mcp_stack.__aenter__()
+            await connect_mcp_servers(self._mcp_servers, self.tools, self._mcp_stack)
+            self._mcp_connected = True
+        except Exception as e:
+            logger.error("Failed to connect MCP servers (will retry next message): {}", e)
+            if self._mcp_stack:
+                try:
+                    await self._mcp_stack.aclose()
+                except Exception:
+                    pass
+                self._mcp_stack = None
+        finally:
+            self._mcp_connecting = False
+
+    async def _mcp_discovery_loop(self) -> None:
+        """Periodically scan for new MCP servers."""
+        from amberclaw.agent.tools.mcp import connect_mcp_servers
+
+        while self._running:
+            try:
+                # Only discover if specifically requested or on local network
+                # For now, we scan configured discovery URLs
+                discovery_servers = {}
+                for name, cfg in self._mcp_servers.items():
+                    if getattr(cfg, "discover", False) and cfg.url:
+                        discovery_servers[name] = cfg
+
+                if discovery_servers and self._mcp_stack:
+                    logger.debug("Running dynamic MCP discovery...")
+                    await connect_mcp_servers(discovery_servers, self.tools, self._mcp_stack)
+            except Exception as e:
+                logger.error("Dynamic MCP discovery failed: {}", e)
+
+            await asyncio.sleep(300)  # Scan every 5 minutes
+
+    def _set_tool_context(self, channel: str, chat_id: str, message_id: str | None = None) -> None:
+        """Update context for all tools that need routing info."""
+        for name in ("message", "spawn", "cron"):
+            if tool := self.tools.get(name):
+                # Use getattr to avoid Pyright errors on abstract Tool class
+                if hasattr(tool, "set_context"):
+                    set_context = getattr(tool, "set_context")
+                    set_context(channel, chat_id, *([message_id] if name == "message" else []))
+
+    @staticmethod
+    def _strip_think(text: str | None) -> str | None:
+        """Remove <think>…</think> blocks that some models embed in content."""
+        if not text:
+            return None
+        return re.sub(r"<think>[\s\S]*?</think>", "", text).strip() or None
+
+    @staticmethod
+    def _tool_hint(tool_calls: list) -> str:
+        """Format tool calls as concise hint, e.g. 'web_search("query")'."""
+
+        def _fmt(tc):
+            args = (tc.arguments[0] if isinstance(tc.arguments, list) else tc.arguments) or {}
+            val = next(iter(args.values()), None) if isinstance(args, dict) else None
+            if not isinstance(val, str):
+                return tc.name
+            return f'{tc.name}("{val[:40]}…")' if len(val) > 40 else f'{tc.name}("{val}")'
+
+        return ", ".join(_fmt(tc) for tc in tool_calls)
+
+    async def _run_agent_loop(
+        self,
+        initial_messages: list[dict],
+        on_progress: Callable[..., Awaitable[None]] | None = None,
+        on_token: Callable[[str], Awaitable[None]] | None = None,
+    ) -> tuple[str | None, list[str], list[dict]]:
+        """Run the agent iteration loop via LangGraph."""
+        from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+
+        # Convert initial messages to LangChain format for the graph
+        lc_msgs = []
+        for m in initial_messages:
+            role = m.get("role")
+            content = m.get("content")
+            if role == "user":
+                lc_msgs.append(HumanMessage(content=content or ""))
+            elif role == "assistant":
+                ai_m = AIMessage(content=content or "")
+                if m.get("tool_calls"):
+                    ai_m.additional_kwargs["tool_calls"] = m["tool_calls"]
+                lc_msgs.append(ai_m)
+            elif role == "tool":
+                lc_msgs.append(
+                    ToolMessage(content=content or "", tool_call_id=m.get("tool_call_id") or "")
+                )
+
+        # Execute graph with streaming for tokens
+        final_state = None
+        tools_used: list[str] = []
+
+        inputs = {
+            "messages": lc_msgs,
+            "iterations": 0,
+            "mode": self.mode,
+            "plan": [],
+            "current_task": None,
+            "config": {
+                "model": self.model,
+                "llm_kwargs": {
+                    "temperature": self.temperature,
+                    "max_tokens": self.max_tokens,
+                    "reasoning_effort": self.reasoning_effort,
+                    "fallback_models": self.fallback_models,
+                    "on_token": on_token,  # Provider handles this
+                },
+            },
+        }
+
+        # Use invoke for now to keep it simple, while we verify plumbing
+        # We can move to astream_events later for more granular control
+        from typing import cast
+        from amberclaw.agent.graph import AgentState
+
+        # Use astream to support progress callbacks for intermediate steps
+        final_state = inputs
+        last_msg_count = len(lc_msgs)
+
+        async for state in self._graph.runnable.astream(cast(AgentState, inputs), stream_mode="values"):
+            final_state = state
+            if on_progress:
+                current_messages = state.get("messages", [])
+                if len(current_messages) > last_msg_count:
+                    new_msgs = current_messages[last_msg_count:]
+                    for m in new_msgs:
+                        if isinstance(m, AIMessage):
+                            # Clean thinking blocks for progress reporting
+                            content = str(m.content)
+                            if "<think>" in content:
+                                content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+
+                            # Only report content as progress if it's intermediate (has tool calls)
+                            if content and hasattr(m, "tool_calls") and m.tool_calls:
+                                await on_progress(content, tool_hint=False)
+
+                            # Report tool hints in formatted style
+                            if hasattr(m, "tool_calls") and m.tool_calls:
+                                for tc in m.tool_calls:
+                                    args = tc.get("args", {})
+                                    if isinstance(args, dict) and len(args) == 1:
+                                        val = next(iter(args.values()))
+                                        hint = f"{tc['name']}(\"{val}\")" if isinstance(val, str) else f"{tc['name']}({val})"
+                                    else:
+                                        import json as _json
+                                        try:
+                                            hint = f"{tc['name']}({_json.dumps(args)})"
+                                        except Exception:
+                                            hint = f"{tc['name']}({args})"
+                                    await on_progress(hint, tool_hint=True)
+                    last_msg_count = len(current_messages)
+
+        # Extract results
+        final_messages = final_state["messages"]
+        last_msg = final_messages[-1]
+
+        # Back-convert to list[dict] for AmberClaw session storage
+        all_msgs_dict = []
+        for m in final_messages:
+            if isinstance(m, HumanMessage):
+                all_msgs_dict.append({"role": "user", "content": m.content})
+            elif isinstance(m, AIMessage):
+                all_msgs_dict.append(
+                    {
+                        "role": "assistant",
+                        "content": m.content,
+                        "tool_calls": m.additional_kwargs.get("tool_calls"),
+                    }
+                )
+            elif isinstance(m, ToolMessage):
+                all_msgs_dict.append(
+                    {
+                        "role": "tool",
+                        "content": m.content,
+                        "tool_call_id": m.tool_call_id,
+                        "name": m.name or "tool",
+                    }
+                )
+
+        # Identify tools used from messages
+        for m in final_messages:
+            if isinstance(m, ToolMessage):
+                tools_used.append("tool")
+
+        return (
+            str(last_msg.content) if isinstance(last_msg, AIMessage) else None,
+            tools_used,
+            all_msgs_dict,
+        )
+
+    async def run(self) -> None:
+        """Run the agent loop, dispatching messages as tasks to stay responsive to /stop."""
+        self._running = True
+        await self._connect_mcp()
+
+        # Start background discovery
+        if not self._mcp_discovery_task:
+            self._mcp_discovery_task = asyncio.create_task(self._mcp_discovery_loop())
+
+        logger.info("Agent loop started")
+
+        while self._running:
+            try:
+                msg = await asyncio.wait_for(self.bus.consume_inbound(), timeout=1.0)
+            except asyncio.TimeoutError:
+                continue
+
+            if msg.content.strip().lower() == "/stop":
+                await self._handle_stop(msg)
+            else:
+                task = asyncio.create_task(self._dispatch(msg))
+                self._active_tasks.setdefault(msg.session_key, []).append(task)
+                task.add_done_callback(
+                    lambda t, k=msg.session_key: (
+                        self._active_tasks.get(k, []) and self._active_tasks[k].remove(t)
+                        if t in self._active_tasks.get(k, [])
+                        else None
+                    )
+                )
+
+    async def _handle_stop(self, msg: InboundMessage) -> None:
+        """Cancel all active tasks and subagents for the session."""
+        tasks = self._active_tasks.pop(msg.session_key, [])
+        cancelled = sum(1 for t in tasks if not t.done() and t.cancel())
+        for t in tasks:
+            try:
+                await t
+            except (asyncio.CancelledError, Exception):
+                pass
+        sub_cancelled = await self.subagents.cancel_by_session(msg.session_key)
+        total = cancelled + sub_cancelled
+        content = f"⏹ Stopped {total} task(s)." if total else "No active task to stop."
+        await self.bus.publish_outbound(
+            OutboundMessage(
+                channel=msg.channel,
+                chat_id=msg.chat_id,
+                content=content,
+            )
+        )
+
+    async def _dispatch(self, msg: InboundMessage) -> None:
+        """Process a message under the global lock."""
+
+        async def on_token(token: str):
+            await self.bus.publish_outbound(
+                OutboundMessage(
+                    channel=msg.channel,
+                    chat_id=msg.chat_id,
+                    content=token,
+                    metadata={"_token": True, "message_id": msg.metadata.get("message_id")},
+                )
+            )
+
+        async with self._processing_lock:
+            try:
+                response = await self._process_message(msg, on_token=on_token)
+                if response is not None:
+                    await self.bus.publish_outbound(response)
+                elif msg.channel == "cli":
+                    await self.bus.publish_outbound(
+                        OutboundMessage(
+                            channel=msg.channel,
+                            chat_id=msg.chat_id,
+                            content="",
+                            metadata=msg.metadata or {},
+                        )
+                    )
+            except asyncio.CancelledError:
+                logger.info("Task cancelled for session {}", msg.session_key)
+                raise
+            except Exception:
+                logger.exception("Error processing message for session {}", msg.session_key)
+                await self.bus.publish_outbound(
+                    OutboundMessage(
+                        channel=msg.channel,
+                        chat_id=msg.chat_id,
+                        content="Sorry, I encountered an error.",
+                    )
+                )
+
+    async def close_mcp(self) -> None:
+        """Close MCP connections."""
+        if self._mcp_stack:
+            try:
+                await self._mcp_stack.aclose()
+            except (RuntimeError, BaseExceptionGroup):
+                pass  # MCP SDK cancel scope cleanup is noisy but harmless
+            self._mcp_stack = None
+
+    def stop(self) -> None:
+        """Stop the agent loop."""
+        self._running = False
+        logger.info("Agent loop stopping")
+
+    async def _process_message(
+        self,
+        msg: InboundMessage,
+        session_key: str | None = None,
+        on_progress: Callable[[str], Awaitable[None]] | None = None,
+        on_token: Callable[[str], Awaitable[None]] | None = None,
+    ) -> OutboundMessage | None:
+        """Process a single inbound message and return the response."""
+        # System messages: parse origin from chat_id ("channel:chat_id")
+        if msg.channel == "system":
+            channel, chat_id = (
+                msg.chat_id.split(":", 1) if ":" in msg.chat_id else ("cli", msg.chat_id)
+            )
+            logger.info("Processing system message from {}", msg.sender_id)
+            key = f"{channel}:{chat_id}"
+            session = self.sessions.get_or_create(key)
+            self._set_tool_context(channel, chat_id, msg.metadata.get("message_id"))
+            history = session.get_history(max_messages=self.memory_window)
+            messages = self.context.build_messages(
+                history=history,
+                current_message=msg.content,
+                channel=channel,
+                chat_id=chat_id,
+            )
+            final_content, _, all_msgs = await self._run_agent_loop(
+                messages,
+                on_token=on_token,
+            )
+            self._save_turn(session, all_msgs, 1 + len(history))
+            self.sessions.save(session)
+            return OutboundMessage(
+                channel=channel,
+                chat_id=chat_id,
+                content=final_content or "Background task completed.",
+            )
+
+        preview = msg.content[:80] + "..." if len(msg.content) > 80 else msg.content
+        logger.info("Processing message from {}:{}: {}", msg.channel, msg.sender_id, preview)
+
+        key = session_key or msg.session_key
+        session = self.sessions.get_or_create(key)
+
+        # Slash commands
+        cmd = msg.content.strip().lower()
+        if cmd == "/new":
+            lock = self._consolidation_locks.setdefault(session.key, asyncio.Lock())
+            self._consolidating.add(session.key)
+            try:
+                async with lock:
+                    snapshot = session.messages[session.last_consolidated :]
+                    if snapshot:
+                        temp = Session(key=session.key)
+                        temp.messages = list(snapshot)
+                        if not await self._consolidate_memory(temp, archive_all=True):
+                            return OutboundMessage(
+                                channel=msg.channel,
+                                chat_id=msg.chat_id,
+                                content="Memory archival failed, session not cleared. Please try again.",
+                            )
+            except Exception:
+                logger.exception("/new archival failed for {}", session.key)
+                return OutboundMessage(
+                    channel=msg.channel,
+                    chat_id=msg.chat_id,
+                    content="Memory archival failed, session not cleared. Please try again.",
+                )
+            finally:
+                self._consolidating.discard(session.key)
+
+            session.clear()
+            self.sessions.save(session)
+            self.sessions.invalidate(session.key)
+            return OutboundMessage(
+                channel=msg.channel, chat_id=msg.chat_id, content="New session started."
+            )
+        if cmd == "/help":
+            return OutboundMessage(
+                channel=msg.channel,
+                chat_id=msg.chat_id,
+                content="🐈 amberclaw commands:\n/new — Start a new conversation\n/stop — Stop the current task\n/feedback <msg> — Provide self-improvement feedback\n/help — Show available commands",
+            )
+        if cmd.startswith("/feedback "):
+            feedback = msg.content[len("/feedback "):].strip()
+            MemoryStore(self.workspace).append_feedback(feedback)
+            return OutboundMessage(
+                channel=msg.channel,
+                chat_id=msg.chat_id,
+                content="Feedback stored for future self-improvement.",
+            )
+
+        unconsolidated = len(session.messages) - session.last_consolidated
+        if unconsolidated >= self.memory_window and session.key not in self._consolidating:
+            self._consolidating.add(session.key)
+            lock = self._consolidation_locks.setdefault(session.key, asyncio.Lock())
+
+            async def _consolidate_and_unlock():
+                try:
+                    async with lock:
+                        await self._consolidate_memory(session)
+                finally:
+                    self._consolidating.discard(session.key)
+                    _task = asyncio.current_task()
+                    if _task is not None:
+                        self._consolidation_tasks.discard(_task)
+
+            _task = asyncio.create_task(_consolidate_and_unlock())
+            self._consolidation_tasks.add(_task)
+
+        self._set_tool_context(msg.channel, msg.chat_id, msg.metadata.get("message_id"))
+        if message_tool := self.tools.get("message"):
+            if isinstance(message_tool, MessageTool):
+                message_tool.start_turn()
+
+        history = session.get_history(max_messages=self.memory_window)
+        initial_messages = self.context.build_messages(
+            history=history,
+            current_message=msg.content,
+            media=msg.media if msg.media else None,
+            channel=msg.channel,
+            chat_id=msg.chat_id,
+        )
+
+        # Token and Context Budget System (AC-059)
+        # Rough estimation: 1 token ~= 4 chars
+        approx_tokens = sum(len(str(m.get("content", ""))) for m in initial_messages) // 4
+        limit = self.max_tokens or 128000
+
+        warning_msg = None
+        if approx_tokens > limit * 0.95:
+            # Trigger summary consolidation
+            await self._consolidate_memory(session, archive_all=False)
+            warning_msg = "Context window near 95% limit. Triggered automatic summarization."
+        elif approx_tokens > limit * 0.80:
+            warning_msg = f"Context window at {int((approx_tokens/limit)*100)}% capacity. Consider /new soon."
+
+        async def _bus_progress(content: str, *, tool_hint: bool = False) -> None:
+            meta = dict(msg.metadata or {})
+            meta["_progress"] = True
+            meta["_tool_hint"] = tool_hint
+            await self.bus.publish_outbound(
+                OutboundMessage(
+                    channel=msg.channel,
+                    chat_id=msg.chat_id,
+                    content=content,
+                    metadata=meta,
+                )
+            )
+
+        final_content, _, all_msgs = await self._run_agent_loop(
+            initial_messages,
+            on_progress=on_progress or _bus_progress,
+            on_token=on_token,
+        )
+
+        if final_content is None:
+            final_content = "I've completed processing but have no response to give."
+
+        if warning_msg:
+            final_content += f"\n\n[System] {warning_msg}"
+
+        self._save_turn(session, all_msgs, 1 + len(history))
+        self.sessions.save(session)
+
+        if (mt := self.tools.get("message")) and isinstance(mt, MessageTool) and mt._sent_in_turn:
+            return None
+
+        preview = final_content[:120] + "..." if len(final_content) > 120 else final_content
+        logger.info("Response to {}:{}: {}", msg.channel, msg.sender_id, preview)
+        return OutboundMessage(
+            channel=msg.channel,
+            chat_id=msg.chat_id,
+            content=final_content,
+            metadata=msg.metadata or {},
+        )
+
+    def _save_turn(self, session: Session, messages: list[dict], skip: int) -> None:
+        """Save new-turn messages into session, truncating large tool results."""
+        from datetime import datetime
+
+        for m in messages[skip:]:
+            entry = dict(m)
+            role, content = entry.get("role"), entry.get("content")
+            if role == "assistant" and not content and not entry.get("tool_calls"):
+                continue  # skip empty assistant messages — they poison session context
+            if (
+                role == "tool"
+                and isinstance(content, str)
+                and len(content) > self._TOOL_RESULT_MAX_CHARS
+            ):
+                entry["content"] = content[: self._TOOL_RESULT_MAX_CHARS] + "\n... (truncated)"
+            elif role == "user":
+                if isinstance(content, str) and content.startswith(
+                    ContextBuilder._RUNTIME_CONTEXT_TAG
+                ):
+                    # Strip the runtime-context prefix, keep only the user text.
+                    parts = content.split("\n\n", 1)
+                    if len(parts) > 1 and parts[1].strip():
+                        entry["content"] = parts[1]
+                    else:
+                        continue
+                if isinstance(content, list):
+                    filtered = []
+                    for c in content:
+                        if (
+                            c.get("type") == "text"
+                            and isinstance(c.get("text"), str)
+                            and c["text"].startswith(ContextBuilder._RUNTIME_CONTEXT_TAG)
+                        ):
+                            continue  # Strip runtime context from multimodal messages
+                        if c.get("type") == "image_url" and c.get("image_url", {}).get(
+                            "url", ""
+                        ).startswith("data:image/"):
+                            filtered.append({"type": "text", "text": "[image]"})
+                        else:
+                            filtered.append(c)
+                    if not filtered:
+                        continue
+                    entry["content"] = filtered
+            entry.setdefault("timestamp", datetime.now().isoformat())
+            session.messages.append(entry)
+        session.updated_at = datetime.now()
+
+    async def _consolidate_memory(self, session, archive_all: bool = False) -> bool:
+        """Delegate to MemoryStore.consolidate(). Returns True on success."""
+        return await MemoryStore(self.workspace).consolidate(
+            session,
+            self.provider,
+            self.model,
+            archive_all=archive_all,
+            memory_window=self.memory_window,
+        )
+
+    async def process_direct(
+        self,
+        content: str,
+        session_key: str = "cli:direct",
+        channel: str = "cli",
+        chat_id: str = "direct",
+        on_progress: Callable[[str], Awaitable[None]] | None = None,
+        on_token: Callable[[str], Awaitable[None]] | None = None,
+    ) -> str:
+        """Process a message directly (for CLI or cron usage)."""
+        await self._connect_mcp()
+        msg = InboundMessage(channel=channel, sender_id="user", chat_id=chat_id, content=content)
+        response = await self._process_message(
+            msg, session_key=session_key, on_progress=on_progress, on_token=on_token
+        )
+        return response.content if response else ""

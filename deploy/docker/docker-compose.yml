@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  amberclaw-gateway:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    image: amberclaw/gateway:latest
+    container_name: amberclaw_gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - MEM0_API_KEY=${MEM0_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+    volumes:
+      - ./data/amberclaw:/app/data
+    depends_on:
+      - chromadb
+    restart: unless-stopped
+    networks:
+      - amberclaw-net
+
+  # Vector DB for long-term memory
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: amberclaw_memory_db
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./data/chroma:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+    restart: unless-stopped
+    networks:
+      - amberclaw-net
+
+networks:
+  amberclaw-net:
+    driver: bridge

@@ -233,6 +233,7 @@ If you suspect a breach:
 3. **No session expiry** — sessions do not time out automatically
 4. **Basic command filtering** — only catches obvious destructive patterns
 5. **Limited audit trail** — security event logging is minimal (extend as needed)
+6. **WhatsApp Subprocess Risk** — the WhatsApp integration spawns an unaudited Node.js subprocess to bridge communications. This process runs with the same privileges as AmberClaw. Users are advised to run AmberClaw in an isolated environment (container or VM) if this risk is unacceptable.
 
 ## Pre-Deployment Checklist
 
