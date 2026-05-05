@@ -1,13 +1,7 @@
-
 import typer
 import uvicorn
 from rich.console import Console
-
-app = typer.Typer(
-    name="amberclaw",
-    help="AmberClaw AI OS Command Line Interface",
-    add_completion=False,
-)
+from amberclaw.cli.commands import app
 
 console = Console()
 
@@ -23,16 +17,6 @@ def start(
     console.print(f"[bold green]Starting AmberClaw AI OS on {host}:{port}...[/bold green]")
     # uvicorn run points to our FastAPI app
     uvicorn.run("amberclaw.api.main:app", host=host, port=port, reload=reload)
-
-@app.command()
-def status():
-    """
-    Check the status of the local AmberClaw engines.
-    """
-    console.print("[bold blue]AmberClaw System Status:[/bold blue]")
-    console.print("- [green]Heartbeat Engine[/green]: Active")
-    console.print("- [green]Governance Board[/green]: Monitoring")
-    console.print("- [yellow]Memory System[/yellow]: Standby")
 
 if __name__ == "__main__":
     app()

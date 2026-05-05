@@ -42,6 +42,15 @@ dependencies = [
     "mem0ai>=2.0.1",
     "python-telegram-bot>=22.7",
     "websockets>=16.0",
+    "google-api-python-client>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "matrix-nio>=0.20.0",
+    "json-repair>=0.30.0",
+    "oauth-cli-kit>=0.1.0",
+    "slackify-markdown>=0.1.0",
+    "slack-sdk>=3.27.0",
+    "h2o>=3.44.0",
+    "pillow>=10.2.0",
 ]
 
 [project.scripts]
@@ -80,3 +89,16 @@ plugins = ["pydantic.mypy"]
 init_forbid_extra = true
 init_typed = true
 warn_required_dynamic_aliases = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.3.0",
+    "mypy>=1.9.0",
+    "bandit>=1.7.7",
+    "safety>=3.0.0",
+    "mkdocs>=1.5.3",
+    "mkdocs-material>=9.5.15",
+    "mkdocstrings[python]>=0.24.1"
+]

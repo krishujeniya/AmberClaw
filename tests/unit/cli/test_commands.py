@@ -25,7 +25,7 @@ def mock_paths():
         patch("amberclaw.config.loader.get_config_path") as mock_cp,
         patch("amberclaw.config.loader.save_config") as mock_sc,
         patch("amberclaw.config.loader.load_config"),
-        patch("amberclaw.cli.commands.get_workspace_path") as mock_ws,
+        patch("amberclaw.config.paths.get_workspace_path") as mock_ws,
     ):
         base_dir = Path("./test_onboard_data")
         if base_dir.exists():
@@ -144,13 +144,13 @@ def mock_agent_runtime(tmp_path):
 
     with (
         patch("amberclaw.config.loader.load_config", return_value=config) as mock_load_config,
+        patch("amberclaw.providers.factory.make_provider", return_value=object()),
+        patch("amberclaw.utils.helpers.sync_workspace_templates") as mock_sync_templates,
         patch("amberclaw.config.paths.get_cron_dir", return_value=cron_dir),
-        patch("amberclaw.cli.commands.sync_workspace_templates") as mock_sync_templates,
-        patch("amberclaw.cli.commands.make_provider", return_value=object()),
-        patch("amberclaw.cli.commands._print_agent_response") as mock_print_response,
-        patch("amberclaw.bus.queue.MessageBus"),
         patch("amberclaw.cron.service.CronService"),
+        patch("amberclaw.bus.queue.MessageBus"),
         patch("amberclaw.agent.loop.AgentLoop") as mock_agent_loop_cls,
+        patch("amberclaw.cli.commands.utils._print_agent_response") as mock_print_response,
     ):
         agent_loop = MagicMock()
         agent_loop.channels_config = None
@@ -222,8 +222,8 @@ def test_agent_config_sets_active_path(monkeypatch, tmp_path: Path) -> None:
     )
     monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
     monkeypatch.setattr("amberclaw.config.paths.get_cron_dir", lambda: config_file.parent / "cron")
-    monkeypatch.setattr("amberclaw.cli.commands.sync_workspace_templates", lambda _path: None)
-    monkeypatch.setattr("amberclaw.cli.commands.make_provider", lambda _config: object())
+    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None)
+    monkeypatch.setattr("amberclaw.providers.factory.make_provider", lambda _config: object())
     monkeypatch.setattr("amberclaw.bus.queue.MessageBus", lambda: object())
     monkeypatch.setattr("amberclaw.cron.service.CronService", lambda _store: object())
 
@@ -239,7 +239,7 @@ def test_agent_config_sets_active_path(monkeypatch, tmp_path: Path) -> None:
 
     monkeypatch.setattr("amberclaw.agent.loop.AgentLoop", _FakeAgentLoop)
     monkeypatch.setattr(
-        "amberclaw.cli.commands._print_agent_response", lambda *_args, **_kwargs: None,
+        "amberclaw.cli.commands.utils._print_agent_response", lambda *_args, **_kwargs: None,
     )
 
     result = runner.invoke(app, ["agent", "-m", "hello", "-c", str(config_file)])
@@ -290,14 +290,8 @@ def test_gateway_uses_workspace_from_config_by_default(monkeypatch, tmp_path: Pa
         lambda path: seen.__setitem__("config_path", path),
     )
     monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
-    monkeypatch.setattr(
-        "amberclaw.cli.commands.sync_workspace_templates",
-        lambda path: seen.__setitem__("workspace", path),
-    )
-    monkeypatch.setattr(
-        "amberclaw.cli.commands.make_provider",
-        lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
-    )
+    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda path: seen.__setitem__("workspace", path))
+    monkeypatch.setattr("amberclaw.providers.factory.make_provider", lambda _config: (_ for _ in ()).throw(_StopGateway("stop")))
 
     result = runner.invoke(app, ["gateway", "--config", str(config_file)])
 
@@ -318,14 +312,8 @@ def test_gateway_workspace_option_overrides_config(monkeypatch, tmp_path: Path) 
 
     monkeypatch.setattr("amberclaw.config.loader.set_config_path", lambda _path: None)
     monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
-    monkeypatch.setattr(
-        "amberclaw.cli.commands.sync_workspace_templates",
-        lambda path: seen.__setitem__("workspace", path),
-    )
-    monkeypatch.setattr(
-        "amberclaw.cli.commands.make_provider",
-        lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
-    )
+    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda path: seen.__setitem__("workspace", path))
+    monkeypatch.setattr("amberclaw.providers.factory.make_provider", lambda _config: (_ for _ in ()).throw(_StopGateway("stop")))
 
     result = runner.invoke(
         app,
@@ -349,8 +337,8 @@ def test_gateway_uses_config_directory_for_cron_store(monkeypatch, tmp_path: Pat
     monkeypatch.setattr("amberclaw.config.loader.set_config_path", lambda _path: None)
     monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
     monkeypatch.setattr("amberclaw.config.paths.get_cron_dir", lambda: config_file.parent / "cron")
-    monkeypatch.setattr("amberclaw.cli.commands.sync_workspace_templates", lambda _path: None)
-    monkeypatch.setattr("amberclaw.cli.commands.make_provider", lambda _config: object())
+    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None)
+    monkeypatch.setattr("amberclaw.providers.factory.make_provider", lambda _config: object())
     monkeypatch.setattr("amberclaw.bus.queue.MessageBus", lambda: object())
     monkeypatch.setattr("amberclaw.session.manager.SessionManager", lambda _workspace: object())
 
@@ -377,9 +365,9 @@ def test_gateway_uses_configured_port_when_cli_flag_is_missing(monkeypatch, tmp_
 
     monkeypatch.setattr("amberclaw.config.loader.set_config_path", lambda _path: None)
     monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
-    monkeypatch.setattr("amberclaw.cli.commands.sync_workspace_templates", lambda _path: None)
+    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None)
     monkeypatch.setattr(
-        "amberclaw.cli.commands.make_provider",
+        "amberclaw.providers.factory.make_provider",
         lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
     )
 
@@ -399,9 +387,9 @@ def test_gateway_cli_port_overrides_configured_port(monkeypatch, tmp_path: Path)
 
     monkeypatch.setattr("amberclaw.config.loader.set_config_path", lambda _path: None)
     monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
-    monkeypatch.setattr("amberclaw.cli.commands.sync_workspace_templates", lambda _path: None)
+    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None)
     monkeypatch.setattr(
-        "amberclaw.cli.commands.make_provider",
+        "amberclaw.providers.factory.make_provider",
         lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
     )
 

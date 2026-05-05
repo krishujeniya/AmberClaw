@@ -1,14 +1,49 @@
-"""
-AmberClaw amberclaw.cli.commands module.
-"""
+"""CLI commands for amberclaw."""
 
-from pydantic import BaseModel, Field
+import typer
+from amberclaw import __logo__, __version__
+from . import utils
+from .utils import console
+from amberclaw.config.loader import get_config_path, load_config, save_config, load_runtime_config
+from amberclaw.config.paths import get_workspace_path
+from amberclaw.config.schema import Config
+from amberclaw.providers.factory import make_provider
+from amberclaw.utils.helpers import sync_workspace_templates
 
+app = typer.Typer(
+    name="amberclaw",
+    help=f"{__logo__} AmberClaw - Personal AI Assistant",
+    no_args_is_help=True,
+)
 
-class CommandsModuleConfig(BaseModel):
-    """Configuration for the amberclaw.cli.commands module."""
-    enabled: bool = Field(default=True, description="Whether the module is enabled")
-    version: str = Field(default="2026.0.1", description="Module version")
+# Import modules
+from . import doctor, onboard, gateway, agent, status, budget, ingest, council, mythos, skills, channels, provider
 
+# Register commands
+app.command()(doctor.doctor)
+app.command()(onboard.onboard)
+app.command()(gateway.gateway)
+app.command()(agent.agent)
+app.command()(status.status)
+app.command()(budget.usage)
+app.command()(ingest.ingest)
+app.command()(council.council)
+app.command()(mythos.mythos)
 
-__all__ = ["CommandsModuleConfig"]
+# Sub-apps
+app.add_typer(skills.skills_app, name="skill")
+app.add_typer(channels.channels_app, name="channels")
+app.add_typer(provider.provider_app, name="provider")
+
+# Callback for version
+def version_callback(value: bool) -> None:
+    if value:
+        console.print(f"{__logo__} AmberClaw v{__version__}")
+        raise typer.Exit()
+
+@app.callback()
+def main(
+    version: bool = typer.Option(None, "--version", "-v", callback=version_callback, is_eager=True),
+) -> None:
+    """AmberClaw - Personal AI Assistant."""
+    pass
