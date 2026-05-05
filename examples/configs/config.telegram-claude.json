@@ -1,8 +1,0 @@
-{
-  "channels": {
-    "telegram": {
-      "enabled": true,
-      "token": "YOUR_TOKEN"
-    }
-  }
-}

@@ -1,8 +1,0 @@
-{
-  "channels": {
-    "discord": {
-      "enabled": true,
-      "token": "YOUR_TOKEN"
-    }
-  }
-}

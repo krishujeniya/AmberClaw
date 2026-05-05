@@ -1,2 +1,0 @@
-# heartbeat
-print('Running heartbeat')

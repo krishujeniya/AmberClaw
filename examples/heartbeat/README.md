@@ -1,2 +1,0 @@
-# heartbeat
-Run this example.

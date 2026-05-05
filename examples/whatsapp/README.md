@@ -1,2 +1,0 @@
-# whatsapp
-Run this example.
