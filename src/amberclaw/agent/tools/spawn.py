@@ -1,6 +1,7 @@
 """Spawn tool for creating background subagents."""
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
+
 from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
@@ -13,12 +14,12 @@ class SpawnArgs(BaseModel):
     """Arguments for the spawn tool."""
 
     task: str = Field(..., description="The task for the subagent to complete")
-    label: Optional[str] = Field(
-        None, description="Optional short label for the task (for display)"
+    label: str | None = Field(
+        None, description="Optional short label for the task (for display)",
     )
-    model: Optional[str] = Field(None, description="Optional: specific model for the subagent")
-    reasoning_effort: Optional[str] = Field(
-        None, description="Optional: reasoning effort (low, medium, high)"
+    model: str | None = Field(None, description="Optional: specific model for the subagent")
+    reasoning_effort: str | None = Field(
+        None, description="Optional: reasoning effort (low, medium, high)",
     )
 
 

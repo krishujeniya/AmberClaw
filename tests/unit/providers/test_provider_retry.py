@@ -28,7 +28,7 @@ async def test_chat_with_retry_retries_transient_error_then_succeeds(monkeypatch
         [
             LLMResponse(content="429 rate limit", finish_reason="error"),
             LLMResponse(content="ok"),
-        ]
+        ],
     )
     delays: list[int] = []
 
@@ -50,7 +50,7 @@ async def test_chat_with_retry_does_not_retry_non_transient_error(monkeypatch) -
     provider = ScriptedProvider(
         [
             LLMResponse(content="401 unauthorized", finish_reason="error"),
-        ]
+        ],
     )
     delays: list[int] = []
 
@@ -74,7 +74,7 @@ async def test_chat_with_retry_returns_final_error_after_retries(monkeypatch) ->
             LLMResponse(content="429 rate limit b", finish_reason="error"),
             LLMResponse(content="429 rate limit c", finish_reason="error"),
             LLMResponse(content="503 final server error", finish_reason="error"),
-        ]
+        ],
     )
     delays: list[int] = []
 

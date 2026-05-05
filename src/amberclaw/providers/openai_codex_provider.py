@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import httpx
 from oauth_cli_kit import get_token as get_codex_token
@@ -61,7 +62,7 @@ class OpenAICodexProvider(LLMProvider):
 
         try:
             content, tool_calls, finish_reason = await _request_codex(
-                url, headers, body, verify=True
+                url, headers, body, verify=True,
             )
             return LLMResponse(
                 content=content,
@@ -70,7 +71,7 @@ class OpenAICodexProvider(LLMProvider):
             )
         except Exception as e:
             return LLMResponse(
-                content=f"Error calling Codex: {str(e)}",
+                content=f"Error calling Codex: {e!s}",
                 finish_reason="error",
             )
 
@@ -107,7 +108,7 @@ async def _request_codex(
             if response.status_code != 200:
                 text = await response.aread()
                 raise RuntimeError(
-                    _friendly_error(response.status_code, text.decode("utf-8", "ignore"))
+                    _friendly_error(response.status_code, text.decode("utf-8", "ignore")),
                 )
             return await _consume_sse(response)
 
@@ -127,7 +128,7 @@ def _convert_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "name": name,
                 "description": fn.get("description") or "",
                 "parameters": params if isinstance(params, dict) else {},
-            }
+            },
         )
     return converted
 
@@ -158,7 +159,7 @@ def _convert_messages(messages: list[dict[str, Any]]) -> tuple[str, list[dict[st
                         "content": [{"type": "output_text", "text": content}],
                         "status": "completed",
                         "id": f"msg_{idx}",
-                    }
+                    },
                 )
             # Then handle tool calls.
             for tool_call in msg.get("tool_calls", []) or []:
@@ -173,7 +174,7 @@ def _convert_messages(messages: list[dict[str, Any]]) -> tuple[str, list[dict[st
                         "call_id": call_id,
                         "name": fn.get("name"),
                         "arguments": fn.get("arguments") or "{}",
-                    }
+                    },
                 )
             continue
 
@@ -187,7 +188,7 @@ def _convert_messages(messages: list[dict[str, Any]]) -> tuple[str, list[dict[st
                     "type": "function_call_output",
                     "call_id": call_id,
                     "output": output_text,
-                }
+                },
             )
             continue
 
@@ -295,7 +296,7 @@ async def _consume_sse(response: httpx.Response) -> tuple[str, list[ToolCallRequ
                         id=f"{call_id}|{buf.get('id') or item.get('id') or 'fc_0'}",
                         name=str(buf.get("name") or item.get("name") or "unknown"),
                         arguments=args,
-                    )
+                    ),
                 )
         elif event_type == "response.completed":
             status = (event.get("response") or {}).get("status")

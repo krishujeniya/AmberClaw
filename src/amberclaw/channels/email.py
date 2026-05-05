@@ -63,7 +63,7 @@ class EmailChannel(BaseChannel):
         if not self.config.consent_granted:
             logger.warning(
                 "Email channel disabled: consent_granted is false. "
-                "Set channels.email.consentGranted=true after explicit user permission."
+                "Set channels.email.consentGranted=true after explicit user permission.",
             )
             return
 
@@ -303,7 +303,7 @@ class EmailChannel(BaseChannel):
                         "message_id": message_id,
                         "content": content,
                         "metadata": metadata,
-                    }
+                    },
                 )
 
                 if dedupe and uid:
@@ -312,7 +312,7 @@ class EmailChannel(BaseChannel):
                     if len(self._processed_uids) > self._MAX_PROCESSED_UIDS:
                         # Evict a random half to cap memory; mark_seen is the primary dedup
                         self._processed_uids = set(
-                            list(self._processed_uids)[len(self._processed_uids) // 2 :]
+                            list(self._processed_uids)[len(self._processed_uids) // 2 :],
                         )
 
                 if mark_seen:

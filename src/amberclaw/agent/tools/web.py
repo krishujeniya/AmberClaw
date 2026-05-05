@@ -4,12 +4,12 @@ import html
 import json
 import os
 import re
-from typing import Optional, Literal, cast
+from typing import Literal, cast
 from urllib.parse import urlparse
 
 import httpx
 from loguru import logger
-from pydantic import BaseModel, Field, AliasChoices
+from pydantic import AliasChoices, BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
 
@@ -65,9 +65,9 @@ class WebSearchArgs(BaseModel):
     """Arguments for the web_search tool."""
 
     query: str = Field(..., description="Search query")
-    count: Optional[int] = Field(None, description="Results (1-10)", ge=1, le=10)
-    provider: Optional[Literal["brave", "tavily", "serpapi"]] = Field(
-        None, description="Search provider (defaults to best available key)"
+    count: int | None = Field(None, description="Results (1-10)", ge=1, le=10)
+    provider: Literal["brave", "tavily", "serpapi"] | None = Field(
+        None, description="Search provider (defaults to best available key)",
     )
 
 
@@ -174,7 +174,7 @@ class WebFetchArgs(BaseModel):
         description="Extraction mode",
         validation_alias=AliasChoices("extract_mode", "extractMode"),
     )
-    max_chars: Optional[int] = Field(
+    max_chars: int | None = Field(
         None,
         ge=100,
         description="Max characters to return",
@@ -281,7 +281,7 @@ class WebFetchTool(PydanticTool):
             flags=re.I,
         )
         text = re.sub(
-            r"<li[^>]*>([\s\S]*?)</li>", lambda m: f"\n- {_strip_tags(m[1])}", text, flags=re.I
+            r"<li[^>]*>([\s\S]*?)</li>", lambda m: f"\n- {_strip_tags(m[1])}", text, flags=re.I,
         )
         text = re.sub(r"</(p|div|section|article)>", "\n\n", text, flags=re.I)
         text = re.sub(r"<(br|hr)\s*/?>", "\n", text, flags=re.I)

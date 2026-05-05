@@ -2,10 +2,12 @@
 AmberClaw Governance: Audit System
 """
 import json
-from typing import Any, Dict, Optional
-from loguru import logger
 from datetime import datetime
 from pathlib import Path
+from typing import Any
+
+from loguru import logger
+
 
 class AuditLogger:
     """Logs all agent actions for compliance and forensics."""
@@ -14,14 +16,14 @@ class AuditLogger:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
-    def log_action(self, agent_id: str, action: str, details: Dict[str, Any]):
+    def log_action(self, agent_id: str, action: str, details: dict[str, Any]):
         """Log a specific action taken by an agent."""
         timestamp = datetime.utcnow().isoformat()
         log_entry = {
             "timestamp": timestamp,
             "agent_id": agent_id,
             "action": action,
-            "details": details
+            "details": details,
         }
         
         # Log to file

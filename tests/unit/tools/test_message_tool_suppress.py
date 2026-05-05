@@ -17,7 +17,7 @@ def _make_loop(tmp_path: Path) -> AgentLoop:
     provider = MagicMock()
     provider.get_default_model.return_value = "test-model"
     return AgentLoop(
-        bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10
+        bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
     )
 
 
@@ -36,7 +36,7 @@ class TestMessageToolSuppressLogic:
             [
                 LLMResponse(content="", tool_calls=[tool_call]),
                 LLMResponse(content="Done", tool_calls=[]),
-            ]
+            ],
         )
         loop.provider.chat_with_retry = AsyncMock(side_effect=lambda *a, **kw: next(calls))
         loop.tools.get_definitions = MagicMock(return_value=[])
@@ -68,7 +68,7 @@ class TestMessageToolSuppressLogic:
             [
                 LLMResponse(content="", tool_calls=[tool_call]),
                 LLMResponse(content="I've sent the email.", tool_calls=[]),
-            ]
+            ],
         )
         loop.provider.chat_with_retry = AsyncMock(side_effect=lambda *a, **kw: next(calls))
         loop.tools.get_definitions = MagicMock(return_value=[])
@@ -79,7 +79,7 @@ class TestMessageToolSuppressLogic:
             mt.set_send_callback(AsyncMock(side_effect=lambda m: sent.append(m)))
 
         msg = InboundMessage(
-            channel="feishu", sender_id="user1", chat_id="chat123", content="Send email"
+            channel="feishu", sender_id="user1", chat_id="chat123", content="Send email",
         )
         result = await loop._process_message(msg)
 
@@ -113,7 +113,7 @@ class TestMessageToolSuppressLogic:
                     thinking_blocks=[{"signature": "sig", "thought": "secret thought"}],
                 ),
                 LLMResponse(content="Done", tool_calls=[]),
-            ]
+            ],
         )
         loop.provider.chat_with_retry = AsyncMock(side_effect=lambda *a, **kw: next(calls))
         loop.tools.get_definitions = MagicMock(return_value=[])

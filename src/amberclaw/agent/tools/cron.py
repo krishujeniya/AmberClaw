@@ -2,7 +2,8 @@
 
 from contextvars import ContextVar
 from datetime import datetime
-from typing import Optional, Literal
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
@@ -14,20 +15,20 @@ class CronArgs(BaseModel):
     """Arguments for the cron tool."""
 
     action: Literal["add", "list", "remove"] = Field(..., description="Action to perform")
-    message: Optional[str] = Field(None, description="Reminder message (for add)")
-    every_seconds: Optional[int] = Field(
-        None, description="Interval in seconds (for recurring tasks)"
+    message: str | None = Field(None, description="Reminder message (for add)")
+    every_seconds: int | None = Field(
+        None, description="Interval in seconds (for recurring tasks)",
     )
-    cron_expr: Optional[str] = Field(
-        None, description="Cron expression like '0 9 * * *' (for scheduled tasks)"
+    cron_expr: str | None = Field(
+        None, description="Cron expression like '0 9 * * *' (for scheduled tasks)",
     )
-    tz: Optional[str] = Field(
-        None, description="IANA timezone for cron expressions (e.g. 'America/Vancouver')"
+    tz: str | None = Field(
+        None, description="IANA timezone for cron expressions (e.g. 'America/Vancouver')",
     )
-    at: Optional[str] = Field(
-        None, description="ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')"
+    at: str | None = Field(
+        None, description="ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')",
     )
-    job_id: Optional[str] = Field(None, description="Job ID (for remove)")
+    job_id: str | None = Field(None, description="Job ID (for remove)")
 
 
 class CronTool(PydanticTool):
@@ -70,9 +71,9 @@ class CronTool(PydanticTool):
             if self._in_cron_context.get():
                 return "Error: cannot schedule new jobs from within a cron job execution"
             return self._add_job(args)
-        elif args.action == "list":
+        if args.action == "list":
             return self._list_jobs()
-        elif args.action == "remove":
+        if args.action == "remove":
             return self._remove_job(args.job_id)
         return f"Unknown action: {args.action}"
 

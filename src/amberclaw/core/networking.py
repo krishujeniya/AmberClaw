@@ -2,25 +2,28 @@
 AmberClaw Agent-to-Agent (A2A) Communication Protocol
 """
 import asyncio
-from typing import Any, Dict, List, Optional, Callable
+from collections.abc import Callable
+from datetime import datetime
+from typing import Any
+
 from loguru import logger
 from pydantic import BaseModel, Field
-from datetime import datetime
+
 
 class AgentMessage(BaseModel):
     """Message sent between agents."""
     sender_id: str
-    receiver_id: Optional[str] = None  # None means broadcast
+    receiver_id: str | None = None  # None means broadcast
     topic: str
-    payload: Dict[str, Any] = Field(default_factory=dict)
+    payload: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 class AgentNetworking:
     """Manages agent discovery and communication."""
     
     def __init__(self):
-        self._agents: Dict[str, Callable] = {}
-        self._topics: Dict[str, List[str]] = {} # topic -> list of agent_ids
+        self._agents: dict[str, Callable] = {}
+        self._topics: dict[str, list[str]] = {} # topic -> list of agent_ids
 
     def register_agent(self, agent_id: str, callback: Callable):
         """Register an agent for receiving messages."""
@@ -43,16 +46,15 @@ class AgentNetworking:
                 await self._deliver(message.receiver_id, message)
             else:
                 logger.warning(f"Target agent {message.receiver_id} not found")
-        else:
-            # Broadcast to topic
-            if message.topic in self._topics:
-                tasks = [
-                    self._deliver(agent_id, message) 
-                    for agent_id in self._topics[message.topic]
-                    if agent_id != message.sender_id # Don't send back to sender
-                ]
-                if tasks:
-                    await asyncio.gather(*tasks)
+        # Broadcast to topic
+        elif message.topic in self._topics:
+            tasks = [
+                self._deliver(agent_id, message) 
+                for agent_id in self._topics[message.topic]
+                if agent_id != message.sender_id # Don't send back to sender
+            ]
+            if tasks:
+                await asyncio.gather(*tasks)
 
     async def _deliver(self, agent_id: str, message: AgentMessage):
         """Deliver a message to an agent's callback."""

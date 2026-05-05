@@ -1,8 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends
-from typing import List
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from amberclaw.providers.litellm_client import LLMRouter, LLMMessage
+from amberclaw.providers.litellm_client import LLMMessage, LLMRouter
 from amberclaw.schemas.agent import AgentProfile
 
 router = APIRouter()
@@ -44,7 +43,7 @@ async def agent_chat(agent_id: str, request: ChatRequest):
     # Construct the LLM payload
     messages = [
         LLMMessage(role="system", content=f"You are {agent.name}. {agent.role}"),
-        LLMMessage(role="user", content=request.message)
+        LLMMessage(role="user", content=request.message),
     ]
     
     try:

@@ -36,7 +36,7 @@ def test_save_turn_keeps_image_placeholder_after_runtime_strip() -> None:
                     {"type": "text", "text": runtime},
                     {"type": "image_url", "image_url": {"url": "data:image/png;base64,abc"}},
                 ],
-            }
+            },
         ],
         skip=0,
     )

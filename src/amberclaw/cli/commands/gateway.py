@@ -3,6 +3,7 @@ AmberClaw CLI Gateway Command
 """
 import typer
 import uvicorn
+
 from amberclaw.config.schema import settings
 
 app = typer.Typer(help="Manage the AmberClaw API Gateway")

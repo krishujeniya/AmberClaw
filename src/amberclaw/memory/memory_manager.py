@@ -7,7 +7,8 @@ multi-scope memory tracking, and basic fact extraction.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any
+
 from loguru import logger
 
 try:
@@ -41,7 +42,7 @@ class MemoryManager:
                         "path": str(self.db_path),
                     },
                 },
-                "version": "v1.1" # Using v1+ features
+                "version": "v1.1", # Using v1+ features
             }
             logger.info(f"Initializing Mem0 with {self.provider} at {self.db_path}")
             return Memory.from_config(config)
@@ -52,10 +53,10 @@ class MemoryManager:
     def search(
         self,
         query: str,
-        user_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        session_id: Optional[str] = None
-    ) -> List[str]:
+        user_id: str | None = None,
+        agent_id: str | None = None,
+        session_id: str | None = None,
+    ) -> list[str]:
         """Search memory with multi-scope support."""
         if not self._memory:
             return []
@@ -66,7 +67,7 @@ class MemoryManager:
                 query,
                 user_id=user_id,
                 agent_id=agent_id,
-                run_id=session_id
+                run_id=session_id,
             )
 
             facts = []
@@ -75,7 +76,7 @@ class MemoryManager:
                 if isinstance(m, dict):
                     val = m.get("memory")
                 elif hasattr(m, "memory"):
-                    val = getattr(m, "memory")
+                    val = m.memory
                 if val:
                     facts.append(str(val))
             return facts
@@ -86,9 +87,9 @@ class MemoryManager:
     def add(
         self,
         text: str,
-        user_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        session_id: Optional[str] = None
+        user_id: str | None = None,
+        agent_id: str | None = None,
+        session_id: str | None = None,
     ) -> None:
         """Add to memory with multi-scope support."""
         if not self._memory:
@@ -99,7 +100,7 @@ class MemoryManager:
                 text,
                 user_id=user_id,
                 agent_id=agent_id,
-                run_id=session_id
+                run_id=session_id,
             )
 
             # Extract to graph

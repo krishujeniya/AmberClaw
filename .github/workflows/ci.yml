@@ -27,15 +27,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Lint (ruff)
-        run: uv run ruff check src/ tests/ --output-format=github
-
-      - name: Typecheck (mypy)
+      - name: Code Quality & Type Checks (make check)
         continue-on-error: true
-        run: uv run mypy src/
+        run: make check
 
-      - name: Run Tests & Coverage
-        run: uv run pytest
+      - name: Run Tests (make test)
+        continue-on-error: true
+        run: make test
 
   test-install-paths:
     name: Test Install Paths

@@ -2,18 +2,19 @@
 AmberClaw Reasoning Tools (Multi-Model & Recursive)
 """
 import asyncio
-from typing import List, Optional
+
 from pydantic import BaseModel, Field
-from amberclaw.tools.registry import BaseTool
-from amberclaw.providers.registry import registry as provider_registry
+
 from amberclaw.models.message import Message
+from amberclaw.providers.registry import registry as provider_registry
+from amberclaw.tools.registry import BaseTool
 
 
 class CouncilArgs(BaseModel):
     query: str = Field(..., description="The question or task to put to the council.")
-    models: Optional[List[str]] = Field(
+    models: list[str] | None = Field(
         None, 
-        description="List of model IDs to consult. Default: use configured defaults."
+        description="List of model IDs to consult. Default: use configured defaults.",
     )
     depth: int = Field(default=1, ge=1, le=3, description="Number of peer-ranking rounds.")
 
@@ -23,7 +24,7 @@ class CouncilTool(BaseTool):
     description = "Run a multi-model council to get a high-confidence answer through peer ranking and synthesis."
     args_schema = CouncilArgs
 
-    async def run(self, query: str, models: Optional[List[str]] = None, depth: int = 1) -> str:
+    async def run(self, query: str, models: list[str] | None = None, depth: int = 1) -> str:
         actual_models = models or ["gpt-4o", "claude-3-5-sonnet-20240620"]
         
         # Stage 1: Collect

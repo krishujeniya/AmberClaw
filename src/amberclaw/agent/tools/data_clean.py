@@ -1,10 +1,10 @@
 """DataAgent Data Cleaning tool — AI-powered dataset cleaning."""
 
 from typing import Any
-from pydantic import BaseModel, Field
 
 # pandas imported lazily in _load_data and run
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
 
@@ -51,12 +51,13 @@ class DataCleanTool(PydanticTool):
     async def run(self, args: CleanArgs) -> str:
         try:
             import asyncio
+
             from amberclaw.data.agents import DataCleaningAgent
 
             df = await asyncio.to_thread(_load_data, args.file_path)
 
             agent = DataCleaningAgent(
-                model=self._model, bypass_recommended_steps=True, bypass_explain_code=True
+                model=self._model, bypass_recommended_steps=True, bypass_explain_code=True,
             )
 
             # Offload the heavy AI/Data processing to a thread

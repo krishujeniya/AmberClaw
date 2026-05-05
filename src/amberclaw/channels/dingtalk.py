@@ -72,11 +72,11 @@ class AmberClawDingTalkHandler(CallbackHandler):
 
             conversation_type = message.data.get("conversationType")
             conversation_id = message.data.get("conversationId") or message.data.get(
-                "openConversationId"
+                "openConversationId",
             )
 
             logger.info(
-                "Received DingTalk message from {} ({}): {}", sender_name, sender_id, content
+                "Received DingTalk message from {} ({}): {}", sender_name, sender_id, content,
             )
 
             # Forward to AmberClaw via _on_message (non-blocking).
@@ -88,7 +88,7 @@ class AmberClawDingTalkHandler(CallbackHandler):
                     sender_name,
                     conversation_type,
                     conversation_id,
-                )
+                ),
             )
             self.channel._background_tasks.add(task)
             task.add_done_callback(self.channel._background_tasks.discard)
@@ -226,7 +226,7 @@ class DingTalkChannel(BaseChannel):
     def _guess_filename(self, media_ref: str, upload_type: str) -> str:
         name = os.path.basename(urlparse(media_ref).path)
         return name or {"image": "image.jpg", "voice": "audio.amr", "video": "video.mp4"}.get(
-            upload_type, "file.bin"
+            upload_type, "file.bin",
         )
 
     async def _read_media_bytes(
@@ -445,7 +445,7 @@ class DingTalkChannel(BaseChannel):
             if ok:
                 return True
             logger.warning(
-                "DingTalk image media_id send failed, falling back to file: {}", media_ref
+                "DingTalk image media_id send failed, falling back to file: {}", media_ref,
             )
 
         return await self._send_batch_message(

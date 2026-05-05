@@ -1,5 +1,5 @@
-import pytest
 from unittest.mock import MagicMock
+
 
 def test_mocked_telegram_integration():
     mock_telegram = MagicMock()

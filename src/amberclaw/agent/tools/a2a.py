@@ -1,9 +1,12 @@
 """A2A Tool for inter-agent communication."""
 
-from typing import Any, Type
+from typing import Any
+
 from pydantic import BaseModel, Field
-from amberclaw.agent.tools.base import PydanticTool
+
 from amberclaw.agent.a2a import A2AManager
+from amberclaw.agent.tools.base import PydanticTool
+
 
 class A2ASendArgs(BaseModel):
     target_url: str = Field(..., description="The A2A endpoint of the target agent.")
@@ -25,7 +28,7 @@ class A2ATool(PydanticTool):
         return "Send a message to another AI agent using the A2A protocol."
 
     @property
-    def args_schema(self) -> Type[BaseModel]:
+    def args_schema(self) -> type[BaseModel]:
         return A2ASendArgs
 
     async def run(self, args: A2ASendArgs) -> str:
@@ -33,11 +36,11 @@ class A2ATool(PydanticTool):
             result = await self._manager.send_message(
                 args.target_url,
                 args.method,
-                args.params
+                args.params,
             )
             return f"A2A Response: {result}"
         except Exception as e:
-            return f"Error sending A2A message: {str(e)}"
+            return f"Error sending A2A message: {e!s}"
 
 class A2ADiscoverArgs(BaseModel):
     network: str = Field("local", description="Network to scan (e.g., 'local').")
@@ -57,7 +60,7 @@ class A2ADiscoveryTool(PydanticTool):
         return "Discover other agents on the network supporting A2A."
 
     @property
-    def args_schema(self) -> Type[BaseModel]:
+    def args_schema(self) -> type[BaseModel]:
         return A2ADiscoverArgs
 
     async def run(self, args: A2ADiscoverArgs) -> str:

@@ -2,7 +2,7 @@
 
 from typing import Any, TypeVar
 
-from amberclaw.agent.tools.base import Tool, PydanticTool
+from amberclaw.agent.tools.base import PydanticTool, Tool
 
 T = TypeVar("T", bound=Tool)
 
@@ -67,7 +67,7 @@ class ToolRegistry:
                 return result + _HINT
             return result
         except Exception as e:
-            return f"Error executing {name}: {str(e)}" + _HINT
+            return f"Error executing {name}: {e!s}" + _HINT
 
     @property
     def tool_names(self) -> list[str]:

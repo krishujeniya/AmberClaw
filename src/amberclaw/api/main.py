@@ -1,4 +1,5 @@
 import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,7 +9,7 @@ from amberclaw.api.v1 import router as v1_router
 # Configure basic logging for the OS
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
 app = FastAPI(

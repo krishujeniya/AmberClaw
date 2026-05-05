@@ -2,15 +2,17 @@
 AmberClaw Data Science Tools
 """
 import asyncio
-from typing import Type, Any, Optional
-from pydantic import BaseModel, Field
-from amberclaw.tools.registry import BaseTool
-from amberclaw.security.sandbox import BaseSandbox
+from typing import Any
+
 from loguru import logger
+from pydantic import BaseModel, Field
+
+from amberclaw.tools.registry import BaseTool
+
 
 class DataCleanArgs(BaseModel):
     file_path: str = Field(..., description="Path to CSV or Excel file to clean.")
-    instructions: Optional[str] = Field(None, description="Optional cleaning instructions.")
+    instructions: str | None = Field(None, description="Optional cleaning instructions.")
 
 def _load_data(path: str) -> Any:
     import pandas as pd
@@ -21,7 +23,7 @@ def _load_data(path: str) -> Any:
 class DataCleanTool(BaseTool):
     name: str = "data_clean"
     description: str = "Clean a dataset automatically using AI. Handles missing values, duplicates, and outliers."
-    args_schema: Type[BaseModel] = DataCleanArgs
+    args_schema: type[BaseModel] = DataCleanArgs
 
     async def run(self, args: DataCleanArgs) -> str:
         try:
@@ -42,7 +44,7 @@ class DataCleanTool(BaseTool):
             await asyncio.to_thread(
                 agent.invoke_agent,
                 data_raw=df,
-                user_instructions=args.instructions
+                user_instructions=args.instructions,
             )
             
             cleaned = agent.get_data_cleaned()

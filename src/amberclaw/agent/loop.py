@@ -5,43 +5,53 @@ from __future__ import annotations
 import asyncio
 import re
 import weakref
+from collections.abc import Awaitable, Callable
 from contextlib import AsyncExitStack
 from pathlib import Path
-from typing import TYPE_CHECKING, Awaitable, Callable, Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
+from amberclaw.agent.a2a import A2AManager, AgentCard
 from amberclaw.agent.context import ContextBuilder
 from amberclaw.agent.graph import AgentGraph
 from amberclaw.agent.memory import MemoryStore
 from amberclaw.agent.subagent import SubagentManager
-from amberclaw.agent.a2a import A2AManager, AgentCard
+from amberclaw.agent.tools.council import CouncilTool
 from amberclaw.agent.tools.cron import CronTool
-from amberclaw.agent.tools.filesystem import EditFileTool, ListDirTool, ReadFileTool, WriteFileTool
+from amberclaw.agent.tools.data_clean import DataCleanTool
+from amberclaw.agent.tools.data_eda import DataEDATool
+from amberclaw.agent.tools.data_sql import DataSQLTool
+from amberclaw.agent.tools.data_viz import DataVizTool
+from amberclaw.agent.tools.drive import DriveSearchTool, DriveUploadTool
+from amberclaw.agent.tools.filesystem import (
+    EditFileTool,
+    ListDirTool,
+    ReadFileTool,
+    WriteFileTool,
+)
 from amberclaw.agent.tools.gui import BrowserActionTool, DesktopAutomationTool
 from amberclaw.agent.tools.message import MessageTool
-from amberclaw.agent.tools.registry import ToolRegistry
-from amberclaw.agent.tools.shell import ExecTool
-from amberclaw.agent.tools.spawn import SpawnTool
-from amberclaw.agent.tools.web import WebFetchTool, WebSearchTool
-from amberclaw.agent.tools.skills import SkillSearchTool, SkillInstallTool, SkillListTool
-from amberclaw.agent.tools.personal_rag import KnowledgeSearchTool, KnowledgeAddTool
-from amberclaw.agent.tools.drive import DriveSearchTool, DriveUploadTool
-from amberclaw.agent.tools.data_clean import DataCleanTool
-from amberclaw.agent.tools.data_viz import DataVizTool
-from amberclaw.agent.tools.data_sql import DataSQLTool
-from amberclaw.agent.tools.data_eda import DataEDATool
-from amberclaw.agent.tools.council import CouncilTool
-from amberclaw.agent.tools.mythos import MythosTool
-from amberclaw.agent.tools.personal_assistant import AssistantTool
 from amberclaw.agent.tools.multimodal import (
-    VisionTool,
+    DocumentIngestionTool,
+    SensorInputTool,
     TranscriptionTool,
     TTSTool,
-    DocumentIngestionTool,
     VideoAnalysisTool,
-    SensorInputTool,
+    VisionTool,
 )
+from amberclaw.agent.tools.mythos import MythosTool
+from amberclaw.agent.tools.personal_assistant import AssistantTool
+from amberclaw.agent.tools.personal_rag import KnowledgeAddTool, KnowledgeSearchTool
+from amberclaw.agent.tools.registry import ToolRegistry
+from amberclaw.agent.tools.shell import ExecTool
+from amberclaw.agent.tools.skills import (
+    SkillInstallTool,
+    SkillListTool,
+    SkillSearchTool,
+)
+from amberclaw.agent.tools.spawn import SpawnTool
+from amberclaw.agent.tools.web import WebFetchTool, WebSearchTool
 from amberclaw.bus.events import InboundMessage, OutboundMessage
 from amberclaw.bus.queue import MessageBus
 from amberclaw.providers.base import LLMProvider
@@ -138,8 +148,8 @@ class AgentLoop:
             AgentCard(
                 name="AmberClaw",
                 capabilities=["rag", "data", "web", "mcp"],
-                endpoints={"a2a": getattr(channels_config, "a2a_url", "") if channels_config else ""}
-            )
+                endpoints={"a2a": getattr(channels_config, "a2a_url", "") if channels_config else ""},
+            ),
         )
 
         self._mcp_stack: AsyncExitStack | None = None
@@ -183,7 +193,7 @@ class AgentLoop:
                 timeout=self.exec_config.timeout,
                 restrict_to_workspace=self.restrict_to_workspace,
                 path_append=self.exec_config.path_append,
-            )
+            ),
         )
 
         # ── Web ───────────────────────────────────────────────────────────────
@@ -196,8 +206,8 @@ class AgentLoop:
         self.tools.register(SkillSearchTool())
         self.tools.register(
             SkillInstallTool(
-                workspace=str(self.workspace), loader=self.context.skills
-            )
+                workspace=str(self.workspace), loader=self.context.skills,
+            ),
         )
         self.tools.register(SkillListTool(workspace=str(self.workspace)))
 
@@ -215,7 +225,7 @@ class AgentLoop:
                     model=self.model,
                     temperature=self.temperature,
                     max_tokens=min(self.max_tokens, 2048),
-                )
+                ),
             )
             logger.info("Council tool registered")
         except Exception as exc:
@@ -229,7 +239,7 @@ class AgentLoop:
                     model=self.model,
                     temperature=self.temperature,
                     max_tokens=min(self.max_tokens, 2048),
-                )
+                ),
             )
             logger.info("Mythos tool registered")
         except Exception as exc:
@@ -246,7 +256,7 @@ class AgentLoop:
                     temperature=0.7,
                     max_tokens=min(self.max_tokens, 2048),
                     system_prompt=system_prompt,
-                )
+                ),
             )
             logger.info("PersonalAssistant tool registered")
         except Exception as exc:
@@ -260,14 +270,14 @@ class AgentLoop:
                     provider=self.provider,
                     embedding_model=self.embedding_model or "openai/text-embedding-3-small",
                     reranker_model=self.reranker_model,
-                )
+                ),
             )
             self.tools.register(
                 KnowledgeAddTool(
                     workspace=self.workspace,
                     provider=self.provider,
                     embedding_model=self.embedding_model or "openai/text-embedding-3-small",
-                )
+                ),
             )
             logger.info("Knowledge RAG tools registered")
         except Exception as exc:
@@ -310,7 +320,7 @@ class AgentLoop:
             logger.debug("DataAgent tools skipped: {}", exc)
 
         # ── A2A (Agent-to-Agent) ──────────────────────────────────────────────
-        from amberclaw.agent.tools.a2a import A2ATool, A2ADiscoveryTool
+        from amberclaw.agent.tools.a2a import A2ADiscoveryTool, A2ATool
         self.tools.register(A2ATool(self.a2a_manager))
         self.tools.register(A2ADiscoveryTool(self.a2a_manager))
         logger.info("A2A tools registered")
@@ -365,7 +375,7 @@ class AgentLoop:
             if tool := self.tools.get(name):
                 # Use getattr to avoid Pyright errors on abstract Tool class
                 if hasattr(tool, "set_context"):
-                    set_context = getattr(tool, "set_context")
+                    set_context = tool.set_context
                     set_context(channel, chat_id, *([message_id] if name == "message" else []))
 
     @staticmethod
@@ -395,7 +405,7 @@ class AgentLoop:
         on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> tuple[str | None, list[str], list[dict]]:
         """Run the agent iteration loop via LangGraph."""
-        from langchain_core.messages import HumanMessage, AIMessage, ToolMessage
+        from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
         # Convert initial messages to LangChain format for the graph
         lc_msgs = []
@@ -411,7 +421,7 @@ class AgentLoop:
                 lc_msgs.append(ai_m)
             elif role == "tool":
                 lc_msgs.append(
-                    ToolMessage(content=content or "", tool_call_id=m.get("tool_call_id") or "")
+                    ToolMessage(content=content or "", tool_call_id=m.get("tool_call_id") or ""),
                 )
 
         # Execute graph with streaming for tokens
@@ -439,6 +449,7 @@ class AgentLoop:
         # Use invoke for now to keep it simple, while we verify plumbing
         # We can move to astream_events later for more granular control
         from typing import cast
+
         from amberclaw.agent.graph import AgentState
 
         # Use astream to support progress callbacks for intermediate steps
@@ -493,7 +504,7 @@ class AgentLoop:
                         "role": "assistant",
                         "content": m.content,
                         "tool_calls": m.additional_kwargs.get("tool_calls"),
-                    }
+                    },
                 )
             elif isinstance(m, ToolMessage):
                 all_msgs_dict.append(
@@ -502,7 +513,7 @@ class AgentLoop:
                         "content": m.content,
                         "tool_call_id": m.tool_call_id,
                         "name": m.name or "tool",
-                    }
+                    },
                 )
 
         # Identify tools used from messages
@@ -530,7 +541,7 @@ class AgentLoop:
         while self._running:
             try:
                 msg = await asyncio.wait_for(self.bus.consume_inbound(), timeout=1.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
 
             if msg.content.strip().lower() == "/stop":
@@ -543,7 +554,7 @@ class AgentLoop:
                         self._active_tasks.get(k, []) and self._active_tasks[k].remove(t)
                         if t in self._active_tasks.get(k, [])
                         else None
-                    )
+                    ),
                 )
 
     async def _handle_stop(self, msg: InboundMessage) -> None:
@@ -563,7 +574,7 @@ class AgentLoop:
                 channel=msg.channel,
                 chat_id=msg.chat_id,
                 content=content,
-            )
+            ),
         )
 
     async def _dispatch(self, msg: InboundMessage) -> None:
@@ -576,7 +587,7 @@ class AgentLoop:
                     chat_id=msg.chat_id,
                     content=token,
                     metadata={"_token": True, "message_id": msg.metadata.get("message_id")},
-                )
+                ),
             )
 
         async with self._processing_lock:
@@ -591,7 +602,7 @@ class AgentLoop:
                             chat_id=msg.chat_id,
                             content="",
                             metadata=msg.metadata or {},
-                        )
+                        ),
                     )
             except asyncio.CancelledError:
                 logger.info("Task cancelled for session {}", msg.session_key)
@@ -603,7 +614,7 @@ class AgentLoop:
                         channel=msg.channel,
                         chat_id=msg.chat_id,
                         content="Sorry, I encountered an error.",
-                    )
+                    ),
                 )
 
     async def close_mcp(self) -> None:
@@ -693,7 +704,7 @@ class AgentLoop:
             self.sessions.save(session)
             self.sessions.invalidate(session.key)
             return OutboundMessage(
-                channel=msg.channel, chat_id=msg.chat_id, content="New session started."
+                channel=msg.channel, chat_id=msg.chat_id, content="New session started.",
             )
         if cmd == "/help":
             return OutboundMessage(
@@ -765,7 +776,7 @@ class AgentLoop:
                     chat_id=msg.chat_id,
                     content=content,
                     metadata=meta,
-                )
+                ),
             )
 
         final_content, _, all_msgs = await self._run_agent_loop(
@@ -812,7 +823,7 @@ class AgentLoop:
                 entry["content"] = content[: self._TOOL_RESULT_MAX_CHARS] + "\n... (truncated)"
             elif role == "user":
                 if isinstance(content, str) and content.startswith(
-                    ContextBuilder._RUNTIME_CONTEXT_TAG
+                    ContextBuilder._RUNTIME_CONTEXT_TAG,
                 ):
                     # Strip the runtime-context prefix, keep only the user text.
                     parts = content.split("\n\n", 1)
@@ -830,7 +841,7 @@ class AgentLoop:
                         ):
                             continue  # Strip runtime context from multimodal messages
                         if c.get("type") == "image_url" and c.get("image_url", {}).get(
-                            "url", ""
+                            "url", "",
                         ).startswith("data:image/"):
                             filtered.append({"type": "text", "text": "[image]"})
                         else:
@@ -865,6 +876,6 @@ class AgentLoop:
         await self._connect_mcp()
         msg = InboundMessage(channel=channel, sender_id="user", chat_id=chat_id, content=content)
         response = await self._process_message(
-            msg, session_key=session_key, on_progress=on_progress, on_token=on_token
+            msg, session_key=session_key, on_progress=on_progress, on_token=on_token,
         )
         return response.content if response else ""

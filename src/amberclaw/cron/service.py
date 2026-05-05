@@ -4,13 +4,20 @@ import asyncio
 import json
 import time
 import uuid
+from collections.abc import Callable, Coroutine
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 from loguru import logger
 
-from amberclaw.cron.types import CronJob, CronJobState, CronPayload, CronSchedule, CronStore
+from amberclaw.cron.types import (
+    CronJob,
+    CronJobState,
+    CronPayload,
+    CronSchedule,
+    CronStore,
+)
 
 
 def _now_ms() -> int:
@@ -119,7 +126,7 @@ class CronService:
                             created_at_ms=j.get("createdAtMs", 0),
                             updated_at_ms=j.get("updatedAtMs", 0),
                             delete_after_run=j.get("deleteAfterRun", False),
-                        )
+                        ),
                     )
                 self._store = CronStore(jobs=jobs)
             except Exception as e:
@@ -183,7 +190,7 @@ class CronService:
         self._save_store()
         self._arm_timer()
         logger.info(
-            "Cron service started with {} jobs", len(self._store.jobs if self._store else [])
+            "Cron service started with {} jobs", len(self._store.jobs if self._store else []),
         )
 
     def stop(self) -> None:

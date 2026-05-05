@@ -2,9 +2,10 @@
 
 import asyncio
 import os
-from typing import Optional, Type, Any
-from pydantic import BaseModel, Field
+from typing import Any
+
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
 
@@ -26,14 +27,14 @@ class SkillSearchTool(PydanticTool):
         return "Search the ClawHub registry for skills to extend agent capabilities."
 
     @property
-    def args_schema(self) -> Type[SkillSearchArgs]:
+    def args_schema(self) -> type[SkillSearchArgs]:
         return SkillSearchArgs
 
     async def run(self, args: SkillSearchArgs) -> str:
         try:
             cmd = ["npx", "--yes", "clawhub@latest", "search", args.query]
             proc = await asyncio.create_subprocess_exec(
-                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await proc.communicate()
             if proc.returncode != 0:
@@ -64,10 +65,10 @@ class SkillInstallTool(PydanticTool):
         return "Install a skill from ClawHub into the workspace. Extends agent tools."
 
     @property
-    def args_schema(self) -> Type[SkillInstallArgs]:
+    def args_schema(self) -> type[SkillInstallArgs]:
         return SkillInstallArgs
 
-    def __init__(self, workspace: str, loader: Optional[Any] = None):
+    def __init__(self, workspace: str, loader: Any | None = None):
         super().__init__()
         self.workspace = workspace
         self.loader = loader
@@ -80,7 +81,7 @@ class SkillInstallTool(PydanticTool):
             logger.info("Installing skill '{}' to {}", args.slug, self.workspace)
             cmd = ["npx", "--yes", "clawhub@latest", "install", args.slug, "--workdir", self.workspace]
             proc = await asyncio.create_subprocess_exec(
-                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await proc.communicate()
 
@@ -126,7 +127,7 @@ class SkillListTool(PydanticTool):
         return "List all skills currently installed in the agent's workspace."
 
     @property
-    def args_schema(self) -> Type[SkillListArgs]:
+    def args_schema(self) -> type[SkillListArgs]:
         return SkillListArgs
 
     def __init__(self, workspace: str):
@@ -137,7 +138,7 @@ class SkillListTool(PydanticTool):
         try:
             cmd = ["npx", "--yes", "clawhub@latest", "list", "--workdir", self.workspace]
             proc = await asyncio.create_subprocess_exec(
-                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await proc.communicate()
 

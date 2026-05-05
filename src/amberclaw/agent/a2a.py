@@ -1,10 +1,13 @@
 """Agent-to-Agent (A2A) Protocol implementation."""
 
 import uuid
-from typing import Any, Optional, Callable
-from pydantic import BaseModel, Field
+from collections.abc import Callable
+from typing import Any
+
 import httpx
 from loguru import logger
+from pydantic import BaseModel, Field
+
 
 class AgentCard(BaseModel):
     """Machine-readable agent manifest."""
@@ -20,14 +23,14 @@ class A2AMessage(BaseModel):
     jsonrpc: str = "2.0"
     method: str
     params: dict[str, Any] = {}
-    id: Optional[str] = None
+    id: str | None = None
 
 class A2AResponse(BaseModel):
     """JSON-RPC 2.0 based response."""
     jsonrpc: str = "2.0"
-    result: Optional[Any] = None
-    error: Optional[dict[str, Any]] = None
-    id: Optional[str] = None
+    result: Any | None = None
+    error: dict[str, Any] | None = None
+    id: str | None = None
 
 class A2AManager:
     """Manages A2A communication and peer discovery."""
@@ -53,8 +56,7 @@ class A2AManager:
                     if response.error:
                         raise Exception(f"A2A Error: {response.error}")
                     return response.result
-                else:
-                    raise Exception(f"HTTP Error {resp.status_code}: {resp.text}")
+                raise Exception(f"HTTP Error {resp.status_code}: {resp.text}")
             except Exception as e:
                 logger.error("A2A send failed to {}: {}", target_url, e)
                 raise
@@ -67,7 +69,7 @@ class A2AManager:
             if not handler:
                 return A2AResponse(
                     error={"code": -32601, "message": "Method not found"},
-                    id=msg.id
+                    id=msg.id,
                 ).model_dump()
 
             result = await handler(msg.params)
@@ -76,7 +78,7 @@ class A2AManager:
             logger.exception("A2A handle failed")
             return A2AResponse(
                 error={"code": -32603, "message": str(e)},
-                id=message_dict.get("id")
+                id=message_dict.get("id"),
             ).model_dump()
 
     def discover_peer(self, card: AgentCard):

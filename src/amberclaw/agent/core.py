@@ -1,21 +1,21 @@
 """
 AmberClaw Agent Core
 """
-from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
-from amberclaw.models.message import Message, Conversation
-from amberclaw.core.events import bus, Event
-from amberclaw.config.schema import settings
+
+from amberclaw.core.events import Event, bus
+from amberclaw.models.message import Message
 
 
 class AgentState(BaseModel):
     """Current state of the agent."""
     is_busy: bool = False
-    current_task: Optional[str] = None
-    last_action: Optional[str] = None
+    current_task: str | None = None
+    last_action: str | None = None
 
 
-from amberclaw.core.networking import network, AgentMessage
+from amberclaw.core.networking import AgentMessage, network
+
 
 class BaseAgent:
     """Base class for all AmberClaw agents."""
@@ -40,7 +40,7 @@ class BaseAgent:
         # Placeholder for agent logic
         response = Message(
             role="assistant",
-            content=f"Hello, I am {self.name}. I received your message: {message.content}"
+            content=f"Hello, I am {self.name}. I received your message: {message.content}",
         )
         
         await bus.emit(Event(name="agent.response_sent", payload={"agent_id": self.id, "response": response.model_dump()}))

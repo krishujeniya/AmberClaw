@@ -64,7 +64,7 @@ class CustomProvider(LLMProvider):
                     id=tc.id,
                     name=tc.function.name,
                     arguments=args if isinstance(args, dict) else {"raw": str(args)},
-                )
+                ),
             )
         u = response.usage
         return LLMResponse(

@@ -8,8 +8,11 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
-from amberclaw.providers.transcription import GroqTranscriptionProvider, OpenAITranscriptionProvider
-from amberclaw.providers.tts import OpenAIttsProvider, ElevenLabsTTSProvider
+from amberclaw.providers.transcription import (
+    GroqTranscriptionProvider,
+    OpenAITranscriptionProvider,
+)
+from amberclaw.providers.tts import ElevenLabsTTSProvider, OpenAIttsProvider
 
 
 class DescribeImageArgs(BaseModel):
@@ -64,7 +67,7 @@ class VisionTool(PydanticTool):
                         {"type": "text", "text": args.prompt},
                         {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
                     ],
-                }
+                },
             ]
 
             response = await self._provider.chat(messages=messages, max_tokens=1024)
@@ -73,7 +76,7 @@ class VisionTool(PydanticTool):
 
             return response.content
         except Exception as e:
-            return f"Error: {str(e)}"
+            return f"Error: {e!s}"
 
 
 class AnalyzeVideoArgs(BaseModel):
@@ -134,7 +137,7 @@ class VideoAnalysisTool(PydanticTool):
                 _, buffer = cv2.imencode(".jpg", frame)
                 b64 = base64.b64encode(buffer).decode()
                 frames.append(
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
                 )
 
             cap.release()
@@ -146,13 +149,13 @@ class VideoAnalysisTool(PydanticTool):
                 {
                     "role": "user",
                     "content": [{"type": "text", "text": args.prompt}] + frames,
-                }
+                },
             ]
 
             response = await self._provider.chat(messages=messages, max_tokens=1024)
             return response.content
         except Exception as e:
-            return f"Error analyzing video: {str(e)}"
+            return f"Error analyzing video: {e!s}"
 
 
 class CaptureSensorArgs(BaseModel):
@@ -192,7 +195,7 @@ class SensorInputTool(PydanticTool):
                 cap.release()
                 return f"Webcam image saved to {args.output_path}"
             except Exception as e:
-                return f"Error capturing webcam: {str(e)}"
+                return f"Error capturing webcam: {e!s}"
         elif args.sensor_type == "microphone":
             try:
                 import sounddevice as sd
@@ -204,7 +207,7 @@ class SensorInputTool(PydanticTool):
                 write(args.output_path, fs, recording)
                 return f"Microphone audio saved to {args.output_path}"
             except Exception as e:
-                return f"Error capturing microphone: {str(e)}"
+                return f"Error capturing microphone: {e!s}"
         return "Error: Invalid sensor type."
 
 
@@ -323,4 +326,4 @@ class DocumentIngestionTool(PydanticTool):
         except ImportError:
             return "Error: 'unstructured' library not installed. Install with amberclaw[all]."
         except Exception as e:
-            return f"Error ingesting document: {str(e)}"
+            return f"Error ingesting document: {e!s}"

@@ -30,9 +30,9 @@ class BrowserActionTool(Tool):
         action = arguments.get("action")
         if action == "navigate":
             return f"Simulated navigation to {arguments.get('url')}"
-        elif action == "click":
+        if action == "click":
             return f"Simulated click on {arguments.get('selector')}"
-        elif action == "type":
+        if action == "type":
             return f"Simulated typing '{arguments.get('text')}' into {arguments.get('selector')}"
         return "Browser action simulated successfully."
 

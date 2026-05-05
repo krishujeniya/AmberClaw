@@ -198,7 +198,7 @@ class QQConfig(Base):
     app_id: str = ""  # 机器人 ID (AppID) from q.qq.com
     secret: str = ""  # 机器人密钥 (AppSecret) from q.qq.com
     allow_from: list[str] = Field(
-        default_factory=list
+        default_factory=list,
     )  # Allowed user openids (empty = public access)
 
 
@@ -256,7 +256,7 @@ class ProvidersConfig(Base):
 
     custom: ProviderConfig = Field(default_factory=ProviderConfig)  # Any OpenAI-compatible endpoint
     azure_openai: ProviderConfig = Field(
-        default_factory=ProviderConfig
+        default_factory=ProviderConfig,
     )  # Azure OpenAI (model = deployment name)
     anthropic: ProviderConfig = Field(default_factory=ProviderConfig)
     openai: ProviderConfig = Field(default_factory=ProviderConfig)
@@ -394,7 +394,7 @@ class Config(BaseSettings):
         return Path(self.agents.defaults.workspace).expanduser()
 
     def _match_provider(
-        self, model: str | None = None
+        self, model: str | None = None,
     ) -> tuple["ProviderConfig | None", str | None]:
         """Match provider config and its registry name. Returns (config, spec_name)."""
         from amberclaw.providers.registry import PROVIDERS

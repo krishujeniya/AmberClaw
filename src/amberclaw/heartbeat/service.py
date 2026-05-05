@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable, Coroutine
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Coroutine
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -33,7 +34,7 @@ _HEARTBEAT_TOOL = [
                 "required": ["action"],
             },
         },
-    }
+    },
 ]
 
 

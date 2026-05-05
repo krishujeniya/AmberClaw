@@ -2,9 +2,11 @@
 AmberClaw Memory Base Interface
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from pydantic import BaseModel
-from amberclaw.models.message import Message, Conversation
+
+from amberclaw.models.message import Message
 
 
 class MemoryLayer(BaseModel):
@@ -18,17 +20,17 @@ class BaseMemory(ABC):
     """Abstract base class for all memory providers."""
     
     @abstractmethod
-    async def store(self, key: str, data: Any, metadata: Optional[Dict[str, Any]] = None):
+    async def store(self, key: str, data: Any, metadata: dict[str, Any] | None = None):
         """Store data in memory."""
         pass
 
     @abstractmethod
-    async def retrieve(self, key: str) -> Optional[Any]:
+    async def retrieve(self, key: str) -> Any | None:
         """Retrieve data from memory."""
         pass
 
     @abstractmethod
-    async def search(self, query: str, limit: int = 5) -> List[Any]:
+    async def search(self, query: str, limit: int = 5) -> list[Any]:
         """Search memory semantically."""
         pass
 
@@ -37,9 +39,9 @@ class MemoryManager:
     """Orchestrates the 3-layer memory system."""
     
     def __init__(self):
-        self.short_term: List[Message] = []  # In-memory context
-        self.long_term: Optional[BaseMemory] = None  # Vector/Database
-        self.frozen: Optional[BaseMemory] = None     # Read-only knowledge
+        self.short_term: list[Message] = []  # In-memory context
+        self.long_term: BaseMemory | None = None  # Vector/Database
+        self.frozen: BaseMemory | None = None     # Read-only knowledge
     
     async def add_to_context(self, message: Message):
         """Add a message to the short-term context."""

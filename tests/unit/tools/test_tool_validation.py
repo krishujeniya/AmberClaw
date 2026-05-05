@@ -70,7 +70,7 @@ def test_validate_params_nested_object_and_array() -> None:
             "query": "hi",
             "count": 2,
             "meta": {"flags": [1, "ok"]},
-        }
+        },
     )
     assert any("missing required meta.tag" in e for e in errors)
     assert any("meta.flags[0] should be string" in e for e in errors)
@@ -138,7 +138,7 @@ def test_cast_params_string_to_int() -> None:
         {
             "type": "object",
             "properties": {"count": {"type": "integer"}},
-        }
+        },
     )
     result = tool.cast_params({"count": "42"})
     assert result["count"] == 42
@@ -150,7 +150,7 @@ def test_cast_params_string_to_number() -> None:
         {
             "type": "object",
             "properties": {"rate": {"type": "number"}},
-        }
+        },
     )
     result = tool.cast_params({"rate": "3.14"})
     assert result["rate"] == 3.14
@@ -162,7 +162,7 @@ def test_cast_params_string_to_bool() -> None:
         {
             "type": "object",
             "properties": {"enabled": {"type": "boolean"}},
-        }
+        },
     )
     assert tool.cast_params({"enabled": "true"})["enabled"] is True
     assert tool.cast_params({"enabled": "false"})["enabled"] is False
@@ -176,7 +176,7 @@ def test_cast_params_array_items() -> None:
             "properties": {
                 "nums": {"type": "array", "items": {"type": "integer"}},
             },
-        }
+        },
     )
     result = tool.cast_params({"nums": ["1", "2", "3"]})
     assert result["nums"] == [1, 2, 3]
@@ -195,7 +195,7 @@ def test_cast_params_nested_object() -> None:
                     },
                 },
             },
-        }
+        },
     )
     result = tool.cast_params({"config": {"port": "8080", "debug": "true"}})
     assert result["config"]["port"] == 8080
@@ -208,7 +208,7 @@ def test_cast_params_bool_not_cast_to_int() -> None:
         {
             "type": "object",
             "properties": {"count": {"type": "integer"}},
-        }
+        },
     )
     result = tool.cast_params({"count": True})
     assert result["count"] is True
@@ -222,7 +222,7 @@ def test_cast_params_preserves_empty_string() -> None:
         {
             "type": "object",
             "properties": {"name": {"type": "string"}},
-        }
+        },
     )
     result = tool.cast_params({"name": ""})
     assert result["name"] == ""
@@ -234,7 +234,7 @@ def test_cast_params_bool_string_false() -> None:
         {
             "type": "object",
             "properties": {"flag": {"type": "boolean"}},
-        }
+        },
     )
     assert tool.cast_params({"flag": "false"})["flag"] is False
     assert tool.cast_params({"flag": "False"})["flag"] is False
@@ -249,7 +249,7 @@ def test_cast_params_bool_string_invalid() -> None:
         {
             "type": "object",
             "properties": {"flag": {"type": "boolean"}},
-        }
+        },
     )
     # Invalid strings should be preserved (validation will catch them)
     result = tool.cast_params({"flag": "random"})
@@ -264,7 +264,7 @@ def test_cast_params_invalid_string_to_int() -> None:
         {
             "type": "object",
             "properties": {"count": {"type": "integer"}},
-        }
+        },
     )
     result = tool.cast_params({"count": "abc"})
     assert result["count"] == "abc"  # Original value preserved
@@ -278,7 +278,7 @@ def test_cast_params_invalid_string_to_number() -> None:
         {
             "type": "object",
             "properties": {"rate": {"type": "number"}},
-        }
+        },
     )
     result = tool.cast_params({"rate": "not_a_number"})
     assert result["rate"] == "not_a_number"
@@ -290,7 +290,7 @@ def test_validate_params_bool_not_accepted_as_number() -> None:
         {
             "type": "object",
             "properties": {"rate": {"type": "number"}},
-        }
+        },
     )
     errors = tool.validate_params({"rate": False})
     assert any("rate should be number" in e for e in errors)
@@ -307,7 +307,7 @@ def test_cast_params_none_values() -> None:
                 "items": {"type": "array"},
                 "config": {"type": "object"},
             },
-        }
+        },
     )
     result = tool.cast_params(
         {
@@ -315,7 +315,7 @@ def test_cast_params_none_values() -> None:
             "count": None,
             "items": None,
             "config": None,
-        }
+        },
     )
     # None should be preserved for all types
     assert result["name"] is None
@@ -330,7 +330,7 @@ def test_cast_params_single_value_not_auto_wrapped_to_array() -> None:
         {
             "type": "object",
             "properties": {"items": {"type": "array"}},
-        }
+        },
     )
     # Non-array values should be preserved (validation will catch them)
     result = tool.cast_params({"items": 5})

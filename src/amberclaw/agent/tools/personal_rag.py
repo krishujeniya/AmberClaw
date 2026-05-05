@@ -10,13 +10,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import List
 
 import numpy as np
 from loguru import logger
 from pydantic import BaseModel, Field
-# sklearn imports moved to lazy imports in KnowledgeSearchTool.run
 
+# sklearn imports moved to lazy imports in KnowledgeSearchTool.run
 from amberclaw.agent.tools.base import PydanticTool
 from amberclaw.providers.base import LLMProvider
 
@@ -32,7 +31,7 @@ class KnowledgeAddArgs(BaseModel):
     """Arguments for adding knowledge."""
 
     content: str = Field(..., description="The information to store.")
-    tags: List[str] = Field(default_factory=list, description="Optional tags.")
+    tags: list[str] = Field(default_factory=list, description="Optional tags.")
 
 
 class KnowledgeToolBase(PydanticTool):
@@ -157,7 +156,7 @@ class KnowledgeSearchTool(KnowledgeToolBase):
             if query_embedding.shape == vectors[0].shape:
                 if cosine_similarity:
                     semantic_scores = cosine_similarity(
-                        query_embedding.reshape(1, -1), vectors
+                        query_embedding.reshape(1, -1), vectors,
                     ).flatten()
                 else:
                     # Fallback cosine similarity using numpy
@@ -245,7 +244,7 @@ class KnowledgeAddTool(KnowledgeToolBase):
             {
                 "content": args.content,
                 "tags": args.tags,
-            }
+            },
         )
 
         # Update vector store

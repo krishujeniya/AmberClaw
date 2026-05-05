@@ -2,8 +2,9 @@
 AmberClaw Tool Registry and Base Class
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, Type
-from pydantic import BaseModel, Field
+from typing import Any
+
+from pydantic import BaseModel
 
 
 class BaseTool(ABC):
@@ -11,10 +12,10 @@ class BaseTool(ABC):
     
     name: str
     description: str
-    args_schema: Optional[Type[BaseModel]] = None
-    sandbox: Optional[Any] = None
+    args_schema: type[BaseModel] | None = None
+    sandbox: Any | None = None
 
-    def __init__(self, sandbox: Optional[Any] = None):
+    def __init__(self, sandbox: Any | None = None):
         self.sandbox = sandbox
 
     @abstractmethod
@@ -27,13 +28,13 @@ class ToolRegistry:
     """Registry for managing and looking up tools."""
     
     def __init__(self):
-        self._tools: Dict[str, BaseTool] = {}
+        self._tools: dict[str, BaseTool] = {}
 
     def register(self, tool: BaseTool):
         """Register a new tool."""
         self._tools[tool.name] = tool
 
-    def get_tool(self, name: str) -> Optional[BaseTool]:
+    def get_tool(self, name: str) -> BaseTool | None:
         """Get a tool by name."""
         return self._tools.get(name)
 
@@ -46,7 +47,7 @@ class ToolRegistry:
                 "function": {
                     "name": tool.name,
                     "description": tool.description,
-                }
+                },
             }
             if tool.args_schema:
                 definition["function"]["parameters"] = tool.args_schema.model_json_schema()

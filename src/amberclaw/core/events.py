@@ -2,15 +2,17 @@
 AmberClaw Async Event Bus
 """
 import asyncio
-from typing import Any, Callable, Dict, List, Type
-from pydantic import BaseModel, Field
+from collections.abc import Callable
 from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class Event(BaseModel):
     """Base event model."""
     name: str
-    payload: Dict[str, Any] = Field(default_factory=dict)
+    payload: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -18,7 +20,7 @@ class EventBus:
     """Simple async event bus for decoupled communication."""
     
     def __init__(self):
-        self._listeners: Dict[str, List[Callable]] = {}
+        self._listeners: dict[str, list[Callable]] = {}
 
     def subscribe(self, event_name: str, callback: Callable):
         """Subscribe to an event."""

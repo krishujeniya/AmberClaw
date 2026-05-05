@@ -1,9 +1,10 @@
 import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
-from amberclaw.heartbeat.engine import HeartbeatEngine
 from amberclaw.governance.board import GovernanceBoard
+from amberclaw.heartbeat.engine import HeartbeatEngine
 
 logger = logging.getLogger(__name__)
 

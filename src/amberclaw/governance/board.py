@@ -1,7 +1,7 @@
 import logging
-from typing import List, Optional
-from pydantic import BaseModel, Field
 from enum import Enum
+
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class GovernanceBoard:
     def __init__(self, require_human_approval_above: RiskLevel = RiskLevel.HIGH, max_auto_budget: float = 1.0):
         self.require_human_approval_above = require_human_approval_above
         self.max_auto_budget = max_auto_budget
-        self._pending_approvals: List[ActionProposal] = []
+        self._pending_approvals: list[ActionProposal] = []
 
     def _risk_value(self, level: RiskLevel) -> int:
         return {"low": 1, "medium": 2, "high": 3, "critical": 4}[level.value]
@@ -56,7 +56,7 @@ class GovernanceBoard:
         logger.info(f"Proposal {proposal.action_id} automatically approved.")
         return True
 
-    def get_pending_approvals(self) -> List[ActionProposal]:
+    def get_pending_approvals(self) -> list[ActionProposal]:
         """Returns the list of actions waiting for human approval."""
         return self._pending_approvals
 

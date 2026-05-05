@@ -4,10 +4,11 @@ Implements temporal knowledge graph extraction using NetworkX
 and basic NLP/LLM extraction to maintain state over time.
 """
 
-from typing import Any, Dict, List, Optional
-from datetime import datetime
 import json
+from datetime import datetime
 from pathlib import Path
+from typing import Any
+
 from loguru import logger
 
 try:
@@ -47,7 +48,7 @@ class TemporalKnowledgeGraph:
             except Exception as e:
                 logger.error(f"Failed to save graph memory: {e}")
 
-    def add_fact(self, source: str, relation: str, target: str, timestamp: Optional[datetime] = None) -> None:
+    def add_fact(self, source: str, relation: str, target: str, timestamp: datetime | None = None) -> None:
         """Add a temporal fact to the knowledge graph."""
         if self.graph is None:
             return
@@ -62,25 +63,25 @@ class TemporalKnowledgeGraph:
             history = edge.get("history", [])
             history.append({
                 "relation": edge.get("relation"),
-                "timestamp": edge.get("timestamp")
+                "timestamp": edge.get("timestamp"),
             })
             self.graph[source][target].update({
                 "relation": relation,
                 "timestamp": ts_str,
-                "history": history
+                "history": history,
             })
         else:
             self.graph.add_edge(source, target, relation=relation, timestamp=ts_str, history=[])
 
         self._save_graph()
 
-    def get_current_state(self, source: str, target: str) -> Optional[Dict[str, Any]]:
+    def get_current_state(self, source: str, target: str) -> dict[str, Any] | None:
         """Get the current relationship between two entities."""
         if self.graph is None or not self.graph.has_edge(source, target):
             return None
         return dict(self.graph[source][target])
 
-    def query_graph(self, entity: str) -> List[Dict[str, Any]]:
+    def query_graph(self, entity: str) -> list[dict[str, Any]]:
         """Query all relationships for an entity."""
         if self.graph is None or entity not in self.graph:
             return []
@@ -91,7 +92,7 @@ class TemporalKnowledgeGraph:
             results.append({
                 "target": neighbor,
                 "relation": edge_data.get("relation"),
-                "timestamp": edge_data.get("timestamp")
+                "timestamp": edge_data.get("timestamp"),
             })
         return results
 

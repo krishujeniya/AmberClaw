@@ -83,5 +83,5 @@ def run_doctor() -> None:
     console.print(
         "\n[bold green]Ready to claw![/bold green]"
         if any(keys.values())
-        else "\n[bold yellow]Ready, but no API keys found. Some features will fail.[/bold yellow]"
+        else "\n[bold yellow]Ready, but no API keys found. Some features will fail.[/bold yellow]",
     )

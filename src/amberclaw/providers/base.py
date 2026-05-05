@@ -2,8 +2,9 @@
 
 import asyncio
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from loguru import logger
 
@@ -218,7 +219,7 @@ class LLMProvider(ABC):
                         logger.warning("Malformed JSON in tool call, retrying with correction prompt...")
                         correction_msg = {
                             "role": "user",
-                            "content": "Your previous tool call contained malformed JSON. Please correct it and output strictly valid JSON without any markdown formatting."
+                            "content": "Your previous tool call contained malformed JSON. Please correct it and output strictly valid JSON without any markdown formatting.",
                         }
                         messages = messages + [{"role": "assistant", "content": response.content or "", "tool_calls": [
                             {"id": tc.id, "type": "function", "function": {"name": tc.name, "arguments": str(tc.arguments)}} for tc in response.tool_calls

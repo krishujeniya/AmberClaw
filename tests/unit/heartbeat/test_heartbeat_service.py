@@ -71,10 +71,10 @@ async def test_trigger_now_executes_when_decision_is_run(tmp_path) -> None:
                         id="hb_1",
                         name="heartbeat",
                         arguments={"action": "run", "tasks": "check open tasks"},
-                    )
+                    ),
                 ],
-            )
-        ]
+            ),
+        ],
     )
 
     called_with: list[str] = []
@@ -108,10 +108,10 @@ async def test_trigger_now_returns_none_when_decision_is_skip(tmp_path) -> None:
                         id="hb_1",
                         name="heartbeat",
                         arguments={"action": "skip"},
-                    )
+                    ),
                 ],
-            )
-        ]
+            ),
+        ],
     )
 
     async def _on_execute(tasks: str) -> str:
@@ -139,10 +139,10 @@ async def test_decide_retries_transient_error_then_succeeds(tmp_path, monkeypatc
                         id="hb_1",
                         name="heartbeat",
                         arguments={"action": "run", "tasks": "check open tasks"},
-                    )
+                    ),
                 ],
             ),
-        ]
+        ],
     )
 
     delays: list[int] = []

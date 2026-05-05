@@ -1,13 +1,14 @@
 """
 AmberClaw Web & Search Tools
 """
-import httpx
-import re
 import html
-from typing import Optional, Literal
+import re
+
+import httpx
 from pydantic import BaseModel, Field
-from amberclaw.tools.registry import BaseTool
+
 from amberclaw.config.schema import settings
+from amberclaw.tools.registry import BaseTool
 
 
 class WebSearchArgs(BaseModel):
@@ -45,7 +46,7 @@ class WebSearchTool(BaseTool):
                     output.append(f"{i}. {res['title']}\n   URL: {res['url']}\n   {res['content']}\n")
                 return "\n".join(output)
         except Exception as e:
-            return f"Search error: {str(e)}"
+            return f"Search error: {e!s}"
 
 
 class WebFetchArgs(BaseModel):
@@ -76,4 +77,4 @@ class WebFetchTool(BaseTool):
                 
                 return f"Fetched content from {url}:\n\n{text}"
         except Exception as e:
-            return f"Fetch error: {str(e)}"
+            return f"Fetch error: {e!s}"

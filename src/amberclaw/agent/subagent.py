@@ -4,9 +4,16 @@ import asyncio
 import uuid
 from pathlib import Path
 
+from langchain_core.messages import HumanMessage, SystemMessage
 from loguru import logger
 
-from amberclaw.agent.tools.filesystem import EditFileTool, ListDirTool, ReadFileTool, WriteFileTool
+from amberclaw.agent.graph import AgentGraph, AgentState
+from amberclaw.agent.tools.filesystem import (
+    EditFileTool,
+    ListDirTool,
+    ReadFileTool,
+    WriteFileTool,
+)
 from amberclaw.agent.tools.registry import ToolRegistry
 from amberclaw.agent.tools.shell import ExecTool
 from amberclaw.agent.tools.web import WebFetchTool, WebSearchTool
@@ -14,8 +21,6 @@ from amberclaw.bus.events import InboundMessage
 from amberclaw.bus.queue import MessageBus
 from amberclaw.config.schema import ExecToolConfig
 from amberclaw.providers.base import LLMProvider
-from amberclaw.agent.graph import AgentGraph, AgentState
-from langchain_core.messages import SystemMessage, HumanMessage
 
 
 class SubagentManager:
@@ -74,7 +79,7 @@ class SubagentManager:
                 origin,
                 model=model,
                 reasoning_effort=reasoning_effort,
-            )
+            ),
         )
         self._running_tasks[task_id] = bg_task
         if session_key:
@@ -118,7 +123,7 @@ class SubagentManager:
                     timeout=self.exec_config.timeout,
                     restrict_to_workspace=self.restrict_to_workspace,
                     path_append=self.exec_config.path_append,
-                )
+                ),
             )
             tools.register(WebSearchTool(api_key=self.brave_api_key, proxy=self.web_proxy))
             tools.register(WebFetchTool(proxy=self.web_proxy))
@@ -165,7 +170,7 @@ class SubagentManager:
             await self._announce_result(task_id, label, task, final_result, origin, "ok")
 
         except Exception as e:
-            error_msg = f"Error: {str(e)}"
+            error_msg = f"Error: {e!s}"
             logger.error("Subagent [{}] failed: {}", task_id, e)
             await self._announce_result(task_id, label, task, error_msg, origin, "error")
 
@@ -200,7 +205,7 @@ Summarize this naturally for the user. Keep it brief (1-2 sentences). Do not men
 
         await self.bus.publish_inbound(msg)
         logger.debug(
-            "Subagent [{}] announced result to {}:{}", task_id, origin["channel"], origin["chat_id"]
+            "Subagent [{}] announced result to {}:{}", task_id, origin["channel"], origin["chat_id"],
         )
 
     def _build_subagent_prompt(self) -> str:
@@ -218,13 +223,13 @@ You are a subagent spawned by the main agent to complete a specific task.
 Stay focused on the assigned task. Your final response will be reported back to the main agent.
 
 ## Workspace
-{self.workspace}"""
+{self.workspace}""",
         ]
 
         skills_summary = SkillsLoader(self.workspace).build_skills_summary()
         if skills_summary:
             parts.append(
-                f"## Skills\n\nRead SKILL.md with read_file to use a skill.\n\n{skills_summary}"
+                f"## Skills\n\nRead SKILL.md with read_file to use a skill.\n\n{skills_summary}",
             )
 
         return "\n\n".join(parts)

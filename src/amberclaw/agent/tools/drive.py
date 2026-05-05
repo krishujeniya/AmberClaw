@@ -1,13 +1,12 @@
 import os
 import pickle
-from typing import Type
 from pathlib import Path
-from pydantic import BaseModel, Field
 
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
 from amberclaw.config.loader import load_config
@@ -51,7 +50,7 @@ class DriveManager:
                     # Fallback to local server if we're in an interactive session
                     # This is risky in some environments but standard for CLI tools
                     raise ConnectionError(
-                        "Google Drive credentials not found. Please configure tools.drive.credentials_json"
+                        "Google Drive credentials not found. Please configure tools.drive.credentials_json",
                     )
 
                 creds = flow.run_local_server(port=0)
@@ -78,7 +77,7 @@ class DriveSearchTool(PydanticTool):
         return "Search for files and folders in Google Drive by name."
 
     @property
-    def args_schema(self) -> Type[BaseModel]:
+    def args_schema(self) -> type[BaseModel]:
         return DriveSearchInput
 
     async def run(self, args: DriveSearchInput) -> str:
@@ -109,7 +108,7 @@ class DriveSearchTool(PydanticTool):
 class DriveUploadInput(BaseModel):
     file_path: str = Field(..., description="Local path to the file to upload.")
     folder_id: str = Field(
-        "root", description="ID of the destination folder in Google Drive (defaults to 'root')."
+        "root", description="ID of the destination folder in Google Drive (defaults to 'root').",
     )
 
 
@@ -123,7 +122,7 @@ class DriveUploadTool(PydanticTool):
         return "Upload a local file to Google Drive."
 
     @property
-    def args_schema(self) -> Type[BaseModel]:
+    def args_schema(self) -> type[BaseModel]:
         return DriveUploadInput
 
     async def run(self, args: DriveUploadInput) -> str:

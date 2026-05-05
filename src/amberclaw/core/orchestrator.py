@@ -2,22 +2,23 @@
 AmberClaw OS Orchestrator
 """
 import asyncio
-from typing import Dict, List, Optional
+
 from loguru import logger
 
-from amberclaw.config.schema import settings
-from amberclaw.channels import TelegramChannel, DiscordChannel, BaseChannel
-from amberclaw.models.message import Message
 from amberclaw.agent.core import BaseAgent
 from amberclaw.agent.loop import AgentLoop
+from amberclaw.channels import BaseChannel, DiscordChannel, TelegramChannel
+from amberclaw.config.schema import settings
+from amberclaw.models.message import Message
+
 
 class Orchestrator:
     """Main OS orchestrator managing channels and agents."""
     
     def __init__(self):
-        self.channels: Dict[str, BaseChannel] = {}
-        self.agents: Dict[str, BaseAgent] = {}
-        self._running_tasks: List[asyncio.Task] = []
+        self.channels: dict[str, BaseChannel] = {}
+        self.agents: dict[str, BaseAgent] = {}
+        self._running_tasks: list[asyncio.Task] = []
 
     async def start(self):
         """Start all configured components."""

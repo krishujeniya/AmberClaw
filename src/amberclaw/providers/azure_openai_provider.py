@@ -93,7 +93,7 @@ class AzureOpenAIProvider(LLMProvider):
                 _AZURE_MSG_KEYS,
             ),
             "max_completion_tokens": max(
-                1, max_tokens
+                1, max_tokens,
             ),  # Azure API 2024-10-21 uses max_completion_tokens
         }
 
@@ -136,7 +136,7 @@ class AzureOpenAIProvider(LLMProvider):
         url = self._build_chat_url(deployment_name)
         headers = self._build_headers()
         payload = self._prepare_request_payload(
-            deployment_name, messages, tools, max_tokens, temperature, reasoning_effort
+            deployment_name, messages, tools, max_tokens, temperature, reasoning_effort,
         )
 
         try:
@@ -153,7 +153,7 @@ class AzureOpenAIProvider(LLMProvider):
 
         except Exception as e:
             return LLMResponse(
-                content=f"Error calling Azure OpenAI: {repr(e)}",
+                content=f"Error calling Azure OpenAI: {e!r}",
                 finish_reason="error",
             )
 
@@ -176,7 +176,7 @@ class AzureOpenAIProvider(LLMProvider):
                             id=tc["id"],
                             name=tc["function"]["name"],
                             arguments=args if isinstance(args, dict) else {"raw": str(args)},
-                        )
+                        ),
                     )
 
             usage = {}
@@ -200,7 +200,7 @@ class AzureOpenAIProvider(LLMProvider):
 
         except (KeyError, IndexError) as e:
             return LLMResponse(
-                content=f"Error parsing Azure OpenAI response: {str(e)}",
+                content=f"Error parsing Azure OpenAI response: {e!s}",
                 finish_reason="error",
             )
 

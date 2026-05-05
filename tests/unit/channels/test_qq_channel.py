@@ -55,7 +55,7 @@ async def test_send_group_message_uses_group_api_with_msg_seq() -> None:
             chat_id="group123",
             content="hello",
             metadata={"message_id": "msg1"},
-        )
+        ),
     )
 
     assert len(channel._client.api.group_calls) == 1

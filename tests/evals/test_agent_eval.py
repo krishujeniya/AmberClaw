@@ -24,7 +24,7 @@ async def run_evaluation(prompt: str, expected_tool: str) -> dict[str, Any]:
     agent = AgentLoop(
         provider=provider,
         workspace="/tmp/amberclaw_eval",
-        bus=MockBus()
+        bus=MockBus(),
     )
     
     # We will track which tools get called by patching the tools or checking the graph state

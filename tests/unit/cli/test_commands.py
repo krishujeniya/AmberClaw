@@ -194,7 +194,7 @@ def test_agent_uses_default_config_when_no_workspace_or_config_flags(mock_agent_
     )
     mock_agent_runtime["agent_loop"].process_direct.assert_awaited_once()
     mock_agent_runtime["print_response"].assert_called_once_with(
-        "mock-response", render_markdown=True
+        "mock-response", render_markdown=True,
     )
 
 
@@ -239,7 +239,7 @@ def test_agent_config_sets_active_path(monkeypatch, tmp_path: Path) -> None:
 
     monkeypatch.setattr("amberclaw.agent.loop.AgentLoop", _FakeAgentLoop)
     monkeypatch.setattr(
-        "amberclaw.cli.commands._print_agent_response", lambda *_args, **_kwargs: None
+        "amberclaw.cli.commands._print_agent_response", lambda *_args, **_kwargs: None,
     )
 
     result = runner.invoke(app, ["agent", "-m", "hello", "-c", str(config_file)])

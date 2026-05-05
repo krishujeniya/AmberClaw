@@ -4,7 +4,7 @@ import asyncio
 import os
 import re
 from pathlib import Path
-from typing import Optional
+
 from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
@@ -14,8 +14,8 @@ class ExecArgs(BaseModel):
     """Arguments for the shell execution tool."""
 
     command: str = Field(..., description="The shell command to execute")
-    working_dir: Optional[str] = Field(
-        None, description="Optional working directory for the command"
+    working_dir: str | None = Field(
+        None, description="Optional working directory for the command",
     )
 
 
@@ -86,13 +86,13 @@ class ExecTool(PydanticTool):
 
             try:
                 stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=self.timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 process.kill()
                 # Wait for the process to fully terminate so pipes are
                 # drained and file descriptors are released.
                 try:
                     await asyncio.wait_for(process.wait(), timeout=5.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass
                 return f"Error: Command timed out after {self.timeout} seconds"
 
@@ -119,7 +119,7 @@ class ExecTool(PydanticTool):
             return result
 
         except Exception as e:
-            return f"Error executing command: {str(e)}"
+            return f"Error executing command: {e!s}"
 
     def _guard_command(self, command: str, cwd: str) -> str | None:
         """Best-effort safety guard for potentially destructive commands."""

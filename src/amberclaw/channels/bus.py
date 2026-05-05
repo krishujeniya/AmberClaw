@@ -2,10 +2,9 @@
 AmberClaw Channel Bus (Manager)
 """
 import asyncio
-from typing import Dict, List, Optional
-from amberclaw.channels.base import BaseChannel
-from amberclaw.core.logging import setup_logging
 import logging
+
+from amberclaw.channels.base import BaseChannel
 
 logger = logging.getLogger("amberclaw.channels")
 
@@ -13,7 +12,7 @@ class ChannelBus:
     """Manages multiple communication channels."""
     
     def __init__(self):
-        self._channels: Dict[str, BaseChannel] = {}
+        self._channels: dict[str, BaseChannel] = {}
 
     def register(self, channel: BaseChannel):
         """Register a channel."""
@@ -32,7 +31,7 @@ class ChannelBus:
         if tasks:
             await asyncio.gather(*tasks)
 
-    def get_channel(self, name: str) -> Optional[BaseChannel]:
+    def get_channel(self, name: str) -> BaseChannel | None:
         """Get a channel by name."""
         return self._channels.get(name)
 

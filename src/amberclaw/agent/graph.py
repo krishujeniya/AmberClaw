@@ -6,10 +6,17 @@ This replaces the manual while-loop in AgentLoop with a state-driven graph.
 from __future__ import annotations
 
 import operator
-from typing import Annotated, Any, Dict, List, Sequence, TypedDict
+from collections.abc import Sequence
+from typing import Annotated, Any, TypedDict
 
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage, SystemMessage
-from langgraph.graph import StateGraph, END
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
+from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
 from loguru import logger
 
@@ -24,7 +31,7 @@ class AgentState(TypedDict):
     iterations: int
 
     # Target config for nodes to use
-    config: Dict[str, Any]
+    config: dict[str, Any]
 
     # Agent loop mode
     mode: str
@@ -39,7 +46,7 @@ class AgentState(TypedDict):
 class AgentGraph:
     """Wrapper for the LangGraph compilation and execution."""
 
-    def __init__(self, provider: Any, tools: List[Any], max_iterations: int = 10, mode: str = "react"):
+    def __init__(self, provider: Any, tools: list[Any], max_iterations: int = 10, mode: str = "react"):
         self.provider = provider
         # Keep original AC tools for OpenAI tool format; wrap for LangChain ToolNode
         self.ac_tools = list(tools)  # original AmberClaw PydanticTool instances
@@ -100,11 +107,11 @@ class AgentGraph:
                         "role": "assistant",
                         "content": m.content,
                         "tool_calls": m.additional_kwargs.get("tool_calls"),
-                    }
+                    },
                 )
             elif isinstance(m, ToolMessage):
                 processed_msgs.append(
-                    {"role": "tool", "content": m.content, "tool_call_id": m.tool_call_id}
+                    {"role": "tool", "content": m.content, "tool_call_id": m.tool_call_id},
                 )
             elif isinstance(m, SystemMessage):
                 processed_msgs.append({"role": "system", "content": m.content})
@@ -142,7 +149,7 @@ class AgentGraph:
             ]
         return ai_msg
 
-    async def planner_node(self, state: AgentState) -> Dict[str, Any]:
+    async def planner_node(self, state: AgentState) -> dict[str, Any]:
         """Create a plan for the user request."""
         logger.debug("Graph: Planner node entry")
         prompt = "Create a detailed step-by-step plan to satisfy the user request. Output a numbered list of steps."
@@ -151,7 +158,7 @@ class AgentGraph:
         plan = [line.strip() for line in str(resp.content).split("\\n") if line.strip() and line[0].isdigit()]
         return {"plan": plan, "iterations": state.get("iterations", 0) + 1, "messages": [resp]}
 
-    async def reflect_node(self, state: AgentState) -> Dict[str, Any]:
+    async def reflect_node(self, state: AgentState) -> dict[str, Any]:
         """Evaluate the previous output and self-correct if needed."""
         logger.debug("Graph: Reflect node entry")
         prompt = "Reflect on your previous responses. Are they correct, complete, and safe? If yes, respond 'PASS'. If no, respond 'FAIL' with reasons and a corrected plan."
@@ -166,7 +173,7 @@ class AgentGraph:
             return "replan"
         return "end"
 
-    async def llm_node(self, state: AgentState) -> Dict[str, Any]:
+    async def llm_node(self, state: AgentState) -> dict[str, Any]:
         """Node for calling the LLM provider."""
         iterations = state.get("iterations", 0)
         logger.debug("Graph: LLM node entry (iteration {})", iterations)

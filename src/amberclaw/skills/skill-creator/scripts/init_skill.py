@@ -259,7 +259,7 @@ def create_resource_dirs(
 
 
 def init_skill(
-    skill_name: str, path: str | Path, resources: list[str], include_examples: bool
+    skill_name: str, path: str | Path, resources: list[str], include_examples: bool,
 ) -> Path | None:
     """
     Initialize a new skill directory with template SKILL.md.
@@ -351,7 +351,7 @@ def main():
     if len(skill_name) > MAX_SKILL_NAME_LENGTH:
         print(
             f"[ERROR] Skill name '{skill_name}' is too long ({len(skill_name)} characters). "
-            f"Maximum is {MAX_SKILL_NAME_LENGTH} characters."
+            f"Maximum is {MAX_SKILL_NAME_LENGTH} characters.",
         )
         sys.exit(1)
     if skill_name != raw_skill_name:

@@ -2,13 +2,14 @@
 
 import difflib
 from pathlib import Path
+
 from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
 
 
 def _resolve_path(
-    path: str, workspace: Path | None = None, allowed_dir: Path | None = None
+    path: str, workspace: Path | None = None, allowed_dir: Path | None = None,
 ) -> Path:
     """Resolve path against workspace (if relative) and enforce directory restriction."""
     p = Path(path).expanduser()
@@ -78,7 +79,7 @@ class ReadFileTool(PydanticTool):
         except PermissionError as e:
             return f"Error: {e}"
         except Exception as e:
-            return f"Error reading file: {str(e)}"
+            return f"Error reading file: {e!s}"
 
 
 class WriteFileArgs(BaseModel):
@@ -117,7 +118,7 @@ class WriteFileTool(PydanticTool):
         except PermissionError as e:
             return f"Error: {e}"
         except Exception as e:
-            return f"Error writing file: {str(e)}"
+            return f"Error writing file: {e!s}"
 
 
 class EditFileArgs(BaseModel):
@@ -171,7 +172,7 @@ class EditFileTool(PydanticTool):
         except PermissionError as e:
             return f"Error: {e}"
         except Exception as e:
-            return f"Error editing file: {str(e)}"
+            return f"Error editing file: {e!s}"
 
     @staticmethod
     def _not_found_message(old_text: str, content: str, path: str) -> str:
@@ -194,7 +195,7 @@ class EditFileTool(PydanticTool):
                     fromfile="old_text (provided)",
                     tofile=f"{path} (actual, line {best_start + 1})",
                     lineterm="",
-                )
+                ),
             )
             return f"Error: old_text not found in {path}.\nBest match ({best_ratio:.0%} similar) at line {best_start + 1}:\n{diff}"
         return (
@@ -248,4 +249,4 @@ class ListDirTool(PydanticTool):
         except PermissionError as e:
             return f"Error: {e}"
         except Exception as e:
-            return f"Error listing directory: {str(e)}"
+            return f"Error listing directory: {e!s}"

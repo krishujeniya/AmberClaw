@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import httpx
 import json_repair
@@ -113,21 +114,20 @@ class OllamaProvider(LLMProvider):
             async with httpx.AsyncClient(timeout=120.0) as client:
                 if on_token:
                     return await self._handle_streaming(client, url, payload, on_token)
-                else:
-                    response = await client.post(url, json=payload)
-                    if response.status_code != 200:
-                        return LLMResponse(
-                            content=f"Ollama Error {response.status_code}: {response.text}",
-                            finish_reason="error",
-                        )
+                response = await client.post(url, json=payload)
+                if response.status_code != 200:
+                    return LLMResponse(
+                        content=f"Ollama Error {response.status_code}: {response.text}",
+                        finish_reason="error",
+                    )
 
-                    data = response.json()
-                    return self._parse_ollama_response(data)
+                data = response.json()
+                return self._parse_ollama_response(data)
 
         except Exception as e:
             logger.exception("Ollama call failed")
             return LLMResponse(
-                content=f"Error calling Ollama: {repr(e)}",
+                content=f"Error calling Ollama: {e!r}",
                 finish_reason="error",
             )
 
@@ -191,11 +191,11 @@ class OllamaProvider(LLMProvider):
                     id=tc.get("id", f"call_{len(tool_calls)}"),
                     name=func.get("name"),
                     arguments=args if isinstance(args, dict) else {"raw": str(args)},
-                )
+                ),
             )
 
         return LLMResponse(
-            content=full_content, tool_calls=tool_calls, finish_reason=finish_reason, usage=usage
+            content=full_content, tool_calls=tool_calls, finish_reason=finish_reason, usage=usage,
         )
 
     def _parse_ollama_response(self, data: dict[str, Any]) -> LLMResponse:
@@ -216,7 +216,7 @@ class OllamaProvider(LLMProvider):
                         id=tc.get("id", f"call_{len(tool_calls)}"),
                         name=func.get("name"),
                         arguments=args if isinstance(args, dict) else {"raw": str(args)},
-                    )
+                    ),
                 )
 
         usage = {

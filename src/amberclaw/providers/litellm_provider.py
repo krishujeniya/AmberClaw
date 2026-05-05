@@ -4,21 +4,22 @@ import hashlib
 import os
 import secrets
 import string
-from typing import Any, Awaitable, Callable
+import time
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import json_repair
-import time
 import litellm
 from litellm import acompletion, completion_cost
 from loguru import logger
 
 from amberclaw.providers.base import LLMProvider, LLMResponse, ToolCallRequest
-from amberclaw.utils.cost_tracker import log_usage
 from amberclaw.providers.registry import find_by_model, find_gateway
+from amberclaw.utils.cost_tracker import log_usage
 
 # Standard chat-completion message keys.
 _ALLOWED_MSG_KEYS = frozenset(
-    {"role", "content", "tool_calls", "tool_call_id", "name", "reasoning_content"}
+    {"role", "content", "tool_calls", "tool_call_id", "name", "reasoning_content"},
 )
 _CAPABILITY_CACHE: dict[str, dict[str, Any]] = {}
 _ANTHROPIC_EXTRA_KEYS = frozenset({"thinking_blocks"})
@@ -100,7 +101,7 @@ class LiteLLMProvider(LLMProvider):
             # Gateway mode: apply gateway prefix, skip provider-specific prefixes
             prefix = self._gateway.litellm_prefix
             if self._gateway.strip_model_prefix:
-                model = model.split("/")[-1]
+                model = model.rsplit("/", maxsplit=1)[-1]
             if prefix and not model.startswith(f"{prefix}/"):
                 model = f"{prefix}/{model}"
             return model
@@ -141,7 +142,7 @@ class LiteLLMProvider(LLMProvider):
                 content = msg["content"]
                 if isinstance(content, str):
                     new_content = [
-                        {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}
+                        {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}},
                     ]
                 else:
                     new_content = list(content)
@@ -217,7 +218,7 @@ class LiteLLMProvider(LLMProvider):
 
     @staticmethod
     def _sanitize_messages(
-        messages: list[dict[str, Any]], extra_keys: frozenset[str] = frozenset()
+        messages: list[dict[str, Any]], extra_keys: frozenset[str] = frozenset(),
     ) -> list[dict[str, Any]]:
         """Strip non-standard keys and ensure assistant messages have a content key."""
         allowed = _ALLOWED_MSG_KEYS | extra_keys
@@ -243,7 +244,7 @@ class LiteLLMProvider(LLMProvider):
                     normalized_tool_calls.append(tc_clean)
                 clean["tool_calls"] = normalized_tool_calls
 
-            if "tool_call_id" in clean and clean["tool_call_id"]:
+            if clean.get("tool_call_id"):
                 clean["tool_call_id"] = map_id(clean["tool_call_id"])
         return sanitized
 
@@ -270,7 +271,7 @@ class LiteLLMProvider(LLMProvider):
         kwargs: dict[str, Any] = {
             "model": model,
             "messages": self._sanitize_messages(
-                self._sanitize_empty_content(messages), extra_keys=extra_msg_keys
+                self._sanitize_empty_content(messages), extra_keys=extra_msg_keys,
             ),
             "max_tokens": max_tokens,
             "temperature": temperature,
@@ -368,7 +369,7 @@ class LiteLLMProvider(LLMProvider):
                 continue
 
         return LLMResponse(
-            content=f"All models failed. Last error: {str(last_error)}",
+            content=f"All models failed. Last error: {last_error!s}",
             finish_reason="error",
         )
 
@@ -410,7 +411,7 @@ class LiteLLMProvider(LLMProvider):
                     id=_short_tool_id(),
                     name=tc.function.name,
                     arguments=args if isinstance(args, dict) else {"raw": str(args)},
-                )
+                ),
             )
 
         usage = {}

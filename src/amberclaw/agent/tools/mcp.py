@@ -59,7 +59,7 @@ class MCPToolWrapper(Tool):
         try:
             # Check if this tool should be called as a task (2026 spec)
             is_task = getattr(self._session, "supports_tasks", False) and hasattr(
-                self._session, "create_task"
+                self._session, "create_task",
             )
 
             if is_task:
@@ -73,7 +73,7 @@ class MCPToolWrapper(Tool):
                     self._session.call_tool(self._original_name, arguments=kwargs),
                     timeout=self._tool_timeout,
                 )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("MCP tool '{}' timed out after {}s", self._name, self._tool_timeout)
             return f"(MCP tool call timed out after {self._tool_timeout}s)"
         except asyncio.CancelledError:
@@ -103,17 +103,15 @@ class MCPToolWrapper(Tool):
             from mcp import types
 
             for block in content:
-                if isinstance(block, types.TextContent):
+                if isinstance(block, types.TextContent) or hasattr(block, "text"):
                     parts.append(block.text)
-                elif hasattr(block, "text"):
-                    parts.append(getattr(block, "text"))
                 else:
                     parts.append(str(block))
         except ImportError:
             # Fallback if mcp.types is not available
             for block in content:
                 if hasattr(block, "text"):
-                    parts.append(getattr(block, "text"))
+                    parts.append(block.text)
                 elif isinstance(block, dict) and "text" in block:
                     parts.append(block["text"])
                 else:
@@ -123,7 +121,7 @@ class MCPToolWrapper(Tool):
 
 
 async def connect_mcp_servers(
-    mcp_servers: dict, registry: ToolRegistry, stack: AsyncExitStack
+    mcp_servers: dict, registry: ToolRegistry, stack: AsyncExitStack,
 ) -> None:
     """Connect to configured MCP servers and register their tools."""
     from mcp import ClientSession, StdioServerParameters
@@ -163,7 +161,7 @@ async def connect_mcp_servers(
 
             if transport_type == "stdio":
                 params = StdioServerParameters(
-                    command=cfg.command, args=cfg.args, env=cfg.env or None
+                    command=cfg.command, args=cfg.args, env=cfg.env or None,
                 )
                 read, write = await stack.enter_async_context(stdio_client(params))
             elif transport_type == "sse":
@@ -182,7 +180,7 @@ async def connect_mcp_servers(
                     )
 
                 read, write = await stack.enter_async_context(
-                    sse_client(cfg.url, httpx_client_factory=httpx_client_factory)
+                    sse_client(cfg.url, httpx_client_factory=httpx_client_factory),
                 )
             elif transport_type == "streamableHttp":
                 # Always provide an explicit httpx client so MCP HTTP transport does not
@@ -192,10 +190,10 @@ async def connect_mcp_servers(
                         headers=cfg.headers or None,
                         follow_redirects=True,
                         timeout=None,
-                    )
+                    ),
                 )
                 read, write, _ = await stack.enter_async_context(
-                    streamable_http_client(cfg.url, http_client=http_client)
+                    streamable_http_client(cfg.url, http_client=http_client),
                 )
             else:
                 logger.warning("MCP server '{}': unknown transport type '{}'", name, transport_type)

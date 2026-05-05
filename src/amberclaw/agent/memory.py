@@ -38,7 +38,7 @@ _SAVE_MEMORY_TOOL = [
                 "required": ["history_entry", "memory_update"],
             },
         },
-    }
+    },
 ]
 
 
@@ -111,7 +111,7 @@ class MemoryStore:
             if not old_messages:
                 return True
             logger.info(
-                "Memory consolidation: {} to consolidate, {} keep", len(old_messages), keep_count
+                "Memory consolidation: {} to consolidate, {} keep", len(old_messages), keep_count,
             )
 
         lines = []
@@ -120,7 +120,7 @@ class MemoryStore:
                 continue
             tools = f" [tools: {', '.join(m['tools_used'])}]" if m.get("tools_used") else ""
             lines.append(
-                f"[{m.get('timestamp', '?')[:16]}] {m['role'].upper()}{tools}: {m['content']}"
+                f"[{m.get('timestamp', '?')[:16]}] {m['role'].upper()}{tools}: {m['content']}",
             )
 
         current_memory = self.read_long_term()
@@ -159,12 +159,12 @@ class MemoryStore:
                     args = args[0]
                 else:
                     logger.warning(
-                        "Memory consolidation: unexpected arguments as empty or non-dict list"
+                        "Memory consolidation: unexpected arguments as empty or non-dict list",
                     )
                     return False
             if not isinstance(args, dict):
                 logger.warning(
-                    "Memory consolidation: unexpected arguments type {}", type(args).__name__
+                    "Memory consolidation: unexpected arguments type {}", type(args).__name__,
                 )
                 return False
 

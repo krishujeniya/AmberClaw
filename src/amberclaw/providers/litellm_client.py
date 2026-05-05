@@ -1,5 +1,6 @@
 import logging
-from typing import Dict, Any, List, AsyncGenerator
+from collections.abc import AsyncGenerator
+
 from pydantic import BaseModel
 
 try:
@@ -24,7 +25,7 @@ class LLMRouter:
         if not acompletion:
             logger.warning("litellm is not installed. LLM routing will fail.")
 
-    async def generate(self, messages: List[LLMMessage], model: str = None, temperature: float = 0.7, **kwargs) -> str:
+    async def generate(self, messages: list[LLMMessage], model: str = None, temperature: float = 0.7, **kwargs) -> str:
         """
         Generate a synchronous text response from the configured LLM.
         """
@@ -37,7 +38,7 @@ class LLMRouter:
                 model=target_model,
                 messages=formatted_messages,
                 temperature=temperature,
-                **kwargs
+                **kwargs,
             )
             return response.choices[0].message.content
         except RateLimitError:
@@ -50,7 +51,7 @@ class LLMRouter:
             logger.error(f"Error during LLM generation: {e}")
             raise
 
-    async def generate_stream(self, messages: List[LLMMessage], model: str = None, temperature: float = 0.7, **kwargs) -> AsyncGenerator[str, None]:
+    async def generate_stream(self, messages: list[LLMMessage], model: str = None, temperature: float = 0.7, **kwargs) -> AsyncGenerator[str, None]:
         """
         Generate a streaming text response from the configured LLM.
         """
@@ -64,7 +65,7 @@ class LLMRouter:
                 messages=formatted_messages,
                 temperature=temperature,
                 stream=True,
-                **kwargs
+                **kwargs,
             )
             async for chunk in response_stream:
                 if chunk.choices[0].delta.content:

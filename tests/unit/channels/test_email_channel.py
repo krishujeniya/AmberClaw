@@ -1,5 +1,5 @@
-from email.message import EmailMessage
 from datetime import date
+from email.message import EmailMessage
 
 import pytest
 
@@ -154,7 +154,7 @@ async def test_send_uses_smtp_and_reply_subject(monkeypatch) -> None:
             channel="email",
             chat_id="alice@example.com",
             content="Acknowledged.",
-        )
+        ),
     )
 
     assert len(fake_instances) == 1
@@ -213,7 +213,7 @@ async def test_send_skips_reply_when_auto_reply_disabled(monkeypatch) -> None:
             channel="email",
             chat_id="alice@example.com",
             content="Should not send.",
-        )
+        ),
     )
     assert fake_instances == []
 
@@ -224,7 +224,7 @@ async def test_send_skips_reply_when_auto_reply_disabled(monkeypatch) -> None:
             chat_id="alice@example.com",
             content="Force send.",
             metadata={"force_send": True},
-        )
+        ),
     )
     assert len(fake_instances) == 1
     assert len(fake_instances[0].sent_messages) == 1
@@ -273,7 +273,7 @@ async def test_send_proactive_email_when_auto_reply_disabled(monkeypatch) -> Non
             channel="email",
             chat_id="bob@example.com",
             content="Hello, this is a proactive email.",
-        )
+        ),
     )
     assert len(fake_instances) == 1
     assert len(fake_instances[0].sent_messages) == 1
@@ -319,7 +319,7 @@ async def test_send_skips_when_consent_not_granted(monkeypatch) -> None:
             chat_id="alice@example.com",
             content="Should not send.",
             metadata={"force_send": True},
-        )
+        ),
     )
     assert called["smtp"] is False
 

@@ -1,7 +1,8 @@
 import logging
-from typing import List, Dict, Any, Optional
+from datetime import UTC, datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
-from datetime import datetime, timezone
 
 try:
     from mem0 import MemoryClient
@@ -16,8 +17,8 @@ class MemoryRecord(BaseModel):
     """
     id: str
     content: str
-    metadata: Dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 class MemoryManager:
     """
@@ -38,9 +39,9 @@ class MemoryManager:
             logger.warning("mem0ai is not installed. Falling back to in-memory mode.")
             
         # In a full implementation, we'd also initialize ChromaDB for custom RAG collections here
-        self._local_cache: List[MemoryRecord] = []
+        self._local_cache: list[MemoryRecord] = []
 
-    async def add_memory(self, content: str, user_id: str, agent_id: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> str:
+    async def add_memory(self, content: str, user_id: str, agent_id: str | None = None, metadata: dict[str, Any] | None = None) -> str:
         """
         Store a new memory fact or interaction.
         """
@@ -54,17 +55,16 @@ class MemoryManager:
             # Response handling varies by version; returning a dummy ID for now
             return "mem0_" + str(hash(content))
             
-        else:
-            # Local fallback
-            record = MemoryRecord(
-                id=f"loc_{len(self._local_cache)}",
-                content=content,
-                metadata=metadata or {}
-            )
-            self._local_cache.append(record)
-            return record.id
+        # Local fallback
+        record = MemoryRecord(
+            id=f"loc_{len(self._local_cache)}",
+            content=content,
+            metadata=metadata or {},
+        )
+        self._local_cache.append(record)
+        return record.id
 
-    async def search_memory(self, query: str, user_id: str, limit: int = 5) -> List[MemoryRecord]:
+    async def search_memory(self, query: str, user_id: str, limit: int = 5) -> list[MemoryRecord]:
         """
         Retrieve relevant memories based on a semantic query.
         """
@@ -79,8 +79,8 @@ class MemoryManager:
                         MemoryRecord(
                             id=mem.get("id", "unknown"),
                             content=mem.get("memory", mem.get("content", "")),
-                            metadata=mem.get("metadata", {})
-                        )
+                            metadata=mem.get("metadata", {}),
+                        ),
                     )
             except Exception as e:
                 logger.error(f"Error searching Mem0: {e}")

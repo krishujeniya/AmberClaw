@@ -1,10 +1,11 @@
 """Test session management with cache-friendly message handling."""
 
 import asyncio
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from pathlib import Path
+
 from amberclaw.session.manager import Session, SessionManager
 
 # Test constants
@@ -495,7 +496,7 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10
+            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
         )
 
         loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
@@ -527,7 +528,7 @@ class TestConsolidationDeduplicationGuard:
 
     @pytest.mark.asyncio
     async def test_new_command_guard_prevents_concurrent_consolidation(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         """/new command does not run consolidation concurrently with in-flight consolidation."""
         from amberclaw.agent.loop import AgentLoop
@@ -539,7 +540,7 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10
+            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
         )
 
         loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
@@ -591,7 +592,7 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10
+            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
         )
 
         loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
@@ -624,7 +625,7 @@ class TestConsolidationDeduplicationGuard:
 
     @pytest.mark.asyncio
     async def test_new_waits_for_inflight_consolidation_and_preserves_messages(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         """/new waits for in-flight consolidation and archives before clear."""
         from amberclaw.agent.loop import AgentLoop
@@ -636,7 +637,7 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10
+            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
         )
 
         loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
@@ -694,7 +695,7 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10
+            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
         )
 
         loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
@@ -726,7 +727,7 @@ class TestConsolidationDeduplicationGuard:
 
     @pytest.mark.asyncio
     async def test_new_archives_only_unconsolidated_messages_after_inflight_task(
-        self, tmp_path: Path
+        self, tmp_path: Path,
     ) -> None:
         """/new should archive only messages not yet consolidated by prior task."""
         from amberclaw.agent.loop import AgentLoop
@@ -738,7 +739,7 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10
+            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
         )
 
         loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
@@ -797,7 +798,7 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10
+            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
         )
         loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
         loop.tools.get_definitions = MagicMock(return_value=[])

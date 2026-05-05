@@ -58,7 +58,7 @@ class QQChannel(BaseChannel):
     def __init__(self, config: QQConfig, bus: MessageBus):
         super().__init__(config, bus)
         self.config: QQConfig = config
-        self._client: "botpy.Client | None" = None
+        self._client: botpy.Client | None = None
         self._processed_ids: deque = deque(maxlen=1000)
         self._msg_seq: int = 1  # 消息序列号，避免被 QQ API 去重
         self._chat_type_cache: dict[str, str] = {}
@@ -148,7 +148,7 @@ class QQChannel(BaseChannel):
             else:
                 chat_id = str(
                     getattr(data.author, "id", None)
-                    or getattr(data.author, "user_openid", "unknown")
+                    or getattr(data.author, "user_openid", "unknown"),
                 )
                 user_id = chat_id
                 self._chat_type_cache[chat_id] = "c2c"

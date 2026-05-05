@@ -1,10 +1,9 @@
 """
 AmberClaw Filesystem Tools (Sandboxed)
 """
-from typing import Type, Optional
 from pydantic import BaseModel, Field
+
 from amberclaw.tools.registry import BaseTool
-from amberclaw.security.sandbox import BaseSandbox
 
 
 class ReadFileArgs(BaseModel):

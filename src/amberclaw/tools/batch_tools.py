@@ -2,8 +2,9 @@
 AmberClaw Batch and Interpreter Tools
 """
 from pydantic import BaseModel, Field
-from amberclaw.tools.registry import BaseTool, registry
+
 from amberclaw.security.sandbox import LocalSandbox
+from amberclaw.tools.registry import BaseTool, registry
 
 
 class PythonInterpreterSchema(BaseModel):
@@ -26,8 +27,7 @@ class PythonInterpreterTool(BaseTool):
         result = await self.sandbox.execute(code)
         if result.exit_code == 0:
             return result.stdout
-        else:
-            return f"Error (Exit {result.exit_code}): {result.stderr}"
+        return f"Error (Exit {result.exit_code}): {result.stderr}"
 
 # Auto-register
 registry.register(PythonInterpreterTool())

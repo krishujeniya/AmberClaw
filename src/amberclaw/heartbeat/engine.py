@@ -1,7 +1,7 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -14,8 +14,8 @@ class HeartbeatStatus(BaseModel):
     """
     process_id: str = Field(..., description="Unique identifier for the process/subagent.")
     is_alive: bool = Field(default=True, description="Whether the process is currently active.")
-    last_ping: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Arbitrary state data.")
+    last_ping: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary state data.")
 
 class HeartbeatEngine:
     """
@@ -25,18 +25,18 @@ class HeartbeatEngine:
     def __init__(self, check_interval_seconds: int = 5):
         self.check_interval_seconds = check_interval_seconds
         self._running = False
-        self._tasks: Dict[str, asyncio.Task] = {}
-        self._statuses: Dict[str, HeartbeatStatus] = {}
+        self._tasks: dict[str, asyncio.Task] = {}
+        self._statuses: dict[str, HeartbeatStatus] = {}
 
     def register_process(self, process_id: str) -> None:
         """Register a new process to monitor."""
         self._statuses[process_id] = HeartbeatStatus(process_id=process_id)
         logger.info(f"Registered process {process_id} for heartbeat monitoring.")
 
-    def ping(self, process_id: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def ping(self, process_id: str, metadata: dict[str, Any] | None = None) -> None:
         """Update the last_ping timestamp for a process."""
         if process_id in self._statuses:
-            self._statuses[process_id].last_ping = datetime.now(timezone.utc)
+            self._statuses[process_id].last_ping = datetime.now(UTC)
             self._statuses[process_id].is_alive = True
             if metadata:
                 self._statuses[process_id].metadata.update(metadata)
@@ -44,7 +44,7 @@ class HeartbeatEngine:
     async def _monitor_loop(self) -> None:
         """Background loop checking for dead processes."""
         while self._running:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             for pid, status in self._statuses.items():
                 if not status.is_alive:
                     continue

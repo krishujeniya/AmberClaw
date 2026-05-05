@@ -1,8 +1,8 @@
 import asyncio
 from typing import Any
-from pydantic import BaseModel, Field
 
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
 
@@ -12,7 +12,7 @@ class EDAArgs(BaseModel):
 
     file_path: str = Field(..., description="Path to CSV or Excel file to analyze.")
     instructions: str = Field(
-        "Perform a comprehensive EDA.", description="Optional EDA instructions."
+        "Perform a comprehensive EDA.", description="Optional EDA instructions.",
     )
 
 
@@ -41,6 +41,7 @@ class DataEDATool(PydanticTool):
     async def run(self, args: EDAArgs) -> str:
         try:
             import pandas as pd
+
             from amberclaw.data.ds_agents.eda_tools_agent import EDAToolsAgent
 
             file_path = args.file_path
@@ -52,7 +53,7 @@ class DataEDATool(PydanticTool):
 
             agent = EDAToolsAgent(model=self._model)
             await asyncio.to_thread(
-                agent.invoke_agent, user_instructions=args.instructions, data_raw=df
+                agent.invoke_agent, user_instructions=args.instructions, data_raw=df,
             )
 
             ai_msg = agent.get_ai_message()

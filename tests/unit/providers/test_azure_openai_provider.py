@@ -99,7 +99,7 @@ def test_prepare_request_payload():
 
     messages = [{"role": "user", "content": "Hello"}]
     payload = provider._prepare_request_payload(
-        "gpt-4o", messages, max_tokens=1500, temperature=0.8
+        "gpt-4o", messages, max_tokens=1500, temperature=0.8,
     )
 
     assert payload["messages"] == messages
@@ -117,7 +117,7 @@ def test_prepare_request_payload():
 
     # Test with reasoning_effort
     payload_with_reasoning = provider._prepare_request_payload(
-        "gpt-5-chat", messages, reasoning_effort="medium"
+        "gpt-5-chat", messages, reasoning_effort="medium",
     )
     assert payload_with_reasoning["reasoning_effort"] == "medium"
     assert "temperature" not in payload_with_reasoning
@@ -178,7 +178,7 @@ async def test_chat_success():
             {
                 "message": {"content": "Hello! How can I help you today?", "role": "assistant"},
                 "finish_reason": "stop",
-            }
+            },
         ],
         "usage": {"prompt_tokens": 12, "completion_tokens": 18, "total_tokens": 30},
     }
@@ -220,7 +220,7 @@ async def test_chat_uses_default_model_when_no_model_provided():
 
     mock_response_data = {
         "choices": [
-            {"message": {"content": "Response", "role": "assistant"}, "finish_reason": "stop"}
+            {"message": {"content": "Response", "role": "assistant"}, "finish_reason": "stop"},
         ],
         "usage": {"prompt_tokens": 5, "completion_tokens": 5, "total_tokens": 10},
     }
@@ -266,11 +266,11 @@ async def test_chat_with_tool_calls():
                                 "name": "get_weather",
                                 "arguments": '{"location": "San Francisco"}',
                             },
-                        }
+                        },
                     ],
                 },
                 "finish_reason": "tool_calls",
-            }
+            },
         ],
         "usage": {"prompt_tokens": 20, "completion_tokens": 15, "total_tokens": 35},
     }

@@ -5,21 +5,24 @@ Implements Document Ingestion (multi-format) and Hybrid Retrieval
 """
 
 from pathlib import Path
-from typing import List, Any
+from typing import Any
 
 from loguru import logger
 
 try:
-    from langchain_core.documents import Document
-    from langchain_community.document_loaders import UnstructuredFileLoader, DirectoryLoader
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
-    from langchain_community.retrievers import BM25Retriever
-    from langchain_chroma import Chroma
-    from langchain_openai import OpenAIEmbeddings
     from langchain.retrievers import ContextualCompressionRetriever
     from langchain.retrievers.document_compressors import CrossEncoderReranker
-    from langchain_community.cross_encoders import HuggingFaceCrossEncoder
     from langchain.retrievers.ensemble import EnsembleRetriever
+    from langchain_chroma import Chroma
+    from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+    from langchain_community.document_loaders import (
+        DirectoryLoader,
+        UnstructuredFileLoader,
+    )
+    from langchain_community.retrievers import BM25Retriever
+    from langchain_core.documents import Document
+    from langchain_openai import OpenAIEmbeddings
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
 except ImportError as e:
     logger.warning(f"RAG dependencies missing. Install with `pip install amberclaw[docs,vectordb]`. {e}")
     Document = None  # type: ignore
@@ -32,7 +35,7 @@ class DocumentIngestor:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
-    def load_and_split(self, path: Path) -> List["Document"]:
+    def load_and_split(self, path: Path) -> list["Document"]:
         if Document is None:
             raise ImportError("LangChain not installed")
 
@@ -47,7 +50,7 @@ class DocumentIngestor:
 
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
-            chunk_overlap=self.chunk_overlap
+            chunk_overlap=self.chunk_overlap,
         )
         return splitter.split_documents(docs)
 
@@ -67,14 +70,14 @@ class HybridRetriever:
         self.vector_store = Chroma(
             collection_name=self.collection_name,
             persist_directory=str(self.db_dir),
-            embedding_function=self.embeddings
+            embedding_function=self.embeddings,
         )
 
         # Local BM25 index might need separate persistence, simplified here for demo
         from typing import Any
         self.bm25_retriever: Any = None
 
-    def ingest(self, docs: List["Document"]) -> None:
+    def ingest(self, docs: list["Document"]) -> None:
         """Add documents to the retriever."""
         if not docs:
             return
@@ -96,7 +99,7 @@ class HybridRetriever:
             vector_retriever = self.vector_store.as_retriever(search_kwargs={"k": top_k * 2})
             base_retriever = EnsembleRetriever(
                 retrievers=[self.bm25_retriever, vector_retriever],
-                weights=[0.3, 0.7]
+                weights=[0.3, 0.7],
             )
 
         try:
@@ -104,7 +107,7 @@ class HybridRetriever:
             compressor = CrossEncoderReranker(model=model, top_n=top_k)
             return ContextualCompressionRetriever(
                 base_compressor=compressor,
-                base_retriever=base_retriever
+                base_retriever=base_retriever,
             )
         except Exception as e:
             logger.error(f"Failed to load reranker: {e}. Falling back to base retriever.")

@@ -7,12 +7,12 @@ Integrated with Mem0 for long-term fact extraction and session management.
 from __future__ import annotations
 
 import json
-import time
 import os
+import time
 from pathlib import Path
-from typing import Any, Optional
-from cryptography.fernet import Fernet
+from typing import Any
 
+from cryptography.fernet import Fernet
 from loguru import logger
 from pydantic import BaseModel, Field
 
@@ -79,7 +79,7 @@ class AssistantTool(PydanticTool):
         ext = ".json.enc" if os.environ.get("AMBERCLAW_HISTORY_KEY") else ".json"
         return self._store_dir / f"{safe}{ext}"
 
-    def _get_fernet(self) -> Optional[Fernet]:
+    def _get_fernet(self) -> Fernet | None:
         key = os.environ.get("AMBERCLAW_HISTORY_KEY")
         if not key:
             return None

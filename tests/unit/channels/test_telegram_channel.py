@@ -171,7 +171,7 @@ def test_telegram_group_policy_defaults_to_mention() -> None:
 
 def test_is_allowed_accepts_legacy_telegram_id_username_formats() -> None:
     channel = TelegramChannel(
-        TelegramConfig(allow_from=["12345", "alice", "67890|bob"]), MessageBus()
+        TelegramConfig(allow_from=["12345", "alice", "67890|bob"]), MessageBus(),
     )
 
     assert channel.is_allowed("12345|carol") is True
@@ -198,7 +198,7 @@ async def test_send_progress_keeps_message_in_topic() -> None:
             chat_id="123",
             content="hello",
             metadata={"_progress": True, "message_thread_id": 42},
-        )
+        ),
     )
 
     assert channel._app.bot.sent_messages[0]["message_thread_id"] == 42
@@ -217,7 +217,7 @@ async def test_send_reply_infers_topic_from_message_id_cache() -> None:
             chat_id="123",
             content="hello",
             metadata={"message_id": 10},
-        )
+        ),
     )
 
     assert channel._app.bot.sent_messages[0]["message_thread_id"] == 42
@@ -264,10 +264,10 @@ async def test_group_policy_mention_accepts_text_mention_and_caches_bot_identity
 
     mention = SimpleNamespace(type="mention", offset=0, length=13)
     await channel._on_message(
-        _make_telegram_update(text="@amberclaw_test hi", entities=[mention]), None
+        _make_telegram_update(text="@amberclaw_test hi", entities=[mention]), None,
     )
     await channel._on_message(
-        _make_telegram_update(text="@amberclaw_test again", entities=[mention]), None
+        _make_telegram_update(text="@amberclaw_test again", entities=[mention]), None,
     )
 
     assert len(handled) == 2

@@ -175,7 +175,7 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
     ) -> list[dict[str, Any]]:
         """Add a tool result to the message list."""
         messages.append(
-            {"role": "tool", "tool_call_id": tool_call_id, "name": tool_name, "content": result}
+            {"role": "tool", "tool_call_id": tool_call_id, "name": tool_name, "content": result},
         )
         return messages
 

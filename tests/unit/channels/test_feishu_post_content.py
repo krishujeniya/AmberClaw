@@ -10,10 +10,10 @@ def test_extract_post_content_supports_post_wrapper_shape() -> None:
                     [
                         {"tag": "text", "text": "完成"},
                         {"tag": "img", "image_key": "img_1"},
-                    ]
+                    ],
                 ],
-            }
-        }
+            },
+        },
     }
 
     text, image_keys = _extract_post_content(payload)
@@ -30,7 +30,7 @@ def test_extract_post_content_keeps_direct_shape_behavior() -> None:
                 {"tag": "text", "text": "report"},
                 {"tag": "img", "image_key": "img_a"},
                 {"tag": "img", "image_key": "img_b"},
-            ]
+            ],
         ],
     }
 

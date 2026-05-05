@@ -1,18 +1,19 @@
-import sqlite3
 import json
-from pathlib import Path
+import sqlite3
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from pathlib import Path
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
 class KnowledgeEntry(BaseModel):
     """A piece of stored knowledge."""
 
-    id: Optional[int] = None
+    id: int | None = None
     category: str
     content: str
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
 
 
@@ -58,7 +59,7 @@ class KnowledgeStore:
                 END;
             """)
 
-    def add(self, category: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> int:
+    def add(self, category: str, content: str, metadata: dict[str, Any] | None = None) -> int:
         """Add a new knowledge entry."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(
@@ -67,7 +68,7 @@ class KnowledgeStore:
             )
             return int(cursor.lastrowid or 0)
 
-    def search(self, query: str, limit: int = 5) -> List[KnowledgeEntry]:
+    def search(self, query: str, limit: int = 5) -> list[KnowledgeEntry]:
         """Search knowledge base using FTS."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
@@ -94,7 +95,7 @@ class KnowledgeStore:
                 for row in cursor.fetchall()
             ]
 
-    def list_categories(self) -> List[str]:
+    def list_categories(self) -> list[str]:
         """List all distinctive categories."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute("SELECT DISTINCT category FROM knowledge")

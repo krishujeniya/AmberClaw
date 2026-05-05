@@ -154,7 +154,7 @@ class ChannelManager:
             if getattr(ch.config, "allow_from", None) == []:
                 raise SystemExit(
                     f'Error: "{name}" has empty allowFrom (denies all). '
-                    f'Set ["*"] to allow everyone, or add specific user IDs.'
+                    f'Set ["*"] to allow everyone, or add specific user IDs.',
                 )
 
     async def _start_channel(self, name: str, channel: BaseChannel) -> None:
@@ -228,7 +228,7 @@ class ChannelManager:
                 else:
                     logger.warning("Unknown channel: {}", msg.channel)
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 continue
             except asyncio.CancelledError:
                 break

@@ -1,9 +1,10 @@
 """Base class for agent tools."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Type, TypeVar
-from pydantic import BaseModel
+from typing import Any, TypeVar
+
 from langchain_core.tools import BaseTool
+from pydantic import BaseModel
 
 
 class Tool(ABC):
@@ -138,7 +139,7 @@ class Tool(ABC):
         return self._validate(params, {**schema, "type": "object"}, "")
 
     def _validate(self, val: Any, schema: dict[str, Any], path: str) -> list[str]:
-        from typing import Iterable, Mapping
+        from collections.abc import Iterable, Mapping
 
         t, label = schema.get("type"), path or "parameter"
         if t == "integer" and (not isinstance(val, int) or isinstance(val, bool)):
@@ -176,7 +177,7 @@ class Tool(ABC):
         if t == "array" and "items" in schema and isinstance(val, Iterable):
             for i, item in enumerate(val):
                 errors.extend(
-                    self._validate(item, schema["items"], f"{path}[{i}]" if path else f"[{i}]")
+                    self._validate(item, schema["items"], f"{path}[{i}]" if path else f"[{i}]"),
                 )
         return errors
 
@@ -187,7 +188,7 @@ class Tool(ABC):
         class WrappedTool(BaseTool):
             name: str = outer_self.name
             description: str = outer_self.description
-            args_schema: Type[BaseModel] | None = getattr(outer_self, "args_schema", None)
+            args_schema: type[BaseModel] | None = getattr(outer_self, "args_schema", None)
 
             async def _arun(self, *args: Any, **kwargs: Any) -> str:
                 return await outer_self.execute(**kwargs)

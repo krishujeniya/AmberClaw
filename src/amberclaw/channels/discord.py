@@ -119,7 +119,7 @@ class DiscordChannel(BaseChannel):
             await self._stop_typing(msg.chat_id)
 
     async def _send_payload(
-        self, url: str, headers: dict[str, str], payload: dict[str, Any]
+        self, url: str, headers: dict[str, str], payload: dict[str, Any],
     ) -> bool:
         """Send a single Discord API payload with retry on rate-limit. Returns True on success."""
         for attempt in range(3):
@@ -346,7 +346,7 @@ class DiscordChannel(BaseChannel):
                 if f"<@{self._bot_user_id}>" in content or f"<@!{self._bot_user_id}>" in content:
                     return True
             logger.debug(
-                "Discord message in {} ignored (bot not mentioned)", payload.get("channel_id")
+                "Discord message in {} ignored (bot not mentioned)", payload.get("channel_id"),
             )
             return False
 

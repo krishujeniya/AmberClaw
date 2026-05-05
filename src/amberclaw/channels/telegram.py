@@ -9,7 +9,13 @@ import unicodedata
 
 from loguru import logger
 from telegram import BotCommand, ReplyParameters, Update
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 from telegram.request import HTTPXRequest
 
 from amberclaw.bus.events import OutboundMessage
@@ -243,7 +249,7 @@ class TelegramChannel(BaseChannel):
                 )
                 & ~filters.COMMAND,
                 self._on_message,
-            )
+            ),
         )
 
         logger.info("Starting Telegram bot (polling mode)...")
@@ -333,7 +339,7 @@ class TelegramChannel(BaseChannel):
         if self.config.reply_to_message:
             if reply_to_message_id:
                 reply_params = ReplyParameters(
-                    message_id=reply_to_message_id, allow_sending_without_reply=True
+                    message_id=reply_to_message_id, allow_sending_without_reply=True,
                 )
 
         # Send media files
@@ -446,7 +452,7 @@ class TelegramChannel(BaseChannel):
         await update.message.reply_text(
             f"👋 Hi {user.first_name}! I'm amberclaw.\n\n"
             "Send me a message and I'll respond!\n"
-            "Type /help to see available commands."
+            "Type /help to see available commands.",
         )
 
     async def _on_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -457,7 +463,7 @@ class TelegramChannel(BaseChannel):
             "🐈 amberclaw commands:\n"
             "/new — Start a new conversation\n"
             "/stop — Stop the current task\n"
-            "/help — Show available commands"
+            "/help — Show available commands",
         )
 
     @staticmethod
@@ -638,7 +644,9 @@ class TelegramChannel(BaseChannel):
 
                 # Handle voice transcription
                 if media_type == "voice" or media_type == "audio":
-                    from amberclaw.providers.transcription import GroqTranscriptionProvider
+                    from amberclaw.providers.transcription import (
+                        GroqTranscriptionProvider,
+                    )
 
                     transcriber = GroqTranscriptionProvider(api_key=self.groq_api_key)
                     transcription = await transcriber.transcribe(file_path)

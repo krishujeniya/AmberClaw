@@ -38,7 +38,7 @@ def _make_tool_response(history_entry, memory_update):
                     "history_entry": history_entry,
                     "memory_update": memory_update,
                 },
-            )
+            ),
         ],
     )
 
@@ -71,7 +71,7 @@ class TestMemoryConsolidationTypeHandling:
             return_value=_make_tool_response(
                 history_entry="[2026-01-01] User discussed testing.",
                 memory_update="# Memory\nUser likes testing.",
-            )
+            ),
         )
         session = _make_session(message_count=60)
 
@@ -91,7 +91,7 @@ class TestMemoryConsolidationTypeHandling:
             return_value=_make_tool_response(
                 history_entry={"timestamp": "2026-01-01", "summary": "User discussed testing."},
                 memory_update={"facts": ["User likes testing"], "topics": ["testing"]},
-            )
+            ),
         )
         session = _make_session(message_count=60)
 
@@ -124,9 +124,9 @@ class TestMemoryConsolidationTypeHandling:
                         {
                             "history_entry": "[2026-01-01] User discussed testing.",
                             "memory_update": "# Memory\nUser likes testing.",
-                        }
+                        },
                     ),
-                )
+                ),
             ],
         )
         provider.chat_with_retry = AsyncMock(return_value=response)
@@ -143,7 +143,7 @@ class TestMemoryConsolidationTypeHandling:
         store = MemoryStore(tmp_path)
         provider = AsyncMock()
         provider.chat_with_retry = AsyncMock(
-            return_value=LLMResponse(content="I summarized the conversation.", tool_calls=[])
+            return_value=LLMResponse(content="I summarized the conversation.", tool_calls=[]),
         )
         session = _make_session(message_count=60)
 
@@ -181,9 +181,9 @@ class TestMemoryConsolidationTypeHandling:
                         {
                             "history_entry": "[2026-01-01] User discussed testing.",
                             "memory_update": "# Memory\nUser likes testing.",
-                        }
+                        },
                     ],
-                )
+                ),
             ],
         )
         provider.chat_with_retry = AsyncMock(return_value=response)
@@ -208,7 +208,7 @@ class TestMemoryConsolidationTypeHandling:
                     id="call_1",
                     name="save_memory",
                     arguments=[],
-                )
+                ),
             ],
         )
         provider.chat_with_retry = AsyncMock(return_value=response)
@@ -231,7 +231,7 @@ class TestMemoryConsolidationTypeHandling:
                     id="call_1",
                     name="save_memory",
                     arguments=["string", "content"],
-                )
+                ),
             ],
         )
         provider.chat_with_retry = AsyncMock(return_value=response)
@@ -251,7 +251,7 @@ class TestMemoryConsolidationTypeHandling:
                     history_entry="[2026-01-01] User discussed testing.",
                     memory_update="# Memory\nUser likes testing.",
                 ),
-            ]
+            ],
         )
         session = _make_session(message_count=60)
         delays: list[int] = []

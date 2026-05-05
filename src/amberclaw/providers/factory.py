@@ -4,7 +4,6 @@ import typer
 from rich.console import Console
 
 from amberclaw.config.schema import Config
-
 from amberclaw.providers.base import LLMProvider
 
 console = Console()
@@ -39,7 +38,7 @@ def make_provider(config: Config) -> LLMProvider:
         if not p or not p.api_key or not p.api_base:
             console.print("[red]Error: Azure OpenAI requires api_key and api_base.[/red]")
             console.print(
-                "Set them in ~/.amberclaw/config.json under providers.azure_openai section"
+                "Set them in ~/.amberclaw/config.json under providers.azure_openai section",
             )
             console.print("Use the model field to specify the deployment name.")
             raise typer.Exit(1)

@@ -2,11 +2,13 @@
 AmberClaw Governance: Ticket System
 """
 import asyncio
-from typing import Dict, Any, Optional, List
-from loguru import logger
-from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
+from typing import Any
+
+from loguru import logger
+from pydantic import BaseModel, Field
+
 
 class TicketStatus(str, Enum):
     PENDING = "pending"
@@ -19,20 +21,20 @@ class Ticket(BaseModel):
     id: str
     requester_id: str
     description: str
-    context: Dict[str, Any] = Field(default_factory=dict)
+    context: dict[str, Any] = Field(default_factory=dict)
     status: TicketStatus = TicketStatus.PENDING
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    resolved_at: Optional[datetime] = None
-    reviewer_id: Optional[str] = None
+    resolved_at: datetime | None = None
+    reviewer_id: str | None = None
 
 class TicketSystem:
     """Manages tickets for human-in-the-loop approvals."""
     
     def __init__(self):
-        self._tickets: Dict[str, Ticket] = {}
-        self._futures: Dict[str, asyncio.Future] = {}
+        self._tickets: dict[str, Ticket] = {}
+        self._futures: dict[str, asyncio.Future] = {}
 
-    async def create_ticket(self, requester_id: str, description: str, context: Dict[str, Any]) -> Ticket:
+    async def create_ticket(self, requester_id: str, description: str, context: dict[str, Any]) -> Ticket:
         """Create a new ticket and wait for approval."""
         ticket_id = f"tix_{len(self._tickets) + 1}"
         ticket = Ticket(id=ticket_id, requester_id=requester_id, description=description, context=context)
@@ -68,7 +70,7 @@ class TicketSystem:
         logger.info(f"Ticket {ticket_id} resolved as {status} by {reviewer_id}")
         return True
 
-    def get_pending_tickets(self) -> List[Ticket]:
+    def get_pending_tickets(self) -> list[Ticket]:
         """List all pending tickets."""
         return [t for t in self._tickets.values() if t.status == TicketStatus.PENDING]
 

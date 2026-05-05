@@ -1,8 +1,8 @@
-import logging
 import asyncio
+import logging
 import uuid
-from typing import Optional, Dict
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +21,9 @@ class CodeSandbox:
     def __init__(self, use_docker: bool = True, default_timeout_sec: int = 30):
         self.use_docker = use_docker
         self.default_timeout_sec = default_timeout_sec
-        self._active_containers: Dict[str, str] = {}
+        self._active_containers: dict[str, str] = {}
 
-    async def execute_python(self, code: str, env_vars: Optional[Dict[str, str]] = None) -> ExecutionResult:
+    async def execute_python(self, code: str, env_vars: dict[str, str] | None = None) -> ExecutionResult:
         """
         Executes arbitrary Python code in an isolated sandbox.
         """
@@ -40,29 +40,29 @@ class CodeSandbox:
                 "python", "-c", code,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                env=env_vars or {}
+                env=env_vars or {},
             )
             
             try:
                 stdout, stderr = await asyncio.wait_for(
                     process.communicate(), 
-                    timeout=self.default_timeout_sec
+                    timeout=self.default_timeout_sec,
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 process.kill()
                 stdout, stderr = await process.communicate()
                 return ExecutionResult(
                     stdout=stdout.decode(),
                     stderr=stderr.decode() + f"\nTimeout Error: Exceeded {self.default_timeout_sec} seconds.",
                     exit_code=-1,
-                    execution_time_ms=self.default_timeout_sec * 1000
+                    execution_time_ms=self.default_timeout_sec * 1000,
                 )
 
             return ExecutionResult(
                 stdout=stdout.decode() if stdout else "",
                 stderr=stderr.decode() if stderr else "",
                 exit_code=process.returncode,
-                execution_time_ms=0.0 # Placeholder
+                execution_time_ms=0.0, # Placeholder
             )
             
         except Exception as e:
@@ -78,7 +78,7 @@ class CodeSandbox:
         process = await asyncio.create_subprocess_shell(
             command,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
         )
         
         stdout, stderr = await process.communicate()
@@ -86,5 +86,5 @@ class CodeSandbox:
             stdout=stdout.decode() if stdout else "",
             stderr=stderr.decode() if stderr else "",
             exit_code=process.returncode,
-            execution_time_ms=0.0
+            execution_time_ms=0.0,
         )

@@ -331,7 +331,7 @@ class MochatChannel(BaseChannel):
             return
 
         is_panel = (target.is_panel or target.id in self._panel_set) and not target.id.startswith(
-            "session_"
+            "session_",
         )
         try:
             if is_panel:
@@ -345,7 +345,7 @@ class MochatChannel(BaseChannel):
                 )
             else:
                 await self._api_send(
-                    "/api/claw/sessions/send", "sessionId", target.id, content, msg.reply_to
+                    "/api/claw/sessions/send", "sessionId", target.id, content, msg.reply_to,
                 )
         except Exception as e:
             logger.error("Failed to send Mochat message: {}", e)
@@ -611,7 +611,7 @@ class MochatChannel(BaseChannel):
             t = self._session_fallback_tasks.get(sid)
             if not t or t.done():
                 self._session_fallback_tasks[sid] = asyncio.create_task(
-                    self._session_watch_worker(sid)
+                    self._session_watch_worker(sid),
                 )
         for pid in sorted(self._panel_set):
             t = self._panel_fallback_tasks.get(pid)
@@ -717,7 +717,7 @@ class MochatChannel(BaseChannel):
                     await self._process_inbound_event(target_id, event, target_kind)
 
     async def _process_inbound_event(
-        self, target_id: str, event: dict[str, Any], target_kind: str
+        self, target_id: str, event: dict[str, Any], target_kind: str,
     ) -> None:
         payload = event.get("payload")
         if not isinstance(payload, dict):
@@ -766,7 +766,7 @@ class MochatChannel(BaseChannel):
             delay_key = seen_key
             if was_mentioned:
                 await self._flush_delayed_entries(
-                    delay_key, target_id, target_kind, "mention", entry
+                    delay_key, target_id, target_kind, "mention", entry,
                 )
             else:
                 await self._enqueue_delayed_entry(delay_key, target_id, target_kind, entry)
@@ -788,7 +788,7 @@ class MochatChannel(BaseChannel):
         return False
 
     async def _enqueue_delayed_entry(
-        self, key: str, target_id: str, target_kind: str, entry: MochatBufferedEntry
+        self, key: str, target_id: str, target_kind: str, entry: MochatBufferedEntry,
     ) -> None:
         state = self._delay_states.setdefault(key, DelayState())
         async with state.lock:

@@ -1,4 +1,3 @@
-import pytest
 
 def get_system_prompt() -> str:
     return "You are AmberClaw, an AI assistant."

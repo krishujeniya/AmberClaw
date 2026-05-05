@@ -1,12 +1,11 @@
 """DataAgent SQL Database tool — natural language SQL queries."""
 
 import asyncio
-
 from typing import Any
-from pydantic import BaseModel, Field
 
 # pandas imported lazily in run
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
 
@@ -15,10 +14,10 @@ class SQLArgs(BaseModel):
     """Arguments for the data_sql_query tool."""
 
     connection_string: str = Field(
-        ..., description="SQLAlchemy connection string (e.g. 'sqlite:///data.db')."
+        ..., description="SQLAlchemy connection string (e.g. 'sqlite:///data.db').",
     )
     instructions: str = Field(
-        ..., description="What to query (e.g. 'List all customers with >100 orders')."
+        ..., description="What to query (e.g. 'List all customers with >100 orders').",
     )
 
 
@@ -47,6 +46,7 @@ class DataSQLTool(PydanticTool):
     async def run(self, args: SQLArgs) -> str:
         try:
             import sqlalchemy as sql
+
             from amberclaw.data.agents import SQLDatabaseAgent
 
             engine = sql.create_engine(args.connection_string)
@@ -60,7 +60,7 @@ class DataSQLTool(PydanticTool):
             )
             try:
                 await asyncio.to_thread(
-                    agent.invoke_agent, user_instructions=args.instructions, max_retries=2
+                    agent.invoke_agent, user_instructions=args.instructions, max_retries=2,
                 )
 
                 data = agent.get_data_sql()

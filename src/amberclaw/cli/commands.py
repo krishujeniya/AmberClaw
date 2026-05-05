@@ -5,8 +5,9 @@ import os
 import select
 import signal
 import sys
-from typing import Any, Callable, Iterator, cast, TYPE_CHECKING
+from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from rich.live import Live
@@ -216,7 +217,7 @@ class TokenStreamer:
         self.console = console
         self.render_markdown = render_markdown
         self.content = ""
-        self.live: "Live | None" = None
+        self.live: Live | None = None
         self.header_printed = False
 
     async def on_token(self, token: str) -> None:
@@ -294,7 +295,7 @@ def onboard() -> None:
         console.print(f"[yellow]Config already exists at {config_path}[/yellow]")
         console.print("  [bold]y[/bold] = overwrite with defaults (existing values will be lost)")
         console.print(
-            "  [bold]N[/bold] = refresh config, keeping existing values and adding new fields"
+            "  [bold]N[/bold] = refresh config, keeping existing values and adding new fields",
         )
         if typer.confirm("Overwrite?"):
             config = Config()
@@ -304,7 +305,7 @@ def onboard() -> None:
             config = load_config()
             save_config(config)
             console.print(
-                f"[green]✓[/green] Config refreshed at {config_path} (existing values preserved)"
+                f"[green]✓[/green] Config refreshed at {config_path} (existing values preserved)",
             )
     else:
         save_config(Config())
@@ -325,7 +326,7 @@ def onboard() -> None:
     console.print("     Get one at: https://openrouter.ai/keys")
     console.print('  2. Chat: [cyan]amberclaw agent -m "Hello!"[/cyan]')
     console.print(
-        "\n[dim]Want Telegram/WhatsApp? See: https://github.com/krishujeniya/AmberClaw#-chat-apps[/dim]"
+        "\n[dim]Want Telegram/WhatsApp? See: https://github.com/krishujeniya/AmberClaw#-chat-apps[/dim]",
     )
 
 
@@ -344,12 +345,12 @@ def gateway(
     """Start the AmberClaw gateway."""
     from amberclaw.agent.loop import AgentLoop
     from amberclaw.bus.queue import MessageBus
+    from amberclaw.channels.manager import ChannelManager
     from amberclaw.config.paths import get_cron_dir
+    from amberclaw.cron import HeartbeatService
     from amberclaw.cron.service import CronService
     from amberclaw.cron.types import CronJob
     from amberclaw.session.manager import SessionManager
-    from amberclaw.channels.manager import ChannelManager
-    from amberclaw.cron import HeartbeatService
 
     if verbose:
         import logging
@@ -433,8 +434,8 @@ def gateway(
 
             await bus.publish_outbound(
                 OutboundMessage(
-                    channel=job.payload.channel or "cli", chat_id=job.payload.to, content=response
-                )
+                    channel=job.payload.channel or "cli", chat_id=job.payload.to, content=response,
+                ),
             )
         return response
 
@@ -483,7 +484,7 @@ def gateway(
         if channel == "cli":
             return  # No external channel available to deliver to
         await bus.publish_outbound(
-            OutboundMessage(channel=channel, chat_id=chat_id, content=response)
+            OutboundMessage(channel=channel, chat_id=chat_id, content=response),
         )
 
     hb_cfg = cfg.gateway.heartbeat
@@ -540,15 +541,16 @@ def agent(
     workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
     config: str | None = typer.Option(None, "--config", "-c", help="Config file path"),
     markdown: bool = typer.Option(
-        True, "--markdown/--no-markdown", help="Render assistant output as Markdown"
+        True, "--markdown/--no-markdown", help="Render assistant output as Markdown",
     ),
     logs: bool = typer.Option(
-        False, "--logs/--no-logs", help="Show amberclaw runtime logs during chat"
+        False, "--logs/--no-logs", help="Show amberclaw runtime logs during chat",
     ),
 ) -> None:
     """Interact with the agent directly."""
-    from loguru import logger
     from contextlib import contextmanager
+
+    from loguru import logger
 
     from amberclaw.agent.loop import AgentLoop
     from amberclaw.bus.queue import MessageBus
@@ -622,7 +624,7 @@ def agent(
             streamer = TokenStreamer(console, render_markdown=markdown)
             with _thinking_ctx():
                 response = await agent_loop.process_direct(
-                    message, session_id, on_progress=_cli_progress, on_token=streamer.on_token
+                    message, session_id, on_progress=_cli_progress, on_token=streamer.on_token,
                 )
             streamer.stop()
             if not streamer.content:
@@ -636,7 +638,7 @@ def agent(
 
         _init_prompt_session()
         console.print(
-            f"{__logo__} Interactive mode (type [bold]exit[/bold] or [bold]Ctrl+C[/bold] to quit)\n"
+            f"{__logo__} Interactive mode (type [bold]exit[/bold] or [bold]Ctrl+C[/bold] to quit)\n",
         )
 
         if ":" in session_id:
@@ -705,7 +707,7 @@ def agent(
                         elif msg.content:
                             console.print()
                             _print_agent_response(msg.content, render_markdown=markdown)
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         continue
                     except asyncio.CancelledError:
                         break
@@ -735,7 +737,7 @@ def agent(
                                 sender_id="user",
                                 chat_id=cli_chat_id,
                                 content=user_input,
-                            )
+                            ),
                         )
 
                         with _thinking_ctx() as status:
@@ -925,7 +927,7 @@ def channels_login() -> None:
 def council(
     query: str = typer.Argument(..., help="Question or task to put to the council."),
     models: list[str] = typer.Option(
-        [], "--model", "-m", help="Model IDs (repeat for each). Defaults to primary."
+        [], "--model", "-m", help="Model IDs (repeat for each). Defaults to primary.",
     ),
     depth: int = typer.Option(1, "--depth", "-d", min=1, max=3, help="Peer-ranking rounds (1-3)."),
     workspace: str | None = typer.Option(None, "--workspace", "-w"),
@@ -933,7 +935,8 @@ def council(
 ) -> None:
     """Run a multi-model council vote on a question and synthesize the best answer."""
     import asyncio
-    from amberclaw.agent.tools.council import CouncilTool, CouncilArgs
+
+    from amberclaw.agent.tools.council import CouncilArgs, CouncilTool
 
     try:
         cfg = load_runtime_config(config, workspace)
@@ -949,7 +952,7 @@ def council(
     )
 
     console.print(
-        f"{__logo__} [bold cyan]Council[/bold cyan] — consulting {len(models) or 1} model(s)...\n"
+        f"{__logo__} [bold cyan]Council[/bold cyan] — consulting {len(models) or 1} model(s)...\n",
     )
 
     async def run() -> tuple[str, str]:
@@ -964,12 +967,11 @@ def council(
         from rich.markdown import Markdown
 
         console.print(Markdown(result))
-    else:
-        # result might contain footer meta that wasn't streamed
-        # extract meta (anything after ---)
-        if "---" in result:
-            meta = result.split("---")[-1]
-            console.print(f"\n---\n{meta.strip()}", style="dim")
+    # result might contain footer meta that wasn't streamed
+    # extract meta (anything after ---)
+    elif "---" in result:
+        meta = result.split("---")[-1]
+        console.print(f"\n---\n{meta.strip()}", style="dim")
 
 
 # ============================================================================
@@ -986,7 +988,8 @@ def mythos(
 ) -> None:
     """Apply multi-layer recursive reasoning to produce a deeply considered answer."""
     import asyncio
-    from amberclaw.agent.tools.mythos import MythosTool, MythosArgs
+
+    from amberclaw.agent.tools.mythos import MythosArgs, MythosTool
 
     try:
         cfg = load_runtime_config(config, workspace)
@@ -1015,10 +1018,9 @@ def mythos(
         from rich.markdown import Markdown
 
         console.print(Markdown(result))
-    else:
-        if "---" in result:
-            meta = result.split("---")[-1]
-            console.print(f"\n---\n{meta.strip()}", style="dim")
+    elif "---" in result:
+        meta = result.split("---")[-1]
+        console.print(f"\n---\n{meta.strip()}", style="dim")
 
 
 # ============================================================================
@@ -1038,10 +1040,10 @@ def status() -> None:
     console.print(f"{__logo__} amberclaw Status\n")
 
     console.print(
-        f"Config: {config_path} {'[green]✓[/green]' if config_path.exists() else '[red]✗[/red]'}"
+        f"Config: {config_path} {'[green]✓[/green]' if config_path.exists() else '[red]✗[/red]'}",
     )
     console.print(
-        f"Workspace: {workspace} {'[green]✓[/green]' if workspace.exists() else '[red]✗[/red]'}"
+        f"Workspace: {workspace} {'[green]✓[/green]' if workspace.exists() else '[red]✗[/red]'}",
     )
 
     if config_path.exists():
@@ -1065,7 +1067,7 @@ def status() -> None:
             else:
                 has_key = bool(p.api_key)
                 console.print(
-                    f"{spec.label}: {'[green]✓[/green]' if has_key else '[dim]not set[/dim]'}"
+                    f"{spec.label}: {'[green]✓[/green]' if has_key else '[dim]not set[/dim]'}",
                 )
 
 
@@ -1091,7 +1093,7 @@ def _register_login(name: str) -> Callable[[Callable[[], None]], Callable[[], No
 @provider_app.command("login")
 def provider_login(
     provider: str = typer.Argument(
-        ..., help="OAuth provider (e.g. 'openai-codex', 'github-copilot')"
+        ..., help="OAuth provider (e.g. 'openai-codex', 'github-copilot')",
     ),
 ) -> None:
     """Authenticate with an OAuth provider."""
@@ -1133,7 +1135,7 @@ def _login_openai_codex() -> None:
             console.print("[red]✗ Authentication failed[/red]")
             raise typer.Exit(1)
         console.print(
-            f"[green]✓ Authenticated with OpenAI Codex[/green]  [dim]{token.account_id}[/dim]"
+            f"[green]✓ Authenticated with OpenAI Codex[/green]  [dim]{token.account_id}[/dim]",
         )
     except ImportError:
         console.print("[red]oauth_cli_kit not installed. Run: pip install oauth-cli-kit[/red]")
@@ -1169,8 +1171,9 @@ def usage(
     all_time: bool = typer.Option(False, "--all", "-a", help="Show all-time usage"),
 ) -> None:
     """Show token usage and cost monitoring dashboard."""
-    from amberclaw.utils.cost_tracker import get_total_costs
     from rich.table import Table
+
+    from amberclaw.utils.cost_tracker import get_total_costs
 
     costs = get_total_costs(days=None if all_time else days)
 
@@ -1228,9 +1231,11 @@ def ingest(
 ) -> None:
     """Ingest documents into the AmberClaw knowledge base."""
     from pathlib import Path
+
+    from loguru import logger
+
     from amberclaw.config.loader import load_config
     from amberclaw.memory.rag_pipeline import DocumentIngestor, HybridRetriever
-    from loguru import logger
 
     cfg = load_config()
     db_dir = cfg.workspace_path / "mem0_db"

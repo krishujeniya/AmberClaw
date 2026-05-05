@@ -32,7 +32,7 @@ try:
     from nio.exceptions import EncryptionError
 except ImportError as e:
     raise ImportError(
-        "Matrix dependencies not installed. Run: pip install amberclaw-ai[matrix]"
+        "Matrix dependencies not installed. Run: pip install amberclaw-ai[matrix]",
     ) from e
 
 from amberclaw.bus.events import OutboundMessage
@@ -209,7 +209,7 @@ class MatrixChannel(BaseChannel):
             user=self.config.user_id,
             store_path=store_path,
             config=AsyncClientConfig(
-                store_sync_tokens=True, encryption_enabled=self.config.e2ee_enabled
+                store_sync_tokens=True, encryption_enabled=self.config.e2ee_enabled,
             ),
         )
         self.client.user_id = self.config.user_id
@@ -242,9 +242,9 @@ class MatrixChannel(BaseChannel):
         if self._sync_task:
             try:
                 await asyncio.wait_for(
-                    asyncio.shield(self._sync_task), timeout=self.config.sync_stop_grace_seconds
+                    asyncio.shield(self._sync_task), timeout=self.config.sync_stop_grace_seconds,
                 )
-            except (asyncio.TimeoutError, asyncio.CancelledError):
+            except (TimeoutError, asyncio.CancelledError):
                 self._sync_task.cancel()
                 try:
                     await self._sync_task
@@ -290,7 +290,7 @@ class MatrixChannel(BaseChannel):
         encryption_info: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Build Matrix content payload for an uploaded file/image/audio/video."""
-        prefix = mime.split("/")[0]
+        prefix = mime.split("/", maxsplit=1)[0]
         msgtype = {"image": "m.image", "audio": "m.audio", "video": "m.video"}.get(prefix, "m.file")
         content: dict[str, Any] = {
             "msgtype": msgtype,
@@ -480,7 +480,7 @@ class MatrixChannel(BaseChannel):
             return
         try:
             response = await self.client.room_typing(
-                room_id=room_id, typing_state=typing, timeout=TYPING_NOTICE_TIMEOUT_MS
+                room_id=room_id, typing_state=typing, timeout=TYPING_NOTICE_TIMEOUT_MS,
             )
             if isinstance(response, RoomTypingError):
                 logger.debug("Matrix typing failed for {}: {}", room_id, response)
@@ -634,7 +634,7 @@ class MatrixChannel(BaseChannel):
         return _DEFAULT_ATTACH_NAME if attachment_type == "file" else attachment_type
 
     def _build_attachment_path(
-        self, event: MatrixMediaEvent, attachment_type: str, filename: str, mime: str | None
+        self, event: MatrixMediaEvent, attachment_type: str, filename: str, mime: str | None,
     ) -> Path:
         safe_name = safe_filename(Path(filename).name) or _DEFAULT_ATTACH_NAME
         suffix = Path(safe_name).suffix

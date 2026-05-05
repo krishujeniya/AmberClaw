@@ -2,8 +2,9 @@
 AmberClaw OS Initialization Logic
 """
 from loguru import logger
+
+from amberclaw.core.events import Event, bus
 from amberclaw.tools.toolsets import register_default_tools
-from amberclaw.core.events import bus, Event
 
 
 async def initialize_os():

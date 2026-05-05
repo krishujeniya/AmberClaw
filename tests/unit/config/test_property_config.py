@@ -1,5 +1,6 @@
-import pytest
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
+
 
 # We'll use a dummy config schema for property testing
 class DummyConfig:
