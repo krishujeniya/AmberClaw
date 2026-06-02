@@ -1,0 +1,25 @@
+# AmberClaw Egress Firewall Network Policy Configuration
+# Mode: Deny-by-Default. Only listed hosts and ports are allowed.
+
+version: "1.0"
+default_action: deny
+
+# Whitelist of allowed hostname/domain patterns
+allowed_hosts:
+  # Standard AI Provider APIs
+  - "*.openai.com"
+  - "*.anthropic.com"
+  - "*.google.com"
+  - "*.googleapis.com"
+  - "api.tavily.com"
+  
+  # Package & OS updates
+  - "github.com"
+  - "api.github.com"
+  - "pypi.org"
+  - "files.pythonhosted.org"
+
+# Whitelist of allowed connection ports
+allowed_ports:
+  - 80
+  - 443

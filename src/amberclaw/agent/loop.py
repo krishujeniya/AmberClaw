@@ -466,8 +466,13 @@ class AgentLoop:
         final_state = inputs
         last_msg_count = len(lc_msgs)
 
-        async for state in self._graph.runnable.astream(cast(AgentState, inputs), stream_mode="values"):
-            final_state = state
+        from amberclaw.security import NetworkPolicy, egress_sandbox
+        policy_path = self.workspace / "egress_policy.yaml"
+        policy = NetworkPolicy.load_from_yaml(policy_path)
+
+        with egress_sandbox(policy):
+            async for state in self._graph.runnable.astream(cast(AgentState, inputs), stream_mode="values"):
+                final_state = state
             if on_progress:
                 current_messages = state.get("messages", [])
                 if len(current_messages) > last_msg_count:
