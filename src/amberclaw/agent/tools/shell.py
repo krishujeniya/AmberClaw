@@ -75,6 +75,16 @@ class ExecTool(PydanticTool):
         if self.path_append:
             env["PATH"] = env.get("PATH", "") + os.pathsep + self.path_append
 
+        preexec = None
+        if self.restrict_to_workspace:
+            import platform
+            if platform.system() == "Linux":
+                from amberclaw.security.landlock import apply_sandbox
+                workspace_dir = os.path.abspath(cwd)
+                def _sandbox_preexec():
+                    apply_sandbox(workspace_dir)
+                preexec = _sandbox_preexec
+
         try:
             process = await asyncio.create_subprocess_shell(
                 args.command,
@@ -82,6 +92,7 @@ class ExecTool(PydanticTool):
                 stderr=asyncio.subprocess.PIPE,
                 cwd=cwd,
                 env=env,
+                preexec_fn=preexec,
             )
 
             try:

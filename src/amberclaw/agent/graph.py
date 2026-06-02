@@ -102,10 +102,13 @@ class AgentGraph:
             if isinstance(m, HumanMessage):
                 processed_msgs.append({"role": "user", "content": m.content})
             elif isinstance(m, AIMessage):
+                msg_content = m.content
+                if m.additional_kwargs.get("scratch_pad"):
+                    msg_content = f"<scratch_pad>\n{m.additional_kwargs['scratch_pad']}\n</scratch_pad>\n\n{msg_content}"
                 processed_msgs.append(
                     {
                         "role": "assistant",
-                        "content": m.content,
+                        "content": msg_content,
                         "tool_calls": m.additional_kwargs.get("tool_calls"),
                     },
                 )
@@ -123,7 +126,20 @@ class AgentGraph:
             **state["config"].get("llm_kwargs", {}),
         )
 
-        ai_msg = AIMessage(content=resp.content or "")
+        content = resp.content or ""
+        scratch_pad = None
+        if "<scratch_pad>" in content:
+            import re
+            match = re.search(r"<scratch_pad>(.*?)(?:</scratch_pad>|$)", content, flags=re.DOTALL)
+            if match:
+                scratch_pad = match.group(1).strip()
+                content = re.sub(r"<scratch_pad>.*?(?:</scratch_pad>|$)", "", content, flags=re.DOTALL).strip()
+                logger.info("🧠 [Scratchpad thoughts]:\n{}", scratch_pad)
+
+        ai_msg = AIMessage(content=content)
+        if scratch_pad:
+            ai_msg.additional_kwargs["scratch_pad"] = scratch_pad
+
         if resp.tool_calls:
             import json as _json
             lc_tool_calls = [

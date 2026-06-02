@@ -366,6 +366,12 @@ class DataAgentConfig(Base):
     log_path: str = "./logs"
 
 
+class SecurityConfig(Base):
+    """Security configuration."""
+
+    pii_redaction: bool = True
+
+
 class ToolsConfig(Base):
     """Tools configuration."""
 
@@ -387,6 +393,7 @@ class Config(BaseSettings):
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
     assistant: AssistantConfig = Field(default_factory=AssistantConfig)
     data: DataAgentConfig = Field(default_factory=DataAgentConfig)
+    security: SecurityConfig = Field(default_factory=SecurityConfig)
 
     @property
     def workspace_path(self) -> Path:
@@ -483,3 +490,14 @@ class Config(BaseSettings):
         return None
 
     model_config = SettingsConfigDict(env_prefix="AMBERCLAW_", env_nested_delimiter="__")
+
+
+# Global configuration singleton
+def _get_settings() -> Config:
+    try:
+        from amberclaw.config.loader import load_config
+        return load_config()
+    except Exception:
+        return Config()
+
+settings = _get_settings()

@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from prompt_toolkit.formatted_text import HTML
 
-from amberclaw.cli import commands
+from amberclaw.cli.commands import utils
 
 
 @pytest.fixture
@@ -12,8 +12,8 @@ def mock_prompt_session():
     mock_session = MagicMock()
     mock_session.prompt_async = AsyncMock()
     with (
-        patch("amberclaw.cli.commands._PROMPT_SESSION", mock_session),
-        patch("amberclaw.cli.commands.patch_stdout"),
+        patch("amberclaw.cli.commands.utils._PROMPT_SESSION", mock_session),
+        patch("amberclaw.cli.commands.utils.patch_stdout"),
     ):
         yield mock_session
 
@@ -23,7 +23,7 @@ async def test_read_interactive_input_async_returns_input(mock_prompt_session):
     """Test that _read_interactive_input_async returns the user input from prompt_session."""
     mock_prompt_session.prompt_async.return_value = "hello world"
 
-    result = await commands._read_interactive_input_async()
+    result = await utils._read_interactive_input_async()
 
     assert result == "hello world"
     mock_prompt_session.prompt_async.assert_called_once()
@@ -37,24 +37,24 @@ async def test_read_interactive_input_async_handles_eof(mock_prompt_session):
     mock_prompt_session.prompt_async.side_effect = EOFError()
 
     with pytest.raises(KeyboardInterrupt):
-        await commands._read_interactive_input_async()
+        await utils._read_interactive_input_async()
 
 
 def test_init_prompt_session_creates_session():
     """Test that _init_prompt_session initializes the global session."""
     # Ensure global is None before test
-    commands._PROMPT_SESSION = None
+    utils._PROMPT_SESSION = None
 
     with (
-        patch("amberclaw.cli.commands.PromptSession") as MockSession,
-        patch("amberclaw.cli.commands.FileHistory"),
+        patch("amberclaw.cli.commands.utils.PromptSession") as MockSession,
+        patch("amberclaw.cli.commands.utils.FileHistory"),
         patch("pathlib.Path.home") as mock_home,
     ):
         mock_home.return_value = MagicMock()
 
-        commands._init_prompt_session()
+        utils._init_prompt_session()
 
-        assert commands._PROMPT_SESSION is not None
+        assert utils._PROMPT_SESSION is not None
         MockSession.assert_called_once()
         _, kwargs = MockSession.call_args
         assert kwargs["multiline"] is False

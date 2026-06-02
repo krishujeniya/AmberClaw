@@ -8,10 +8,17 @@ from amberclaw.tools.reasoning import CouncilTool, MythosTool
 from amberclaw.tools.registry import BaseTool, registry
 from amberclaw.tools.subagent_tools import SpawnTool
 from amberclaw.tools.web_tools import WebFetchTool, WebSearchTool
+from amberclaw.tools.data_science import DataCleanTool
+from amberclaw.tools.hardware import (
+    HardwareControlTool,
+    HardwareReadTool,
+    HardwareScanTool,
+    GPIOTool,
+)
 
 
 def get_default_toolset() -> list[BaseTool]:
-    """Returns the default set of tools for a production agent."""
+    \"\"\"Returns the default set of tools for a production agent.\"\"\"
     sandbox = LocalSandbox()  # In production, this would be configured per-session
     
     return [
@@ -30,6 +37,12 @@ def get_default_toolset() -> list[BaseTool]:
 
         # Data
         DataCleanTool(),
+
+        # Hardware & Edge
+        HardwareControlTool(),
+        HardwareReadTool(),
+        HardwareScanTool(),
+        GPIOTool(),
 
         # Agents
         SpawnTool(),

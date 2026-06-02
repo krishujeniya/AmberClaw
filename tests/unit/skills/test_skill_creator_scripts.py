@@ -3,7 +3,9 @@ import sys
 import zipfile
 from pathlib import Path
 
-SCRIPT_DIR = Path("amberclaw/skills/skill-creator/scripts").resolve()
+SCRIPT_DIR = (Path("src") / "amberclaw" / "skills" / "skill-creator" / "scripts").resolve()
+if not SCRIPT_DIR.exists():
+    SCRIPT_DIR = Path("amberclaw/skills/skill-creator/scripts").resolve()
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
@@ -28,7 +30,10 @@ def test_init_skill_creates_expected_files(tmp_path: Path) -> None:
 
 
 def test_validate_skill_accepts_existing_skill_creator() -> None:
-    valid, message = quick_validate.validate_skill(Path("amberclaw/skills/skill-creator").resolve())
+    path = (Path("src") / "amberclaw" / "skills" / "skill-creator").resolve()
+    if not path.exists():
+        path = Path("amberclaw/skills/skill-creator").resolve()
+    valid, message = quick_validate.validate_skill(path)
 
     assert valid, message
 

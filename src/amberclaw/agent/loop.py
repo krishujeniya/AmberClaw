@@ -119,6 +119,8 @@ class AgentLoop:
         self.cron_service = cron_service
         self.restrict_to_workspace = restrict_to_workspace
         self.fallback_models = fallback_models or []
+        from amberclaw.security.pii import PIIRedactor
+        self.pii_redactor = PIIRedactor()
         self.embedding_model = embedding_model
         self.reranker_model = reranker_model
 
@@ -212,7 +214,13 @@ class AgentLoop:
         self.tools.register(SkillListTool(workspace=str(self.workspace)))
 
         # ── Messaging / Scheduling ────────────────────────────────────────────
-        self.tools.register(MessageTool(send_callback=self.bus.publish_outbound))
+        async def _send_outbound_redacted(out_msg: OutboundMessage) -> None:
+            from amberclaw.config.schema import settings
+            if settings.security.pii_redaction:
+                out_msg.content = self.pii_redactor.redact(out_msg.content)
+            await self.bus.publish_outbound(out_msg)
+
+        self.tools.register(MessageTool(send_callback=_send_outbound_redacted))
         self.tools.register(SpawnTool(manager=self.subagents))
         if self.cron_service:
             self.tools.register(CronTool(self.cron_service))
@@ -418,6 +426,8 @@ class AgentLoop:
                 ai_m = AIMessage(content=content or "")
                 if m.get("tool_calls"):
                     ai_m.additional_kwargs["tool_calls"] = m["tool_calls"]
+                if m.get("scratch_pad"):
+                    ai_m.additional_kwargs["scratch_pad"] = m["scratch_pad"]
                 lc_msgs.append(ai_m)
             elif role == "tool":
                 lc_msgs.append(
@@ -504,6 +514,7 @@ class AgentLoop:
                         "role": "assistant",
                         "content": m.content,
                         "tool_calls": m.additional_kwargs.get("tool_calls"),
+                        "scratch_pad": m.additional_kwargs.get("scratch_pad"),
                     },
                 )
             elif isinstance(m, ToolMessage):
@@ -639,6 +650,9 @@ class AgentLoop:
         on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> OutboundMessage | None:
         """Process a single inbound message and return the response."""
+        from amberclaw.config.schema import settings
+        if settings.security.pii_redaction:
+            msg.content = self.pii_redactor.redact(msg.content)
         # System messages: parse origin from chat_id ("channel:chat_id")
         if msg.channel == "system":
             channel, chat_id = (
@@ -770,6 +784,8 @@ class AgentLoop:
             meta = dict(msg.metadata or {})
             meta["_progress"] = True
             meta["_tool_hint"] = tool_hint
+            if settings.security.pii_redaction:
+                content = self.pii_redactor.redact(content)
             await self.bus.publish_outbound(
                 OutboundMessage(
                     channel=msg.channel,
@@ -790,6 +806,9 @@ class AgentLoop:
 
         if warning_msg:
             final_content += f"\n\n[System] {warning_msg}"
+
+        if settings.security.pii_redaction:
+            final_content = self.pii_redactor.redact(final_content)
 
         self._save_turn(session, all_msgs, 1 + len(history))
         self.sessions.save(session)

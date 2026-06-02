@@ -1,8 +1,10 @@
+import pytest
+pytest.importorskip("nh3")
+pytest.importorskip("nio")
+
 import asyncio
 from pathlib import Path
 from types import SimpleNamespace
-
-import pytest
 
 import amberclaw.channels.matrix as matrix_module
 from amberclaw.bus.events import OutboundMessage

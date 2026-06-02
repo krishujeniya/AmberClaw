@@ -13,6 +13,24 @@
 - **Sandboxed Execution**: Subagents write and execute code in isolated containers via `CodeSandbox`.
 - **Ubiquitous Memory**: 3-layer semantic persistence powered by `mem0ai` and `ChromaDB`.
 - **Model Agnostic Routing**: Utilize OpenAI, Anthropic, Gemini, or Local Ollama models interchangeably via `LiteLLM`.
+- **ClawHardware Integration**: Native support for **Raspberry Pi GPIO**, and serial communication with **Arduino/ESP32** peripherals.
+
+## Hardware & Edge Support
+
+AmberClaw is designed to run as the primary AI OS on edge devices.
+
+### 🍓 Raspberry Pi (ClawOS)
+To turn your RPi into an autonomous AI node:
+```bash
+./scripts/setup_rpi.sh
+```
+This script installs dependencies, optimizes the Python environment for ARM, and sets up AmberClaw as a systemd service.
+
+### 🔌 Microcontrollers (Arduino/ESP32)
+AmberClaw can control peripheral hardware nodes via Serial. 
+1. Flash your device with the provided firmware: `examples/hardware/amber_node.ino`.
+2. Connect via USB.
+3. Use the `hardware_send_command` or `hardware_read_sensor` tools to interact with your physical environment.
 
 ## Quickstart
 
