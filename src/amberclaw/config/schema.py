@@ -383,6 +383,27 @@ class ToolsConfig(Base):
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
 
 
+class DatabaseConfig(Base):
+    """PostgreSQL database configuration."""
+
+    url: str | None = Field(default=None, description="Connection URL for PostgreSQL (e.g. postgresql+asyncpg://user:pass@host/db)")
+    pool_size: int = Field(default=5, description="Connection pool size")
+    max_overflow: int = Field(default=10, description="Max overflow connections")
+
+
+class RedisConfig(Base):
+    """Redis configuration."""
+
+    url: str | None = Field(default=None, description="Connection URL for Redis (e.g. redis://host:port/db)")
+
+
+class PluginsModuleConfig(Base):
+    """Configuration for the plugins module."""
+
+    enabled: bool = Field(default=True, description="Whether the module is enabled")
+    version: str = Field(default="2026.0.1", description="Module version")
+
+
 class Config(BaseSettings):
     """Root configuration for amberclaw."""
 
@@ -394,6 +415,10 @@ class Config(BaseSettings):
     assistant: AssistantConfig = Field(default_factory=AssistantConfig)
     data: DataAgentConfig = Field(default_factory=DataAgentConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
+    plugins: PluginsModuleConfig = Field(default_factory=PluginsModuleConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
+
 
     @property
     def workspace_path(self) -> Path:
@@ -455,7 +480,7 @@ class Config(BaseSettings):
         return name
 
     def get_api_key(self, model: str | None = None) -> str | None:
-        """Get API key for the given model. Falls back to first available key. Supports keyring RESOLUTION."""
+        """Get API key for the given model. Falls back to first available key. Supports keyring & vault RESOLUTION."""
         p = self.get_provider(model)
         if not p or not p.api_key:
             return None
@@ -471,6 +496,16 @@ class Config(BaseSettings):
                     return keyring.get_password(service, username)
             except Exception:
                 pass
+
+        # Support vault resolution
+        if p.api_key.startswith("vault://"):
+            try:
+                from amberclaw.security.vault import vault
+
+                return vault.resolve_secret(p.api_key)
+            except Exception:
+                pass
+
         return p.api_key
 
     def get_api_base(self, model: str | None = None) -> str | None:
