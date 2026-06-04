@@ -21,6 +21,9 @@ class SpawnArgs(BaseModel):
     reasoning_effort: str | None = Field(
         None, description="Optional: reasoning effort (low, medium, high)",
     )
+    worker_role: str | None = Field(
+        None, description="Optional: specialized worker role ('coder', 'researcher', 'reader', 'general')",
+    )
 
 
 class SpawnTool(PydanticTool):
@@ -65,4 +68,5 @@ class SpawnTool(PydanticTool):
             session_key=self._session_key,
             model=args.model,
             reasoning_effort=args.reasoning_effort,
+            worker_role=args.worker_role,
         )

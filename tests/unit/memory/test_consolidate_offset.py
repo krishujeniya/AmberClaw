@@ -513,6 +513,7 @@ class TestConsolidationDeduplicationGuard:
         async def _fake_consolidate(_session, archive_all: bool = False) -> None:
             nonlocal consolidation_calls
             consolidation_calls += 1
+            _session.last_consolidated = len(_session.messages)
             await asyncio.sleep(0.05)
 
         loop._consolidate_memory = _fake_consolidate  # type: ignore[method-assign]

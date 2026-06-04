@@ -16,8 +16,7 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
-# Import modules
-from . import doctor, onboard, gateway, agent, status, budget, ingest, council, mythos, skills, channels, provider
+from . import doctor, onboard, gateway, agent, status, budget, ingest, council, mythos, skills, channels, provider, pair, scan_secrets
 
 # Register commands
 app.command()(doctor.doctor)
@@ -29,6 +28,8 @@ app.command()(budget.usage)
 app.command()(ingest.ingest)
 app.command()(council.council)
 app.command()(mythos.mythos)
+app.command()(pair.pair)
+app.command("scan-secrets")(scan_secrets.scan_secrets)
 
 # Sub-apps
 app.add_typer(skills.skills_app, name="skill")

@@ -73,7 +73,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "ASYNC", "S", "B", "A", "COM", "C4", "DTZ", "T20", "RET", "SIM", "ARG", "PTH", "ERA", "PL", "RUF"]
-ignore = ["S101", "B008", "A003"]
+ignore = ["S101", "B008", "A003", "ASYNC109", "COM812", "E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -107,5 +107,7 @@ dev = [
     "mkdocstrings[python]>=0.24.1",
     "hypothesis>=6.0.0",
     "nh3>=0.2.14",
-    "mistune>=3.0.0"
+    "mistune>=3.0.0",
+    "ragas>=0.4.0",
+    "datasets>=4.0.0"
 ]

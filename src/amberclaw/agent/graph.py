@@ -5,7 +5,9 @@ This replaces the manual while-loop in AgentLoop with a state-driven graph.
 
 from __future__ import annotations
 
+import json as _json
 import operator
+import re
 from collections.abc import Sequence
 from typing import Annotated, Any, TypedDict
 
@@ -19,6 +21,8 @@ from langchain_core.messages import (
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
 from loguru import logger
+
+from amberclaw.agent.learning_loop import AgentReflector
 
 
 class AgentState(TypedDict):
@@ -129,7 +133,6 @@ class AgentGraph:
         content = resp.content or ""
         scratch_pad = None
         if "<scratch_pad>" in content:
-            import re
             match = re.search(r"<scratch_pad>(.*?)(?:</scratch_pad>|$)", content, flags=re.DOTALL)
             if match:
                 scratch_pad = match.group(1).strip()
@@ -141,7 +144,6 @@ class AgentGraph:
             ai_msg.additional_kwargs["scratch_pad"] = scratch_pad
 
         if resp.tool_calls:
-            import json as _json
             lc_tool_calls = [
                 {
                     "id": tc.id,
@@ -177,8 +179,48 @@ class AgentGraph:
     async def reflect_node(self, state: AgentState) -> dict[str, Any]:
         """Evaluate the previous output and self-correct if needed."""
         logger.debug("Graph: Reflect node entry")
-        prompt = "Reflect on your previous responses. Are they correct, complete, and safe? If yes, respond 'PASS'. If no, respond 'FAIL' with reasons and a corrected plan."
-        resp = await self._call_llm_with_state(state, prompt_modifier=prompt)
+
+        # Build trajectory list of dicts for the reflector
+        processed_msgs = []
+        for m in state["messages"]:
+            if isinstance(m, HumanMessage):
+                processed_msgs.append({"role": "user", "content": m.content})
+            elif isinstance(m, AIMessage):
+                msg_content = m.content
+                if m.additional_kwargs.get("scratch_pad"):
+                    msg_content = f"<scratch_pad>\n{m.additional_kwargs['scratch_pad']}\n</scratch_pad>\n\n{msg_content}"
+                processed_msgs.append(
+                    {
+                        "role": "assistant",
+                        "content": msg_content,
+                        "tool_calls": m.additional_kwargs.get("tool_calls"),
+                    },
+                )
+            elif isinstance(m, ToolMessage):
+                processed_msgs.append(
+                    {"role": "tool", "content": m.content, "tool_call_id": m.tool_call_id},
+                )
+            elif isinstance(m, SystemMessage):
+                processed_msgs.append({"role": "system", "content": m.content})
+
+        reflector = AgentReflector(self.provider)
+        result = await reflector.reflect(
+            processed_msgs,
+            model=state["config"].get("model"),
+        )
+
+        status_str = "PASS" if result.is_successful else "FAIL"
+        content_str = (
+            f"Reflection Result:\n"
+            f"Status: {status_str}\n"
+            f"Critique: {result.critique}\n"
+        )
+        if result.missing_information:
+            content_str += f"Missing Information: {', '.join(result.missing_information)}\n"
+        if result.correction_steps:
+            content_str += "Correction Steps:\n" + "\n".join(f"- {step}" for step in result.correction_steps)
+
+        resp = AIMessage(content=content_str)
         return {"messages": [resp], "iterations": state.get("iterations", 0) + 1}
 
     def reflect_router(self, state: AgentState) -> str:

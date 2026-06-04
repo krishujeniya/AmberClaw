@@ -26,7 +26,7 @@ from amberclaw.providers.base import LLMProvider
 class SubagentManager:
     """Manages background subagent execution."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         provider: LLMProvider,
         workspace: Path,
@@ -40,7 +40,7 @@ class SubagentManager:
         exec_config: "ExecToolConfig | None" = None,
         restrict_to_workspace: bool = False,
     ):
-        from amberclaw.config.schema import ExecToolConfig
+        from amberclaw.config.schema import ExecToolConfig  # noqa: PLC0415
 
         self.provider = provider
         self.workspace = workspace
@@ -56,7 +56,7 @@ class SubagentManager:
         self._running_tasks: dict[str, asyncio.Task[None]] = {}
         self._session_tasks: dict[str, set[str]] = {}  # session_key -> {task_id, ...}
 
-    async def spawn(
+    async def spawn(  # noqa: PLR0913
         self,
         task: str,
         label: str | None = None,
@@ -65,10 +65,11 @@ class SubagentManager:
         session_key: str | None = None,
         model: str | None = None,
         reasoning_effort: str | None = None,
+        worker_role: str | None = None,
     ) -> str:
         """Spawn a subagent to execute a task in the background."""
         task_id = str(uuid.uuid4())[:8]
-        display_label = label or task[:30] + ("..." if len(task) > 30 else "")
+        display_label = label or task[:30] + ("..." if len(task) > 30 else "")  # noqa: PLR2004
         origin = {"channel": origin_channel, "chat_id": origin_chat_id}
 
         bg_task = asyncio.create_task(
@@ -79,6 +80,7 @@ class SubagentManager:
                 origin,
                 model=model,
                 reasoning_effort=reasoning_effort,
+                worker_role=worker_role,
             ),
         )
         self._running_tasks[task_id] = bg_task
@@ -97,7 +99,7 @@ class SubagentManager:
         logger.info("Spawned subagent [{}]: {}", task_id, display_label)
         return f"Subagent [{display_label}] started (id: {task_id}). I'll notify you when it completes."
 
-    async def _run_subagent(
+    async def _run_subagent(  # noqa: PLR0913
         self,
         task_id: str,
         task: str,
@@ -105,6 +107,7 @@ class SubagentManager:
         origin: dict[str, str],
         model: str | None = None,
         reasoning_effort: str | None = None,
+        worker_role: str | None = None,
     ) -> None:
         """Execute the subagent task and announce the result."""
         logger.info("Subagent [{}] starting task: {}", task_id, label)
@@ -113,22 +116,38 @@ class SubagentManager:
             # Build subagent tools (no message tool, no spawn tool)
             tools = ToolRegistry()
             allowed_dir = self.workspace if self.restrict_to_workspace else None
-            tools.register(ReadFileTool(workspace=self.workspace, allowed_dir=allowed_dir))
-            tools.register(WriteFileTool(workspace=self.workspace, allowed_dir=allowed_dir))
-            tools.register(EditFileTool(workspace=self.workspace, allowed_dir=allowed_dir))
-            tools.register(ListDirTool(workspace=self.workspace, allowed_dir=allowed_dir))
-            tools.register(
-                ExecTool(
-                    working_dir=str(self.workspace),
-                    timeout=self.exec_config.timeout,
-                    restrict_to_workspace=self.restrict_to_workspace,
-                    path_append=self.exec_config.path_append,
-                ),
-            )
-            tools.register(WebSearchTool(api_key=self.brave_api_key, proxy=self.web_proxy))
-            tools.register(WebFetchTool(proxy=self.web_proxy))
 
-            system_prompt = self._build_subagent_prompt()
+            # Role-based tool access restriction
+            role = (worker_role or "general").lower()
+
+            # Define tool permissions
+            has_files = role in ("coder", "general", "researcher", "reader")
+            has_write = role in ("coder", "general")
+            has_exec = role in ("coder", "general")
+            has_web = role in ("researcher", "general")
+
+            if has_files:
+                tools.register(ReadFileTool(workspace=self.workspace, allowed_dir=allowed_dir))
+                tools.register(ListDirTool(workspace=self.workspace, allowed_dir=allowed_dir))
+                if has_write:
+                    tools.register(WriteFileTool(workspace=self.workspace, allowed_dir=allowed_dir))
+                    tools.register(EditFileTool(workspace=self.workspace, allowed_dir=allowed_dir))
+
+            if has_exec:
+                tools.register(
+                    ExecTool(
+                        working_dir=str(self.workspace),
+                        timeout=self.exec_config.timeout,
+                        restrict_to_workspace=self.restrict_to_workspace,
+                        path_append=self.exec_config.path_append,
+                    ),
+                )
+
+            if has_web:
+                tools.register(WebSearchTool(api_key=self.brave_api_key, proxy=self.web_proxy))
+                tools.register(WebFetchTool(proxy=self.web_proxy))
+
+            system_prompt = self._build_subagent_prompt(role)
             messages = [
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=task),
@@ -158,7 +177,7 @@ class SubagentManager:
                 },
             }
 
-            from typing import cast
+            from typing import cast  # noqa: PLC0415
             final_state = await graph.runnable.ainvoke(cast(AgentState, inputs))
             final_msg = final_state["messages"][-1]
             final_result = str(final_msg.content) if final_msg.content else None
@@ -174,7 +193,7 @@ class SubagentManager:
             logger.error("Subagent [{}] failed: {}", task_id, e)
             await self._announce_result(task_id, label, task, error_msg, origin, "error")
 
-    async def _announce_result(
+    async def _announce_result(  # noqa: PLR0913
         self,
         task_id: str,
         label: str,
@@ -208,14 +227,26 @@ Summarize this naturally for the user. Keep it brief (1-2 sentences). Do not men
             "Subagent [{}] announced result to {}:{}", task_id, origin["channel"], origin["chat_id"],
         )
 
-    def _build_subagent_prompt(self) -> str:
+    def _build_subagent_prompt(self, role: str = "general") -> str:
         """Build a focused system prompt for the subagent."""
-        from amberclaw.agent.context import ContextBuilder
-        from amberclaw.agent.skills import SkillsLoader
+        from amberclaw.agent.context import ContextBuilder  # noqa: PLC0415
+        from amberclaw.agent.skills import SkillsLoader  # noqa: PLC0415
 
         time_ctx = ContextBuilder._build_runtime_context(None, None)
+
+        role_instructions = {
+            "coder": "You are a Coder specialized worker agent. Your primary role is to read, write, edit, and execute code within the workspace.",
+            "researcher": "You are a Researcher specialized worker agent. Your primary role is to perform web search and fetch resources to answer complex queries. You do not have write or execution permissions.",
+            "reader": "You are a Reader specialized worker agent. Your primary role is to inspect the directory structure and read file contents. You are run in a safe, read-only mode.",
+            "general": "You are a General worker agent. You have access to all tools to complete the task.",
+        }
+        role_prompt = role_instructions.get(role, role_instructions["general"])
+
         parts = [
             f"""# Subagent
+
+Role: {role.upper()}
+{role_prompt}
 
 {time_ctx}
 

@@ -1,5 +1,3 @@
-import os
-import platform
 import subprocess
 import sys
 import tempfile
@@ -7,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from amberclaw.security.landlock import IS_LINUX, apply_sandbox
+from amberclaw.security.landlock import IS_LINUX
 
 
 @pytest.mark.skipif(not IS_LINUX, reason="Landlock is only supported on Linux")
@@ -27,13 +25,13 @@ def test_landlock_sandbox_enforcement() -> None:
 import sys
 from amberclaw.security.landlock import apply_sandbox
 
-res = apply_sandbox({repr(tmpdir)})
+res = apply_sandbox({tmpdir!r})
 if not res:
     sys.exit(10)  # Landlock not supported/failed to apply
 
 # Try reading inside workspace
 try:
-    with open({repr(str(allowed_file))}, "r") as f:
+    with open({str(allowed_file)!r}, "r") as f:
         content = f.read()
     if content != "inside workspace":
         sys.exit(1)
@@ -42,7 +40,7 @@ except Exception:
 
 # Try reading outside workspace (should be blocked)
 try:
-    with open({repr(str(other_file))}, "r") as f:
+    with open({str(other_file)!r}, "r") as f:
         f.read()
     sys.exit(3)  # Should have been blocked!
 except PermissionError:
@@ -52,7 +50,7 @@ except Exception as e:
 
 # Try writing outside workspace (should be blocked)
 try:
-    with open({repr(str(Path(other_dir) / "new.txt"))}, "w") as f:
+    with open({str(Path(other_dir) / "new.txt")!r}, "w") as f:
         f.write("blocked")
     sys.exit(5)  # Should have been blocked!
 except PermissionError:

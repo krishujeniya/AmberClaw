@@ -1,108 +1,223 @@
-"""Knowledge Graph and Temporal Memory tracking for AmberClaw.
+# ruff: noqa: E501
+"""Temporal Graph Memory for AmberClaw.
 
-Implements temporal knowledge graph extraction using NetworkX
-and basic NLP/LLM extraction to maintain state over time.
+Implements a hybrid vector + knowledge graph memory store tracking time-aware
+fact changes, entity types, and multi-hop relationships.
 """
 
+from __future__ import annotations
+
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import networkx as nx
 from loguru import logger
 
-try:
-    import networkx as nx
-except ImportError:
-    nx = None
 
-class TemporalKnowledgeGraph:
-    """Maintains a Knowledge Graph of entities and relationships with temporal bounds."""
+class TemporalGraphMemory:
+    """Temporal Graph Memory managing entities, relationships, and history."""
 
-    def __init__(self, storage_path: Path):
-        self.storage_path = storage_path
-        self.storage_path.mkdir(parents=True, exist_ok=True)
-        self.graph_file = self.storage_path / "knowledge_graph.json"
-
-        if nx is None:
-            logger.warning("networkx not installed. Graph features disabled.")
-            self.graph = None
+    def __init__(self, db_path: Path | str | None = None):
+        if db_path is None:
+            self.db_path = Path("~/.amberclaw/workspace/graph_memory.json").expanduser()
         else:
-            self.graph = self._load_graph()
+            self.db_path = Path(db_path)
 
-    def _load_graph(self) -> Any:
-        if self.graph_file.exists():
-            try:
-                data = json.loads(self.graph_file.read_text())
-                return nx.node_link_graph(data)
-            except Exception as e:
-                logger.error(f"Failed to load graph memory: {e}")
-                return nx.DiGraph()
-        return nx.DiGraph()
+        self.graph = nx.MultiDiGraph()
+        self.load()
 
-    def _save_graph(self) -> None:
-        if self.graph is not None:
-            try:
-                data = nx.node_link_data(self.graph)
-                self.graph_file.write_text(json.dumps(data, indent=2))
-            except Exception as e:
-                logger.error(f"Failed to save graph memory: {e}")
-
-    def add_fact(self, source: str, relation: str, target: str, timestamp: datetime | None = None) -> None:
-        """Add a temporal fact to the knowledge graph."""
-        if self.graph is None:
+    def load(self) -> None:
+        """Load graph from disk if it exists."""
+        if not self.db_path.exists():
+            logger.info("No existing graph memory found. Initializing empty graph.")
             return
 
-        ts = timestamp or datetime.utcnow()
-        ts_str = ts.isoformat()
+        try:
+            with self.db_path.open(encoding="utf-8") as f:
+                data = json.load(f)
 
-        # Add or update edge with temporal bounds
-        if self.graph.has_edge(source, target):
-            edge = self.graph[source][target]
-            # Update history
-            history = edge.get("history", [])
-            history.append({
-                "relation": edge.get("relation"),
-                "timestamp": edge.get("timestamp"),
-            })
-            self.graph[source][target].update({
-                "relation": relation,
-                "timestamp": ts_str,
-                "history": history,
-            })
+            # Load nodes
+            for node_id, attrs in data.get("nodes", {}).items():
+                self.graph.add_node(node_id, **attrs)
+
+            # Load edges
+            for edge in data.get("edges", []):
+                self.graph.add_edge(
+                    edge["source"],
+                    edge["target"],
+                    key=edge.get("key"),
+                    relation=edge.get("relation"),
+                    created_at=edge.get("created_at"),
+                    updated_at=edge.get("updated_at"),
+                    properties=edge.get("properties", {}),
+                )
+            logger.info(f"Loaded graph memory with {self.graph.number_of_nodes()} nodes and {self.graph.number_of_edges()} edges.")
+        except Exception as e:
+            logger.error(f"Failed to load graph memory: {e}")
+
+    def save(self) -> None:
+        """Persist graph memory to disk."""
+        try:
+            self.db_path.parent.mkdir(parents=True, exist_ok=True)
+            nodes_data = {node: self.graph.nodes[node] for node in self.graph.nodes}
+            edges_data = []
+
+            for u, v, key, data in self.graph.edges(keys=True, data=True):
+                edges_data.append({
+                    "source": u,
+                    "target": v,
+                    "key": key,
+                    "relation": data.get("relation"),
+                    "created_at": data.get("created_at"),
+                    "updated_at": data.get("updated_at"),
+                    "properties": data.get("properties", {}),
+                })
+
+            with self.db_path.open("w", encoding="utf-8") as f:
+                json.dump({"nodes": nodes_data, "edges": edges_data}, f, indent=2)
+            logger.debug("Saved graph memory successfully.")
+        except Exception as e:
+            logger.error(f"Failed to save graph memory: {e}")
+
+    def add_entity(self, name: str, entity_type: str, properties: dict[str, Any] | None = None) -> str:
+        """Add or update an entity in the graph."""
+        node_id = name.lower().replace(" ", "_")
+        now = datetime.now(UTC).isoformat()
+
+        if self.graph.has_node(node_id):
+            # Update existing node properties and history
+            existing = self.graph.nodes[node_id]
+            history = existing.get("history", [])
+
+            # Track temporal property changes if they differ
+            new_properties = properties or {}
+            old_properties = existing.get("properties", {})
+            changed = {}
+            for k, v in new_properties.items():
+                if old_properties.get(k) != v:
+                    changed[k] = {"old": old_properties.get(k), "new": v, "timestamp": now}
+
+            if changed:
+                history.append({"changes": changed, "timestamp": now})
+
+            # Merge properties
+            merged_props = {**old_properties, **new_properties}
+            self.graph.add_node(
+                node_id,
+                name=name,
+                type=entity_type,
+                properties=merged_props,
+                created_at=existing.get("created_at", now),
+                updated_at=now,
+                history=history,
+            )
         else:
-            self.graph.add_edge(source, target, relation=relation, timestamp=ts_str, history=[])
+            # Create new node
+            self.graph.add_node(
+                node_id,
+                name=name,
+                type=entity_type,
+                properties=properties or {},
+                created_at=now,
+                updated_at=now,
+                history=[],
+            )
 
-        self._save_graph()
+        self.save()
+        return node_id
 
-    def get_current_state(self, source: str, target: str) -> dict[str, Any] | None:
-        """Get the current relationship between two entities."""
-        if self.graph is None or not self.graph.has_edge(source, target):
+    def add_relationship(
+        self,
+        source_name: str,
+        target_name: str,
+        relation: str,
+        properties: dict[str, Any] | None = None,
+    ) -> None:
+        """Add a temporal relationship between two entities."""
+        source_id = source_name.lower().replace(" ", "_")
+        target_id = target_name.lower().replace(" ", "_")
+
+        # Ensure nodes exist
+        if not self.graph.has_node(source_id):
+            self.add_entity(source_name, "Concept")
+        if not self.graph.has_node(target_id):
+            self.add_entity(target_name, "Concept")
+
+        now = datetime.now(UTC).isoformat()
+
+        # Check if the relation already exists
+        exists = False
+        for _, _, data in self.graph.edges([source_id], data=True):
+            if data.get("relation") == relation:
+                # Update relation metadata
+                data["updated_at"] = now
+                if properties:
+                    data["properties"] = {**data.get("properties", {}), **properties}
+                exists = True
+                break
+
+        if not exists:
+            self.graph.add_edge(
+                source_id,
+                target_id,
+                relation=relation,
+                created_at=now,
+                updated_at=now,
+                properties=properties or {},
+            )
+
+        self.save()
+
+    def get_entity(self, name: str) -> dict[str, Any] | None:
+        """Retrieve entity info and its direct relationships."""
+        node_id = name.lower().replace(" ", "_")
+        if not self.graph.has_node(node_id):
             return None
-        return dict(self.graph[source][target])
 
-    def query_graph(self, entity: str) -> list[dict[str, Any]]:
-        """Query all relationships for an entity."""
-        if self.graph is None or entity not in self.graph:
-            return []
+        node_data = dict(self.graph.nodes[node_id])
+        relationships = []
 
-        results = []
-        for neighbor in self.graph.neighbors(entity):
-            edge_data = self.graph[entity][neighbor]
-            results.append({
-                "target": neighbor,
-                "relation": edge_data.get("relation"),
-                "timestamp": edge_data.get("timestamp"),
+        # Outgoing relationships
+        for _, target, data in self.graph.out_edges(node_id, data=True):
+            relationships.append({
+                "type": "outgoing",
+                "relation": data.get("relation"),
+                "target": target,
+                "properties": data.get("properties"),
             })
-        return results
 
-    def extract_and_store(self, text: str) -> None:
-        """Extract facts using simple heuristics (for demo/fallback).
-        In production, this would use an LLM or Mem0 graph endpoints.
-        """
-        if self.graph is None:
-            return
+        # Incoming relationships
+        for source, _, data in self.graph.in_edges(node_id, data=True):
+            relationships.append({
+                "type": "incoming",
+                "relation": data.get("relation"),
+                "source": source,
+                "properties": data.get("properties"),
+            })
 
-        # Example naive extraction (for placeholder purposes)
-        # Production uses LLM tool calling to extract `(source, relation, target)`
-        logger.debug("Fact extraction pipeline triggered (placeholder).")
+        node_data["relationships"] = relationships
+        return node_data
+
+    def query_path(self, start_name: str, end_name: str) -> list[str] | None:
+        """Find the shortest path of relationships between two entities (multi-hop)."""
+        start_id = start_name.lower().replace(" ", "_")
+        end_id = end_name.lower().replace(" ", "_")
+
+        if not self.graph.has_node(start_id) or not self.graph.has_node(end_id):
+            return None
+
+        try:
+            # Find path using networkx shortest path
+            path = nx.shortest_path(self.graph, source=start_id, target=end_id)
+            return [self.graph.nodes[node].get("name", node) for node in path]
+        except nx.NetworkXNoPath:
+            return None
+
+    def get_temporal_history(self, name: str) -> list[dict[str, Any]] | None:
+        """Retrieve history of property updates for a specific entity."""
+        node_id = name.lower().replace(" ", "_")
+        if not self.graph.has_node(node_id):
+            return None
+        return self.graph.nodes[node_id].get("history", [])

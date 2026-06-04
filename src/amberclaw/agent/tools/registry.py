@@ -49,6 +49,13 @@ class ToolRegistry:
         if not tool:
             return f"Error: Tool '{name}' not found. Available: {', '.join(self.tool_names)}"
 
+        from amberclaw.security.auth import check_tool_permission
+
+        try:
+            check_tool_permission(name)
+        except Exception as e:
+            return f"Error: {e}" + _HINT
+
         try:
             # Pydantic tools handle their own internal validation and execution
             if isinstance(tool, PydanticTool):

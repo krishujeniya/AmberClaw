@@ -6,7 +6,7 @@ import asyncio
 import re
 import weakref
 from collections.abc import Awaitable, Callable
-from contextlib import AsyncExitStack
+from contextlib import AsyncExitStack, suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -48,9 +48,11 @@ from amberclaw.agent.tools.shell import ExecTool
 from amberclaw.agent.tools.skills import (
     SkillInstallTool,
     SkillListTool,
+    SkillManageTool,
     SkillSearchTool,
 )
 from amberclaw.agent.tools.spawn import SpawnTool
+from amberclaw.agent.tools.a2a import A2ADelegateTool
 from amberclaw.agent.tools.web import WebFetchTool, WebSearchTool
 from amberclaw.bus.events import InboundMessage, OutboundMessage
 from amberclaw.bus.queue import MessageBus
@@ -120,6 +122,7 @@ class AgentLoop:
         self.restrict_to_workspace = restrict_to_workspace
         self.fallback_models = fallback_models or []
         from amberclaw.security.pii import PIIRedactor
+
         self.pii_redactor = PIIRedactor()
         self.embedding_model = embedding_model
         self.reranker_model = reranker_model
@@ -127,6 +130,8 @@ class AgentLoop:
         self.context = ContextBuilder(workspace)
         self.sessions = session_manager or SessionManager(workspace)
         self.tools = ToolRegistry()
+        from amberclaw.plugins.manager import PluginManager
+        self.plugin_manager = PluginManager(workspace=self.workspace)
         self.subagents = SubagentManager(
             provider=provider,
             workspace=workspace,
@@ -150,15 +155,23 @@ class AgentLoop:
             AgentCard(
                 name="AmberClaw",
                 capabilities=["rag", "data", "web", "mcp"],
-                endpoints={"a2a": getattr(channels_config, "a2a_url", "") if channels_config else ""},
+                endpoints={
+                    "a2a": getattr(channels_config, "a2a_url", "")
+                    if channels_config
+                    else ""
+                },
             ),
         )
 
         self._mcp_stack: AsyncExitStack | None = None
         self._mcp_connected = False
         self._mcp_connecting = False
-        self._consolidating: set[str] = set()  # Session keys with consolidation in progress
-        self._consolidation_tasks: set[asyncio.Task] = set()  # Strong refs to in-flight tasks
+        self._consolidating: set[str] = (
+            set()
+        )  # Session keys with consolidation in progress
+        self._consolidation_tasks: set[asyncio.Task] = (
+            set()
+        )  # Strong refs to in-flight tasks
         self._consolidation_locks: weakref.WeakValueDictionary[str, asyncio.Lock] = (
             weakref.WeakValueDictionary()
         )
@@ -199,7 +212,9 @@ class AgentLoop:
         )
 
         # ── Web ───────────────────────────────────────────────────────────────
-        self.tools.register(WebSearchTool(api_key=self.brave_api_key, proxy=self.web_proxy))
+        self.tools.register(
+            WebSearchTool(api_key=self.brave_api_key, proxy=self.web_proxy)
+        )
         self.tools.register(WebFetchTool(proxy=self.web_proxy))
         self.tools.register(BrowserActionTool())
         self.tools.register(DesktopAutomationTool())
@@ -208,20 +223,24 @@ class AgentLoop:
         self.tools.register(SkillSearchTool())
         self.tools.register(
             SkillInstallTool(
-                workspace=str(self.workspace), loader=self.context.skills,
+                workspace=str(self.workspace),
+                loader=self.context.skills,
             ),
         )
         self.tools.register(SkillListTool(workspace=str(self.workspace)))
+        self.tools.register(SkillManageTool(workspace=str(self.workspace)))
 
         # ── Messaging / Scheduling ────────────────────────────────────────────
         async def _send_outbound_redacted(out_msg: OutboundMessage) -> None:
             from amberclaw.config.schema import settings
+
             if settings.security.pii_redaction:
                 out_msg.content = self.pii_redactor.redact(out_msg.content)
             await self.bus.publish_outbound(out_msg)
 
         self.tools.register(MessageTool(send_callback=_send_outbound_redacted))
         self.tools.register(SpawnTool(manager=self.subagents))
+        self.tools.register(A2ADelegateTool())
         if self.cron_service:
             self.tools.register(CronTool(self.cron_service))
 
@@ -276,7 +295,8 @@ class AgentLoop:
                 KnowledgeSearchTool(
                     workspace=self.workspace,
                     provider=self.provider,
-                    embedding_model=self.embedding_model or "openai/text-embedding-3-small",
+                    embedding_model=self.embedding_model
+                    or "openai/text-embedding-3-small",
                     reranker_model=self.reranker_model,
                 ),
             )
@@ -284,7 +304,8 @@ class AgentLoop:
                 KnowledgeAddTool(
                     workspace=self.workspace,
                     provider=self.provider,
-                    embedding_model=self.embedding_model or "openai/text-embedding-3-small",
+                    embedding_model=self.embedding_model
+                    or "openai/text-embedding-3-small",
                 ),
             )
             logger.info("Knowledge RAG tools registered")
@@ -329,6 +350,7 @@ class AgentLoop:
 
         # ── A2A (Agent-to-Agent) ──────────────────────────────────────────────
         from amberclaw.agent.tools.a2a import A2ADiscoveryTool, A2ATool
+
         self.tools.register(A2ATool(self.a2a_manager))
         self.tools.register(A2ADiscoveryTool(self.a2a_manager))
         logger.info("A2A tools registered")
@@ -346,12 +368,12 @@ class AgentLoop:
             await connect_mcp_servers(self._mcp_servers, self.tools, self._mcp_stack)
             self._mcp_connected = True
         except Exception as e:
-            logger.error("Failed to connect MCP servers (will retry next message): {}", e)
+            logger.error(
+                "Failed to connect MCP servers (will retry next message): {}", e
+            )
             if self._mcp_stack:
-                try:
+                with suppress(Exception):
                     await self._mcp_stack.aclose()
-                except Exception:
-                    pass
                 self._mcp_stack = None
         finally:
             self._mcp_connecting = False
@@ -371,20 +393,26 @@ class AgentLoop:
 
                 if discovery_servers and self._mcp_stack:
                     logger.debug("Running dynamic MCP discovery...")
-                    await connect_mcp_servers(discovery_servers, self.tools, self._mcp_stack)
+                    await connect_mcp_servers(
+                        discovery_servers, self.tools, self._mcp_stack
+                    )
             except Exception as e:
                 logger.error("Dynamic MCP discovery failed: {}", e)
 
             await asyncio.sleep(300)  # Scan every 5 minutes
 
-    def _set_tool_context(self, channel: str, chat_id: str, message_id: str | None = None) -> None:
+    def _set_tool_context(
+        self, channel: str, chat_id: str, message_id: str | None = None
+    ) -> None:
         """Update context for all tools that need routing info."""
         for name in ("message", "spawn", "cron"):
             if tool := self.tools.get(name):
                 # Use getattr to avoid Pyright errors on abstract Tool class
                 if hasattr(tool, "set_context"):
                     set_context = tool.set_context
-                    set_context(channel, chat_id, *([message_id] if name == "message" else []))
+                    set_context(
+                        channel, chat_id, *([message_id] if name == "message" else [])
+                    )
 
     @staticmethod
     def _strip_think(text: str | None) -> str | None:
@@ -398,11 +426,15 @@ class AgentLoop:
         """Format tool calls as concise hint, e.g. 'web_search("query")'."""
 
         def _fmt(tc):
-            args = (tc.arguments[0] if isinstance(tc.arguments, list) else tc.arguments) or {}
+            args = (
+                tc.arguments[0] if isinstance(tc.arguments, list) else tc.arguments
+            ) or {}
             val = next(iter(args.values()), None) if isinstance(args, dict) else None
             if not isinstance(val, str):
                 return tc.name
-            return f'{tc.name}("{val[:40]}…")' if len(val) > 40 else f'{tc.name}("{val}")'
+            return (
+                f'{tc.name}("{val[:40]}…")' if len(val) > 40 else f'{tc.name}("{val}")'
+            )
 
         return ", ".join(_fmt(tc) for tc in tool_calls)
 
@@ -431,7 +463,9 @@ class AgentLoop:
                 lc_msgs.append(ai_m)
             elif role == "tool":
                 lc_msgs.append(
-                    ToolMessage(content=content or "", tool_call_id=m.get("tool_call_id") or ""),
+                    ToolMessage(
+                        content=content or "", tool_call_id=m.get("tool_call_id") or ""
+                    ),
                 )
 
         # Execute graph with streaming for tokens
@@ -467,11 +501,14 @@ class AgentLoop:
         last_msg_count = len(lc_msgs)
 
         from amberclaw.security import NetworkPolicy, egress_sandbox
+
         policy_path = self.workspace / "egress_policy.yaml"
         policy = NetworkPolicy.load_from_yaml(policy_path)
 
         with egress_sandbox(policy):
-            async for state in self._graph.runnable.astream(cast(AgentState, inputs), stream_mode="values"):
+            async for state in self._graph.runnable.astream(
+                cast(AgentState, inputs), stream_mode="values"
+            ):
                 final_state = state
             if on_progress:
                 current_messages = state.get("messages", [])
@@ -482,7 +519,9 @@ class AgentLoop:
                             # Clean thinking blocks for progress reporting
                             content = str(m.content)
                             if "<think>" in content:
-                                content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+                                content = re.sub(
+                                    r"<think>.*?</think>", "", content, flags=re.DOTALL
+                                ).strip()
 
                             # Only report content as progress if it's intermediate (has tool calls)
                             if content and hasattr(m, "tool_calls") and m.tool_calls:
@@ -494,9 +533,14 @@ class AgentLoop:
                                     args = tc.get("args", {})
                                     if isinstance(args, dict) and len(args) == 1:
                                         val = next(iter(args.values()))
-                                        hint = f"{tc['name']}(\"{val}\")" if isinstance(val, str) else f"{tc['name']}({val})"
+                                        hint = (
+                                            f'{tc["name"]}("{val}")'
+                                            if isinstance(val, str)
+                                            else f"{tc['name']}({val})"
+                                        )
                                     else:
                                         import json as _json
+
                                         try:
                                             hint = f"{tc['name']}({_json.dumps(args)})"
                                         except Exception:
@@ -548,6 +592,15 @@ class AgentLoop:
         self._running = True
         await self._connect_mcp()
 
+        # Start plugins and register their dynamic tools
+        try:
+            await self.plugin_manager.start()
+            for plugin_name, tools in self.plugin_manager.proxy_tools.items():
+                for tool in tools:
+                    self.tools.register(tool)
+        except Exception as e:
+            logger.error("Failed to start plugins: {}", e)
+
         # Start background discovery
         if not self._mcp_discovery_task:
             self._mcp_discovery_task = asyncio.create_task(self._mcp_discovery_loop())
@@ -560,28 +613,120 @@ class AgentLoop:
             except TimeoutError:
                 continue
 
+            if msg.metadata.get("system_event_type") == "low_memory":
+                logger.warning(
+                    "AgentLoop: System Low Memory alert received, initiating memory cleanup."
+                )
+                try:
+                    for s_info in self.sessions.list_sessions():
+                        s_key = s_info.get("key")
+                        if s_key:
+                            session = self.sessions.get_session(s_key)
+                            await self._consolidate_memory(session, archive_all=True)
+                    logger.info("AgentLoop: Memory consolidation complete.")
+                except Exception as e:
+                    logger.error(
+                        "AgentLoop: Failed to consolidate memory on low memory event: {}",
+                        e,
+                    )
+                continue
+
             if msg.content.strip().lower() == "/stop":
                 await self._handle_stop(msg)
+            elif msg.content.strip().lower().startswith("/pair"):
+                task = asyncio.create_task(self._handle_pairing(msg))
+                self._active_tasks.setdefault(msg.session_key, []).append(task)
+                task.add_done_callback(
+                    lambda t, k=msg.session_key: (
+                        self._active_tasks.get(k, [])
+                        and self._active_tasks[k].remove(t)
+                        if t in self._active_tasks.get(k, [])
+                        else None
+                    ),
+                )
             else:
                 task = asyncio.create_task(self._dispatch(msg))
                 self._active_tasks.setdefault(msg.session_key, []).append(task)
                 task.add_done_callback(
                     lambda t, k=msg.session_key: (
-                        self._active_tasks.get(k, []) and self._active_tasks[k].remove(t)
+                        self._active_tasks.get(k, [])
+                        and self._active_tasks[k].remove(t)
                         if t in self._active_tasks.get(k, [])
                         else None
                     ),
                 )
+
+    async def _handle_pairing(self, msg: InboundMessage) -> None:
+        """Handle a /pair command message to authenticate a channel and user."""
+        parts = msg.content.strip().split()
+        if len(parts) < 2:
+            await self.bus.publish_outbound(
+                OutboundMessage(
+                    channel=msg.channel,
+                    chat_id=msg.chat_id,
+                    content=(
+                        "To pair this account/channel, run `/pair <code>` where <code> "
+                        "is the 6-digit verification code generated by the administrator "
+                        "on the system console."
+                    ),
+                )
+            )
+            return
+
+        code = parts[1].strip()
+        from amberclaw.security.dm_pairing import verify_and_consume_code
+        if verify_and_consume_code(code):
+            paired = False
+            if self.channels_config:
+                ch_cfg = getattr(self.channels_config, msg.channel, None)
+                if ch_cfg is not None and hasattr(ch_cfg, "allow_from"):
+                    if msg.sender_id not in ch_cfg.allow_from:
+                        ch_cfg.allow_from.append(msg.sender_id)
+                        paired = True
+                    else:
+                        paired = True
+
+            try:
+                from amberclaw.config import loader
+                config_path = loader.get_config_path()
+                if config_path.exists():
+                    cfg = loader.load_config(config_path)
+                    target_cfg = getattr(cfg.channels, msg.channel, None)
+                    if target_cfg is not None and hasattr(target_cfg, "allow_from"):
+                        if msg.sender_id not in target_cfg.allow_from:
+                            target_cfg.allow_from.append(msg.sender_id)
+                            loader.save_config(cfg, config_path)
+            except Exception as e:
+                logger.error("Failed to persist paired channel configuration: {}", e)
+
+            if paired:
+                content = (
+                    f"🎉 Access Granted! Your ID ({msg.sender_id}) has been successfully "
+                    f"paired with the '{msg.channel}' channel."
+                )
+            else:
+                content = (
+                    f"⚠️ Pairing code was valid, but channel '{msg.channel}' could not "
+                    f"be configured. Please contact the system administrator."
+                )
+        else:
+            content = "❌ Invalid or expired pairing code. Please generate a new one."
+
+        await self.bus.publish_outbound(
+            OutboundMessage(
+                channel=msg.channel,
+                chat_id=msg.chat_id,
+                content=content,
+            )
+        )
 
     async def _handle_stop(self, msg: InboundMessage) -> None:
         """Cancel all active tasks and subagents for the session."""
         tasks = self._active_tasks.pop(msg.session_key, [])
         cancelled = sum(1 for t in tasks if not t.done() and t.cancel())
         for t in tasks:
-            try:
+            with suppress(asyncio.CancelledError, Exception):
                 await t
-            except (asyncio.CancelledError, Exception):
-                pass
         sub_cancelled = await self.subagents.cancel_by_session(msg.session_key)
         total = cancelled + sub_cancelled
         content = f"⏹ Stopped {total} task(s)." if total else "No active task to stop."
@@ -602,7 +747,10 @@ class AgentLoop:
                     channel=msg.channel,
                     chat_id=msg.chat_id,
                     content=token,
-                    metadata={"_token": True, "message_id": msg.metadata.get("message_id")},
+                    metadata={
+                        "_token": True,
+                        "message_id": msg.metadata.get("message_id"),
+                    },
                 ),
             )
 
@@ -624,7 +772,9 @@ class AgentLoop:
                 logger.info("Task cancelled for session {}", msg.session_key)
                 raise
             except Exception:
-                logger.exception("Error processing message for session {}", msg.session_key)
+                logger.exception(
+                    "Error processing message for session {}", msg.session_key
+                )
                 await self.bus.publish_outbound(
                     OutboundMessage(
                         channel=msg.channel,
@@ -646,6 +796,8 @@ class AgentLoop:
         """Stop the agent loop."""
         self._running = False
         logger.info("Agent loop stopping")
+        if hasattr(self, "plugin_manager"):
+            asyncio.create_task(self.plugin_manager.stop())
 
     async def _process_message(
         self,
@@ -656,12 +808,15 @@ class AgentLoop:
     ) -> OutboundMessage | None:
         """Process a single inbound message and return the response."""
         from amberclaw.config.schema import settings
+
         if settings.security.pii_redaction:
             msg.content = self.pii_redactor.redact(msg.content)
         # System messages: parse origin from chat_id ("channel:chat_id")
         if msg.channel == "system":
             channel, chat_id = (
-                msg.chat_id.split(":", 1) if ":" in msg.chat_id else ("cli", msg.chat_id)
+                msg.chat_id.split(":", 1)
+                if ":" in msg.chat_id
+                else ("cli", msg.chat_id)
             )
             logger.info("Processing system message from {}", msg.sender_id)
             key = f"{channel}:{chat_id}"
@@ -674,10 +829,13 @@ class AgentLoop:
                 channel=channel,
                 chat_id=chat_id,
             )
-            final_content, _, all_msgs = await self._run_agent_loop(
-                messages,
-                on_token=on_token,
-            )
+            from amberclaw.security.auth import active_sender_context
+
+            with active_sender_context(msg.sender_id):
+                final_content, _, all_msgs = await self._run_agent_loop(
+                    messages,
+                    on_token=on_token,
+                )
             self._save_turn(session, all_msgs, 1 + len(history))
             self.sessions.save(session)
             return OutboundMessage(
@@ -687,7 +845,9 @@ class AgentLoop:
             )
 
         preview = msg.content[:80] + "..." if len(msg.content) > 80 else msg.content
-        logger.info("Processing message from {}:{}: {}", msg.channel, msg.sender_id, preview)
+        logger.info(
+            "Processing message from {}:{}: {}", msg.channel, msg.sender_id, preview
+        )
 
         key = session_key or msg.session_key
         session = self.sessions.get_or_create(key)
@@ -723,7 +883,9 @@ class AgentLoop:
             self.sessions.save(session)
             self.sessions.invalidate(session.key)
             return OutboundMessage(
-                channel=msg.channel, chat_id=msg.chat_id, content="New session started.",
+                channel=msg.channel,
+                chat_id=msg.chat_id,
+                content="New session started.",
             )
         if cmd == "/help":
             return OutboundMessage(
@@ -732,7 +894,7 @@ class AgentLoop:
                 content="🐈 amberclaw commands:\n/new — Start a new conversation\n/stop — Stop the current task\n/feedback <msg> — Provide self-improvement feedback\n/help — Show available commands",
             )
         if cmd.startswith("/feedback "):
-            feedback = msg.content[len("/feedback "):].strip()
+            feedback = msg.content[len("/feedback ") :].strip()
             MemoryStore(self.workspace).append_feedback(feedback)
             return OutboundMessage(
                 channel=msg.channel,
@@ -741,7 +903,10 @@ class AgentLoop:
             )
 
         unconsolidated = len(session.messages) - session.last_consolidated
-        if unconsolidated >= self.memory_window and session.key not in self._consolidating:
+        if (
+            unconsolidated >= self.memory_window
+            and session.key not in self._consolidating
+        ):
             self._consolidating.add(session.key)
             lock = self._consolidation_locks.setdefault(session.key, asyncio.Lock())
 
@@ -772,18 +937,31 @@ class AgentLoop:
             chat_id=msg.chat_id,
         )
 
+        # Trigger Proactive MemoryNudgeSystem (AC-061)
+        try:
+            from amberclaw.agent.learning.nudge_system import MemoryNudgeSystem
+            nudge_sys = MemoryNudgeSystem(self.workspace)
+            if nudge_msg := nudge_sys.should_nudge(history, msg.content):
+                initial_messages.append({"role": "system", "content": nudge_msg})
+        except Exception as e:
+            logger.error("Failed to run MemoryNudgeSystem: {}", e)
+
         # Token and Context Budget System (AC-059)
         # Rough estimation: 1 token ~= 4 chars
-        approx_tokens = sum(len(str(m.get("content", ""))) for m in initial_messages) // 4
+        approx_tokens = (
+            sum(len(str(m.get("content", ""))) for m in initial_messages) // 4
+        )
         limit = self.max_tokens or 128000
 
         warning_msg = None
         if approx_tokens > limit * 0.95:
             # Trigger summary consolidation
             await self._consolidate_memory(session, archive_all=False)
-            warning_msg = "Context window near 95% limit. Triggered automatic summarization."
+            warning_msg = (
+                "Context window near 95% limit. Triggered automatic summarization."
+            )
         elif approx_tokens > limit * 0.80:
-            warning_msg = f"Context window at {int((approx_tokens/limit)*100)}% capacity. Consider /new soon."
+            warning_msg = f"Context window at {int((approx_tokens / limit) * 100)}% capacity. Consider /new soon."
 
         async def _bus_progress(content: str, *, tool_hint: bool = False) -> None:
             meta = dict(msg.metadata or {})
@@ -800,11 +978,14 @@ class AgentLoop:
                 ),
             )
 
-        final_content, _, all_msgs = await self._run_agent_loop(
-            initial_messages,
-            on_progress=on_progress or _bus_progress,
-            on_token=on_token,
-        )
+        from amberclaw.security.auth import active_sender_context
+
+        with active_sender_context(msg.sender_id):
+            final_content, _, all_msgs = await self._run_agent_loop(
+                initial_messages,
+                on_progress=on_progress or _bus_progress,
+                on_token=on_token,
+            )
 
         if final_content is None:
             final_content = "I've completed processing but have no response to give."
@@ -818,10 +999,24 @@ class AgentLoop:
         self._save_turn(session, all_msgs, 1 + len(history))
         self.sessions.save(session)
 
-        if (mt := self.tools.get("message")) and isinstance(mt, MessageTool) and mt._sent_in_turn:
+        # Trigger Autonomous SkillCreator (AC-060)
+        try:
+            from amberclaw.agent.learning.skill_creator import SkillCreator
+            skill_creator = SkillCreator(self.provider, self.workspace)
+            await skill_creator.monitor_and_create(all_msgs, model=self.model)
+        except Exception as e:
+            logger.error("Failed to run SkillCreator: {}", e)
+
+        if (
+            (mt := self.tools.get("message"))
+            and isinstance(mt, MessageTool)
+            and mt._sent_in_turn
+        ):
             return None
 
-        preview = final_content[:120] + "..." if len(final_content) > 120 else final_content
+        preview = (
+            final_content[:120] + "..." if len(final_content) > 120 else final_content
+        )
         logger.info("Response to {}:{}: {}", msg.channel, msg.sender_id, preview)
         return OutboundMessage(
             channel=msg.channel,
@@ -844,7 +1039,9 @@ class AgentLoop:
                 and isinstance(content, str)
                 and len(content) > self._TOOL_RESULT_MAX_CHARS
             ):
-                entry["content"] = content[: self._TOOL_RESULT_MAX_CHARS] + "\n... (truncated)"
+                entry["content"] = (
+                    content[: self._TOOL_RESULT_MAX_CHARS] + "\n... (truncated)"
+                )
             elif role == "user":
                 if isinstance(content, str) and content.startswith(
                     ContextBuilder._RUNTIME_CONTEXT_TAG,
@@ -861,11 +1058,14 @@ class AgentLoop:
                         if (
                             c.get("type") == "text"
                             and isinstance(c.get("text"), str)
-                            and c["text"].startswith(ContextBuilder._RUNTIME_CONTEXT_TAG)
+                            and c["text"].startswith(
+                                ContextBuilder._RUNTIME_CONTEXT_TAG
+                            )
                         ):
                             continue  # Strip runtime context from multimodal messages
                         if c.get("type") == "image_url" and c.get("image_url", {}).get(
-                            "url", "",
+                            "url",
+                            "",
                         ).startswith("data:image/"):
                             filtered.append({"type": "text", "text": "[image]"})
                         else:
@@ -898,8 +1098,13 @@ class AgentLoop:
     ) -> str:
         """Process a message directly (for CLI or cron usage)."""
         await self._connect_mcp()
-        msg = InboundMessage(channel=channel, sender_id="user", chat_id=chat_id, content=content)
+        msg = InboundMessage(
+            channel=channel, sender_id="user", chat_id=chat_id, content=content
+        )
         response = await self._process_message(
-            msg, session_key=session_key, on_progress=on_progress, on_token=on_token,
+            msg,
+            session_key=session_key,
+            on_progress=on_progress,
+            on_token=on_token,
         )
         return response.content if response else ""

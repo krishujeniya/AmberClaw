@@ -1,3 +1,4 @@
+# ruff: noqa: PLC0415, PLR0913
 """AmberClaw Memory Manager.
 
 Abstracts Mem0 v1.0+ and provides persistent Vector DB backends,
@@ -10,6 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
+
+from amberclaw.memory.base import ScopeContext
 
 try:
     from mem0 import Memory
@@ -56,18 +59,29 @@ class MemoryManager:
         user_id: str | None = None,
         agent_id: str | None = None,
         session_id: str | None = None,
+        org_id: str | None = None,
+        scope_context: ScopeContext | None = None,
     ) -> list[str]:
         """Search memory with multi-scope support."""
+        if scope_context:
+            user_id = user_id or scope_context.user_id
+            agent_id = agent_id or scope_context.agent_id
+            session_id = session_id or scope_context.session_id
+            org_id = org_id or scope_context.org_id
+
         if not self._memory:
             return []
 
         try:
             # Mem0 v1.0+ supports user_id, agent_id, session_id natively
+            # We pass org_id in metadata/filters if supported, or via standard custom metadata
+            metadata = {"org_id": org_id} if org_id else None
             results = self._memory.search(
                 query,
                 user_id=user_id,
                 agent_id=agent_id,
                 run_id=session_id,
+                metadata=metadata,
             )
 
             facts = []
@@ -90,17 +104,27 @@ class MemoryManager:
         user_id: str | None = None,
         agent_id: str | None = None,
         session_id: str | None = None,
+        org_id: str | None = None,
+        scope_context: ScopeContext | None = None,
     ) -> None:
         """Add to memory with multi-scope support."""
+        if scope_context:
+            user_id = user_id or scope_context.user_id
+            agent_id = agent_id or scope_context.agent_id
+            session_id = session_id or scope_context.session_id
+            org_id = org_id or scope_context.org_id
+
         if not self._memory:
             return
 
         try:
+            metadata = {"org_id": org_id} if org_id else None
             self._memory.add(
                 text,
                 user_id=user_id,
                 agent_id=agent_id,
                 run_id=session_id,
+                metadata=metadata,
             )
 
             # Extract to graph

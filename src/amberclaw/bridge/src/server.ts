@@ -1,0 +1,157 @@
+/**
+ * WebSocket server for Python-Node.js bridge communication.
+ * Security: binds to 127.0.0.1 only; timing-attack safe token auth; CSWSH origin protection.
+ */
+
+import { WebSocketServer, WebSocket } from 'ws';
+import { timingSafeEqual } from 'crypto';
+import { WhatsAppClient } from './whatsapp.js';
+
+interface SendCommand {
+  type: 'send';
+  to: string;
+  text: string;
+}
+
+interface BridgeMessage {
+  type: 'message' | 'status' | 'qr' | 'error';
+  [key: string]: unknown;
+}
+
+/**
+ * Constant-time comparison to protect against timing attacks.
+ */
+function secureCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+  if (bufA.length !== bufB.length) {
+    // Perform a dummy comparison to maintain similar execution time profile
+    timingSafeEqual(bufA, bufA);
+    return false;
+  }
+  return timingSafeEqual(bufA, bufB);
+}
+
+export class BridgeServer {
+  private wss: WebSocketServer | null = null;
+  private wa: WhatsAppClient | null = null;
+  private clients: Set<WebSocket> = new Set();
+
+  constructor(private port: number, private authDir: string, private token?: string) {}
+
+  async start(): Promise<void> {
+    if (!this.token) {
+      throw new Error("BRIDGE_TOKEN is required for security. Unauthenticated connections are disabled.");
+    }
+
+    // Bind to localhost only — never expose to external network
+    this.wss = new WebSocketServer({ host: '127.0.0.1', port: this.port });
+    console.log(`🌉 Bridge server listening on ws://127.0.0.1:${this.port}`);
+    console.log('🔒 Token authentication and Origin checks enabled');
+
+    // Initialize WhatsApp client
+    this.wa = new WhatsAppClient({
+      authDir: this.authDir,
+      onMessage: (msg) => this.broadcast({ type: 'message', ...msg }),
+      onQR: (qr) => this.broadcast({ type: 'qr', qr }),
+      onStatus: (status) => this.broadcast({ type: 'status', status }),
+    });
+
+    // Handle WebSocket connections
+    this.wss.on('connection', (ws, req) => {
+      // 1. CSWSH Protection: Check Origin header
+      const origin = req.headers.origin;
+      if (origin) {
+        const isLocalhost = /^https?:\/\/localhost(:\d+)?$/.test(origin) || 
+                            /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin);
+        if (!isLocalhost) {
+          console.warn(`⚠️ Rejected connection attempt from unauthorized origin: ${origin}`);
+          ws.close(4003, 'Forbidden Origin');
+          return;
+        }
+      }
+
+      // Require auth handshake as first message
+      const timeout = setTimeout(() => ws.close(4001, 'Auth timeout'), 5000);
+      
+      ws.once('message', (data) => {
+        clearTimeout(timeout);
+        try {
+          const msg = JSON.parse(data.toString());
+          if (msg.type === 'auth' && typeof msg.token === 'string' && secureCompare(msg.token, this.token!)) {
+            console.log('🔗 Python client authenticated successfully');
+            this.setupClient(ws);
+          } else {
+            console.warn('⚠️ Rejected connection attempt: invalid token');
+            ws.close(4003, 'Invalid token');
+          }
+        } catch {
+          ws.close(4003, 'Invalid auth message');
+        }
+      });
+    });
+
+    // Connect to WhatsApp
+    await this.wa.connect();
+  }
+
+  private setupClient(ws: WebSocket): void {
+    this.clients.add(ws);
+
+    ws.on('message', async (data) => {
+      try {
+        const cmd = JSON.parse(data.toString()) as SendCommand;
+        await this.handleCommand(cmd);
+        ws.send(JSON.stringify({ type: 'sent', to: cmd.to }));
+      } catch (error) {
+        console.error('Error handling command:', error);
+        ws.send(JSON.stringify({ type: 'error', error: String(error) }));
+      }
+    });
+
+    ws.on('close', () => {
+      console.log('🔌 Python client disconnected');
+      this.clients.delete(ws);
+    });
+
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+      this.clients.delete(ws);
+    });
+  }
+
+  private async handleCommand(cmd: SendCommand): Promise<void> {
+    if (cmd.type === 'send' && this.wa) {
+      await this.wa.sendMessage(cmd.to, cmd.text);
+    }
+  }
+
+  private broadcast(msg: BridgeMessage): void {
+    const data = JSON.stringify(msg);
+    for (const client of this.clients) {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(data);
+      }
+    }
+  }
+
+  async stop(): Promise<void> {
+    // Close all client connections
+    for (const client of this.clients) {
+      client.close();
+    }
+    this.clients.clear();
+
+    // Close WebSocket server
+    if (this.wss) {
+      this.wss.close();
+      this.wss = null;
+    }
+
+    // Disconnect WhatsApp
+    if (this.wa) {
+      await this.wa.disconnect();
+      this.wa = null;
+    }
+  }
+}

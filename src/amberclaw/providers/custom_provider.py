@@ -35,6 +35,7 @@ class CustomProvider(LLMProvider):
         max_tokens: int = 4096,
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
+        response_format: dict[str, Any] | None = None,
     ) -> LLMResponse:
         kwargs: dict[str, Any] = {
             "model": model or self.default_model,
@@ -44,10 +45,19 @@ class CustomProvider(LLMProvider):
         }
         if reasoning_effort:
             kwargs["reasoning_effort"] = reasoning_effort
+        if response_format:
+            kwargs["response_format"] = response_format
         if tools:
             kwargs.update(tools=tools, tool_choice="auto")
+        from amberclaw.security.vault import vault
+
+        resolved_key = vault.resolve_secret(self.api_key)
+        self._client.api_key = resolved_key or "no-key"
         try:
-            return self._parse(await self._client.chat.completions.create(**kwargs))
+            try:
+                return self._parse(await self._client.chat.completions.create(**kwargs))
+            finally:
+                self._client.api_key = self.api_key or "no-key"
         except Exception as e:
             return LLMResponse(content=f"Error: {e}", finish_reason="error")
 
@@ -88,10 +98,13 @@ class CustomProvider(LLMProvider):
         """Convert this provider to a LangChain ChatOpenAI model."""
         from langchain_openai import ChatOpenAI
         from pydantic import SecretStr
+        from amberclaw.security.vault import vault
+
+        resolved_key = vault.resolve_secret(self.api_key)
 
         return ChatOpenAI(
             model=model or self.default_model,
-            api_key=SecretStr(self.api_key) if self.api_key else None,
+            api_key=SecretStr(resolved_key) if resolved_key else None,
             base_url=self.api_base,
             **kwargs,
         )

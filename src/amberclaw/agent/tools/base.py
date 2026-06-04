@@ -191,6 +191,12 @@ class Tool(ABC):
             args_schema: type[BaseModel] | None = getattr(outer_self, "args_schema", None)
 
             async def _arun(self, *args: Any, **kwargs: Any) -> str:
+                from amberclaw.security.auth import check_tool_permission
+
+                try:
+                    check_tool_permission(outer_self.name)
+                except Exception as e:
+                    return f"Error: {e}"
                 return await outer_self.execute(**kwargs)
 
             def _run(self, *args: Any, **kwargs: Any) -> str:

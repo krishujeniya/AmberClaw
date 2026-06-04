@@ -58,11 +58,12 @@ class AzureOpenAIProvider(LLMProvider):
         url = urljoin(base_url, f"openai/deployments/{deployment_name}/chat/completions")
         return f"{url}?api-version={self.api_version}"
 
-    def _build_headers(self) -> dict[str, str]:
+    def _build_headers(self, resolved_key: str | None = None) -> dict[str, str]:
         """Build headers for Azure OpenAI API with api-key header."""
+        key = resolved_key or self.api_key or ""
         return {
             "Content-Type": "application/json",
-            "api-key": self.api_key or "",  # Azure OpenAI uses api-key header, not Authorization
+            "api-key": key,  # Azure OpenAI uses api-key header, not Authorization
             "x-session-affinity": uuid.uuid4().hex,  # For cache locality
         }
 
@@ -85,6 +86,7 @@ class AzureOpenAIProvider(LLMProvider):
         max_tokens: int = 4096,
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
+        response_format: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Prepare the request payload with Azure OpenAI 2024-10-21 compliance."""
         payload: dict[str, Any] = {
@@ -103,6 +105,9 @@ class AzureOpenAIProvider(LLMProvider):
         if reasoning_effort:
             payload["reasoning_effort"] = reasoning_effort
 
+        if response_format:
+            payload["response_format"] = response_format
+
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
@@ -117,6 +122,7 @@ class AzureOpenAIProvider(LLMProvider):
         max_tokens: int = 4096,
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
+        response_format: dict[str, Any] | None = None,
     ) -> LLMResponse:
         """
         Send a chat completion request to Azure OpenAI.
@@ -134,9 +140,18 @@ class AzureOpenAIProvider(LLMProvider):
         """
         deployment_name = model or self.default_model
         url = self._build_chat_url(deployment_name)
-        headers = self._build_headers()
+        from amberclaw.security.vault import vault
+
+        resolved_key = vault.resolve_secret(self.api_key)
+        headers = self._build_headers(resolved_key)
         payload = self._prepare_request_payload(
-            deployment_name, messages, tools, max_tokens, temperature, reasoning_effort,
+            deployment_name,
+            messages,
+            tools,
+            max_tokens,
+            temperature,
+            reasoning_effort,
+            response_format,
         )
 
         try:
@@ -212,12 +227,15 @@ class AzureOpenAIProvider(LLMProvider):
         """Convert this provider to a LangChain AzureChatOpenAI model."""
         from langchain_openai import AzureChatOpenAI
         from pydantic import SecretStr
+        from amberclaw.security.vault import vault
+
+        resolved_key = vault.resolve_secret(self.api_key)
 
         deployment_name = model or self.default_model
         return AzureChatOpenAI(
             azure_deployment=deployment_name,
             api_version=self.api_version,
             azure_endpoint=self.api_base,
-            api_key=SecretStr(self.api_key) if self.api_key else None,
+            api_key=SecretStr(resolved_key) if resolved_key else None,
             **kwargs,
         )

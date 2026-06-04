@@ -2,7 +2,9 @@
 
 import asyncio
 import os
-from typing import Any
+import shutil
+from pathlib import Path
+from typing import Any, Literal
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -151,3 +153,159 @@ class SkillListTool(PydanticTool):
         except Exception as e:
             logger.exception("SkillList exception")
             return f"Error: {e}"
+
+
+class SkillManageArgs(BaseModel):
+    """Arguments for skill_manage."""
+
+    action: Literal["edit", "merge", "delete"] = Field(
+        ..., description="Action to perform: 'edit', 'merge', or 'delete'"
+    )
+    skill_name: str = Field(..., description="Name of the source skill")
+    target_skill_name: str | None = Field(
+        None, description="Name of the target skill (required for 'merge')"
+    )
+    content: str | None = Field(
+        None, description="New markdown content of the skill (required for 'edit')"
+    )
+
+
+class SkillManageTool(PydanticTool):
+    """Exposes capability to edit, merge, or delete agent skills."""
+
+    @property
+    def name(self) -> str:
+        return "skill_manage"
+
+    @property
+    def description(self) -> str:
+        return "Manage agent skills: edit content, merge two skills into one, or delete a skill."
+
+    @property
+    def args_schema(self) -> type[SkillManageArgs]:
+        return SkillManageArgs
+
+    def __init__(self, workspace: str):
+        super().__init__()
+        self.workspace = Path(workspace)
+        self.global_skills_dir = Path.home() / ".amberclaw" / "skills" / "auto-created"
+        self.workspace_skills_dir = self.workspace / "skills" / "auto-created"
+        self.workspace_root_skills_dir = self.workspace / "skills"
+
+    async def run(self, args: SkillManageArgs) -> str:
+        action = args.action
+        skill_name = args.skill_name
+
+        if action == "delete":
+            # 1. Global path
+            global_path = self.global_skills_dir / f"{skill_name}.md"
+            deleted_paths = []
+            if global_path.exists():
+                global_path.unlink()
+                deleted_paths.append(str(global_path))
+
+            # 2. Workspace auto-created
+            workspace_dir = self.workspace_skills_dir / skill_name
+            if workspace_dir.exists():
+                shutil.rmtree(workspace_dir)
+                deleted_paths.append(str(workspace_dir))
+
+            # 3. Workspace root skill
+            root_dir = self.workspace_root_skills_dir / skill_name
+            if root_dir.exists():
+                shutil.rmtree(root_dir)
+                deleted_paths.append(str(root_dir))
+
+            if deleted_paths:
+                return f"Successfully deleted skill '{skill_name}' from:\n" + "\n".join(deleted_paths)
+            return f"Skill '{skill_name}' not found."
+
+        elif action == "edit":
+            if not args.content:
+                return "Error: Content is required for the 'edit' action."
+
+            # Make dirs
+            self.global_skills_dir.mkdir(parents=True, exist_ok=True)
+            self.workspace_skills_dir.mkdir(parents=True, exist_ok=True)
+
+            global_path = self.global_skills_dir / f"{skill_name}.md"
+            global_path.write_text(args.content, encoding="utf-8")
+
+            workspace_dir = self.workspace_skills_dir / skill_name
+            workspace_dir.mkdir(parents=True, exist_ok=True)
+            workspace_path = workspace_dir / "SKILL.md"
+            workspace_path.write_text(args.content, encoding="utf-8")
+
+            return f"Successfully updated/created skill '{skill_name}' content."
+
+        elif action == "merge":
+            target = args.target_skill_name
+            if not target:
+                return "Error: target_skill_name is required for the 'merge' action."
+
+            # Find source content
+            src_content = self._load_skill_content(skill_name)
+            tgt_content = self._load_skill_content(target)
+
+            if not src_content:
+                return f"Error: Source skill '{skill_name}' not found."
+            if not tgt_content:
+                return f"Error: Target skill '{target}' not found."
+
+            merged_name = f"merged-{skill_name}-and-{target}"
+            merged_content = ""
+            if args.content:
+                merged_content = args.content
+            else:
+                # Automerge by combining frontmatter and content
+                merged_content = (
+                    "---\n"
+                    f"name: {merged_name}\n"
+                    f"description: Merged skill combining {skill_name} and {target}\n"
+                    "---\n"
+                    f"# Merged Skill: {skill_name} and {target}\n\n"
+                    "## Prerequisite Skills\n"
+                    f"- {skill_name}\n"
+                    f"- {target}\n\n"
+                    "## Combined Steps\n\n"
+                    f"### Part 1: {skill_name}\n"
+                    f"{src_content}\n\n"
+                    f"### Part 2: {target}\n"
+                    f"{tgt_content}\n"
+                )
+
+            # Write merged skill
+            self.global_skills_dir.mkdir(parents=True, exist_ok=True)
+            self.workspace_skills_dir.mkdir(parents=True, exist_ok=True)
+
+            global_path = self.global_skills_dir / f"{merged_name}.md"
+            global_path.write_text(merged_content, encoding="utf-8")
+
+            workspace_dir = self.workspace_skills_dir / merged_name
+            workspace_dir.mkdir(parents=True, exist_ok=True)
+            workspace_path = workspace_dir / "SKILL.md"
+            workspace_path.write_text(merged_content, encoding="utf-8")
+
+            # Clean up the original two skills
+            await self.run(SkillManageArgs(action="delete", skill_name=skill_name))
+            await self.run(SkillManageArgs(action="delete", skill_name=target))
+
+            return f"Successfully merged '{skill_name}' and '{target}' into new skill '{merged_name}'."
+
+        return f"Unknown action: {action}"
+
+    def _load_skill_content(self, skill_name: str) -> str | None:
+        """Load content from global or workspace files."""
+        global_path = self.global_skills_dir / f"{skill_name}.md"
+        if global_path.exists():
+            return global_path.read_text(encoding="utf-8")
+
+        workspace_path = self.workspace_skills_dir / skill_name / "SKILL.md"
+        if workspace_path.exists():
+            return workspace_path.read_text(encoding="utf-8")
+
+        root_path = self.workspace_root_skills_dir / skill_name / "SKILL.md"
+        if root_path.exists():
+            return root_path.read_text(encoding="utf-8")
+
+        return None

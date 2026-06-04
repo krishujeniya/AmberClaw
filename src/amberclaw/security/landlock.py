@@ -1,5 +1,6 @@
 """Pure Python implementation of Landlock LSM sandboxing on Linux systems."""
 
+import contextlib
 import ctypes
 import os
 import platform
@@ -130,7 +131,7 @@ def apply_sandbox(workspace_path: str | Path) -> bool:
     try:
         # Set workspace path as read/write
         paths_read_write = [str(workspace_path), "/tmp", "/dev/null", "/dev/urandom", "/dev/zero"]
-        paths_read_only = ["/usr", "/lib", "/lib64", "/etc"]
+        paths_read_only = ["/usr", "/lib", "/lib64", "/etc", "/bin", "/sbin", "/proc"]
 
         # Add virtual environment paths to allowed reads
         paths_read_only.append(sys.prefix)
@@ -157,8 +158,6 @@ def apply_sandbox(workspace_path: str | Path) -> bool:
         os.close(ruleset_fd)
         return True
     except Exception:
-        try:
+        with contextlib.suppress(Exception):
             os.close(ruleset_fd)
-        except Exception:
-            pass
         return False

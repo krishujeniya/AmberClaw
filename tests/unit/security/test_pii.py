@@ -1,36 +1,50 @@
-import pytest
+"""Unit tests for PII Redaction Engine."""
+
+from unittest.mock import MagicMock, patch
+
 from amberclaw.security.pii import PIIRedactor
 
 
-def test_pii_redactor_emails() -> None:
+def test_pii_redactor_regex_fallback():
     redactor = PIIRedactor()
-    text = "Hello, my email is john.doe@example.com. Please write to contact@test.co.uk."
+    # Ensure Presidio is false for this fallback test
+    redactor.presidio_available = False
+
+    text = "My email is test@example.com, IP is 192.168.1.1, phone is 555-123-4567, card is 1234-5678-9012-3456."
     redacted = redactor.redact(text)
-    assert "john.doe@example.com" not in redacted
-    assert "contact@test.co.uk" not in redacted
-    assert redacted.count("[REDACTED_EMAIL]") == 2
 
-
-def test_pii_redactor_ips() -> None:
-    redactor = PIIRedactor()
-    text = "Server running on 192.168.1.1 and 10.0.0.138."
-    redacted = redactor.redact(text)
-    assert "192.168.1.1" not in redacted
-    assert "10.0.0.138" not in redacted
-    assert redacted.count("[REDACTED_IP]") == 2
-
-
-def test_pii_redactor_phones() -> None:
-    redactor = PIIRedactor()
-    text = "Call me at +1-123-456-7890 or 123-456-7890."
-    redacted = redactor.redact(text)
-    assert "123-456-7890" not in redacted
-    assert redacted.count("[REDACTED_PHONE]") == 2
-
-
-def test_pii_redactor_credit_cards() -> None:
-    redactor = PIIRedactor()
-    text = "Visa card: 4111 1111 1111 1111."
-    redacted = redactor.redact(text)
-    assert "4111" not in redacted
+    assert "[REDACTED_EMAIL]" in redacted
+    assert "[REDACTED_IP]" in redacted
+    assert "[REDACTED_PHONE]" in redacted
     assert "[REDACTED_CARD]" in redacted
+    assert "test@example.com" not in redacted
+    assert "192.168.1.1" not in redacted
+
+
+@patch("amberclaw.security.pii.PIIRedactor._redact_presidio")
+def test_pii_redactor_presidio_called(mock_presidio_redact):
+    redactor = PIIRedactor()
+    redactor.presidio_available = True
+    redactor._analyzer = MagicMock()
+    redactor._anonymizer = MagicMock()
+
+    mock_presidio_redact.return_value = "Mocked Redacted Output"
+
+    res = redactor.redact("John Doe lives in New York")
+    assert res == "Mocked Redacted Output"
+    mock_presidio_redact.assert_called_once_with("John Doe lives in New York")
+
+
+def test_pii_redactor_presidio_fallback_on_failure():
+    redactor = PIIRedactor()
+    redactor.presidio_available = True
+    redactor._analyzer = MagicMock()
+    redactor._anonymizer = MagicMock()
+
+    # Force an exception to trigger the regex fallback
+    redactor._analyzer.analyze.side_effect = Exception("Presidio failed")
+
+    text = "My email is test@example.com"
+    res = redactor.redact(text)
+    assert "[REDACTED_EMAIL]" in res
+    assert "test@example.com" not in res

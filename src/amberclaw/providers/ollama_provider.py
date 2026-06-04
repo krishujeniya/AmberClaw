@@ -87,6 +87,7 @@ class OllamaProvider(LLMProvider):
         max_tokens: int = 4096,
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
+        response_format: dict[str, Any] | None = None,
         on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
         """Send a chat completion request to Ollama."""
@@ -106,6 +107,9 @@ class OllamaProvider(LLMProvider):
                 "temperature": temperature,
             },
         }
+
+        if response_format and response_format.get("type") == "json_object":
+            payload["format"] = "json"
 
         if tools:
             payload["tools"] = tools

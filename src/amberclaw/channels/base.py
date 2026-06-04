@@ -90,7 +90,8 @@ class BaseChannel(ABC):
             metadata: Optional channel-specific metadata.
             session_key: Optional session key override (e.g. thread-scoped sessions).
         """
-        if not self.is_allowed(sender_id):
+        is_pairing = content.strip().startswith("/pair")
+        if not self.is_allowed(sender_id) and not is_pairing:
             logger.warning(
                 "Access denied for sender {} on channel {}. "
                 "Add them to allowFrom list in config to grant access.",

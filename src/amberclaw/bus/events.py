@@ -34,3 +34,15 @@ class OutboundMessage:
     reply_to: str | None = None
     media: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SystemEvent:
+    """Critical system event published by the supervisor or health monitor."""
+
+    event_type: str  # e.g. "low_memory", "service_failure", "heartbeat"
+    severity: str  # "info", "warning", "critical"
+    message: str
+    details: dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=datetime.now)
+

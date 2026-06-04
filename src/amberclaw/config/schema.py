@@ -373,10 +373,20 @@ class DataAgentConfig(Base):
     log_path: str = "./logs"
 
 
+class RBACConfig(Base):
+    """RBAC configuration."""
+
+    enabled: bool = False
+    user_roles: dict[str, str] = Field(default_factory=dict)
+    role_permissions: dict[str, list[str]] = Field(default_factory=dict)
+    default_role: str = "guest"
+
+
 class SecurityConfig(Base):
     """Security configuration."""
 
     pii_redaction: bool = True
+    rbac: RBACConfig = Field(default_factory=RBACConfig)
 
 
 class ToolsConfig(Base):

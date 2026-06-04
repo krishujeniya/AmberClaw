@@ -68,10 +68,10 @@
 - [x] **Security Sandbox Core (Landlock + seccomp)**: Implement `amberclaw/security/sandbox.py` using Landlock LSM (isolate workspace/tmp), seccomp-bpf filters (block `execve`, `ptrace`), namespaces (`unshare`), capability dropping (`cap-drop ALL`), non-root execution (`sandbox` user), and process limit controls. [Completed: 2026-06-03]
 - [x] **SSRF & TLS Egress Guard**: Refactor network security to enforce SSRF validation, TLS-only endpoints, and per-binary restriction (e.g., git can only hit GitHub, python only PyPI). [Completed: 2026-06-04]
 - [x] **WhatsApp Bridge Security Audit**: Completed audit and sandboxed Node.js bridge runtime using bubblewrap (bwrap) namespaces, path traversal fixes, CSWSH protections, and constant-time token validation. [Completed: 2026-06-04]
-- [ ] **Container Isolation Validation**: Add automated checks to ensure running container backends enforce read-only roots, drop capabilities, and prevent privilege escalation.
-- [ ] **DM Pairing (`/pair`)**: Implement secure verification code flow for messaging platforms to pair user IDs with access permissions.
-- [ ] **RBAC (Role-Based Access Control)**: Enforce role permissions checking user IDs against permission maps for tool execution.
-- [ ] **Secret Scanning**: Implement scan checks on workspace files before committing or exporting trajectories to ensure no API keys are exposed.
+- [x] **Container Isolation Validation**: Add automated checks to ensure running container backends enforce read-only roots, drop capabilities, and prevent privilege escalation. [Completed: 2026-06-04]
+- [x] **DM Pairing (`/pair`)**: Implement secure verification code flow for messaging platforms to pair user IDs with access permissions. [Completed: 2026-06-04]
+- [x] **RBAC (Role-Based Access Control)**: Enforce role permissions checking user IDs against permission maps for tool execution. [Completed: 2026-06-04]
+- [x] **Secret Scanning**: Implement scan checks on workspace files before committing or exporting trajectories to ensure no API keys are exposed. [Completed: 2026-06-04]
 
 ---
 

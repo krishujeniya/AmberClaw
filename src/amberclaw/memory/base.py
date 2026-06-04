@@ -1,12 +1,30 @@
+# ruff: noqa: UP042
 """
 AmberClaw Memory Base Interface
 """
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel
 
 from amberclaw.models.message import Message
+
+
+class MemoryScope(str, Enum):
+    """Supported memory access scopes."""
+    USER = "user"
+    AGENT = "agent"
+    SESSION = "session"
+    ORGANIZATION = "organization"
+
+
+class ScopeContext(BaseModel):
+    """Context defining multi-scope boundaries for memory access."""
+    user_id: str | None = None
+    agent_id: str | None = None
+    session_id: str | None = None
+    org_id: str | None = None
 
 
 class MemoryLayer(BaseModel):

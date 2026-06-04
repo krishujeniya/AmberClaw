@@ -59,6 +59,23 @@ def make_provider(config: Config) -> LLMProvider:
             default_model=model,
         )
 
+    # vLLM: local model runner and OpenAI-compatible provider
+    if provider_name == "vllm":
+        from amberclaw.providers.vllm import VLLMProvider
+
+        return VLLMProvider(
+            api_key=p.api_key if p else None,
+            api_base=config.get_api_base(model),
+            default_model=model,
+            quantization=p.quantization if p else None,
+            speculative_model=p.speculative_model if p else None,
+            num_speculative_tokens=p.num_speculative_tokens if p else None,
+            provider_name=provider_name,
+            fallback_models=config.agents.defaults.fallback_models,
+            enable_prompt_caching=config.agents.defaults.enable_prompt_caching,
+            enforce_strict_tools=config.agents.defaults.enforce_strict_tools,
+        )
+
     spec = find_by_name(provider_name or "openai")
     if not model.startswith("bedrock/") and not (p and p.api_key) and not (spec and spec.is_oauth):
         console.print("[red]Error: No API key configured.[/red]")
@@ -71,4 +88,7 @@ def make_provider(config: Config) -> LLMProvider:
         default_model=model,
         extra_headers=p.extra_headers if p else None,
         provider_name=provider_name,
+        fallback_models=config.agents.defaults.fallback_models,
+        enable_prompt_caching=config.agents.defaults.enable_prompt_caching,
+        enforce_strict_tools=config.agents.defaults.enforce_strict_tools,
     )

@@ -140,6 +140,7 @@ class LLMProvider(ABC):
         max_tokens: int = 4096,
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
+        response_format: dict[str, Any] | None = None,
         on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
         """
@@ -172,6 +173,7 @@ class LLMProvider(ABC):
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
         fallback_models: list[str] | None = None,
+        response_format: dict[str, Any] | None = None,
         on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
         """Call chat() with retry on transient failures and optional fallbacks."""
@@ -195,6 +197,7 @@ class LLMProvider(ABC):
                         max_tokens=max_tokens,
                         temperature=temperature,
                         reasoning_effort=reasoning_effort,
+                        response_format=response_format,
                         on_token=on_token,
                     )
                     last_response = response

@@ -137,7 +137,7 @@ class MemoryStore:
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a memory consolidation agent. Call the save_memory tool with your consolidation of the conversation.",
+                        "content": "You are a memory consolidation agent. Call the save_memory tool with your consolidation of the conversation. Proactively identify and extract key user preferences, workflows, rules, and facts that should be persisted long-term.",
                     },
                     {"role": "user", "content": prompt},
                 ],
