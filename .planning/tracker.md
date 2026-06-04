@@ -20,26 +20,26 @@
 - [x] **Out-of-Process Plugin Host**: Implement `amberclaw/plugins/host.py` using subprocesses or RPC channels to run third-party extensions in separate, capability-restricted hosts.
 - [x] **Plugin Registry & Manifest**: Create `amberclaw/plugins/registry.py` and `manager.py` to auto-discover, load, and validate extensions using a standard `plugin.yaml` manifest format (allowing third-party tools to auto-register).
 - [x] **PostgreSQL & Redis State Migration**: Move storage and state management from local SQLite/JSON databases to distributed PostgreSQL (multi-tenancy) and Redis (pub/sub and caching for scaling multi-instance deployments). [Completed: 2026-06-02]
-- [ ] **Model Capability Detection**: Implement dynamic model capability detection to automatically route tasks based on the LLM's context window, reasoning capability, and vision support.
-- [ ] **Prompt Caching Support**: Extend CLI/SDK routing to support Anthropic / OpenAI prompt caching headers dynamically to optimize costs.
-- [ ] **JSON Mode Enforcement**: Enforce json-mode or structured tool call modes in the LLM router to prevent unstructured text outputs when structured formats are expected.
-- [ ] **Quantization & Speculative Decoding**: Add config options and runner support for quantized local models (GGUF, AWQ) and speculative decoding setups.
+- [x] **Model Capability Detection**: Implement dynamic model capability detection to automatically route tasks based on the LLM's context window, reasoning capability, and vision support. [Completed: 2026-06-02]
+- [x] **Prompt Caching Support**: Extend CLI/SDK routing to support Anthropic / OpenAI prompt caching headers dynamically to optimize costs. [Completed: 2026-06-02]
+- [x] **JSON Mode Enforcement**: Enforce json-mode or structured tool call modes in the LLM router to prevent unstructured text outputs when structured formats are expected. [Completed: 2026-06-02]
+- [x] **Quantization & Speculative Decoding**: Add config options and runner support for quantized local models (GGUF, AWQ) and speculative decoding setups. [Completed: 2026-06-03]
 
 ---
 
 ## 2. Advanced Memory System (3-Layer & Dialectic)
 - [x] **Mem0 User Memory**: Basic user profile and conversational knowledge tracking.
 - [x] **ChromaDB Vector Store**: Vector database for document chunk retrieval.
-- [ ] **Hybrid Search Pipeline**: Add disk persistence to the BM25 keyword index and combine with vector search + cross-encoder reranking.
-- [ ] **Frozen-Snapshot Persistent Memory**: Create `amberclaw/memory/frozen_memory.py` managing `MEMORY.md` (facts, preferences) and `USER.md` (profile) as immutable prompt injection blocks read once at start to preserve prefix caches.
-- [ ] **SQLite Session Database (WAL + FTS5)**: Create `amberclaw/memory/session_db.py` to store complete conversation turns, supporting SQLite virtual tables for full-text conversational search and transaction logging.
-- [ ] **Memory Manager Orchestration**: Implement `amberclaw/memory/manager.py` with recall modes: `hybrid` (vector + search + Honcho), `context` (automatic turn injection), or `tools` (agent-triggered search/retrieval). Support write frequencies: `async`, `turn`, `session`, or `N` turns.
-- [ ] **Honcho Dialectic User Modeling**: Implement `amberclaw/memory/honcho_provider.py` to integrate with Honcho API. Support separate user/AI peer representations, observe toggles (`observeMe`, `observeOthers`), mutual observation modes (`directional` vs `unified`), and three sequential reasoning passes: *Initial Assessment* -> *Self-Audit* -> *Reconciliation*.
-- [ ] **Temporal Graph Memory**: Implement vector + knowledge graph hybrids (integrating Mem0g, Zep/Graphiti, or Cognee) to track time-aware fact changes and multi-hop entity relationships over time.
-- [ ] **Memory Agent Tools**: Implement `amberclaw/tools/memory_tools.py` registering `remember`, `recall`, `forget`, `session_search`, and `summarize_session` tools.
-- [ ] **Multi-Scope Memory**: Partition memory access into distinct scopes: `user`, `agent`, `session`, and `organization` tiers.
-- [ ] **Multi-Source Ingestion**: Build ingestion pipelines for files, web pages, and messages to load directly into the RAG memory.
-- [ ] **RAGAS Evaluation Integration**: Implement evaluation harnesses using RAGAS to monitor retrieval accuracy, faithfulness, and answer relevance.
+- [x] **Hybrid Search Pipeline**: Add disk persistence to the BM25 keyword index and combine with vector search + cross-encoder reranking. [Completed: 2026-06-03]
+- [x] **Frozen-Snapshot Persistent Memory**: Create `amberclaw/memory/frozen_memory.py` managing `MEMORY.md` (facts, preferences) and `USER.md` (profile) as immutable prompt injection blocks read once at start to preserve prefix caches. [Completed: 2026-06-03]
+- [x] **SQLite Session Database (WAL + FTS5)**: Create `amberclaw/memory/session_db.py` to store complete conversation turns, supporting SQLite virtual tables for full-text conversational search and transaction logging. [Completed: 2026-06-03]
+- [x] **Memory Manager Orchestration**: Implement `amberclaw/memory/manager.py` with recall modes: `hybrid` (vector + search + Honcho), `context` (automatic turn injection), or `tools` (agent-triggered search/retrieval). Support write frequencies: `async`, `turn`, `session`, or `N` turns. [Completed: 2026-06-03]
+- [x] **Honcho Dialectic User Modeling**: Implement `amberclaw/memory/honcho_provider.py` to integrate with Honcho API. Support separate user/AI peer representations, observe toggles (`observeMe`, `observeOthers`), mutual observation modes (`directional` vs `unified`), and three sequential reasoning passes: *Initial Assessment* -> *Self-Audit* -> *Reconciliation*. [Completed: 2026-06-03]
+- [x] **Temporal Graph Memory**: Implement vector + knowledge graph hybrids (integrating Mem0g, Zep/Graphiti, or Cognee) to track time-aware fact changes and multi-hop entity relationships over time. [Completed: 2026-06-03]
+- [x] **Memory Agent Tools**: Implement `amberclaw/tools/memory_tools.py` registering `remember`, `recall`, `forget`, `session_search`, and `summarize_session` tools. [Completed: 2026-06-03]
+- [x] **Multi-Scope Memory**: Partition memory access into distinct scopes: `user`, `agent`, `session`, and `organization` tiers. [Completed: 2026-06-03]
+- [x] **Multi-Source Ingestion**: Build ingestion pipelines for files, web pages, and messages to load directly into the RAG memory. [Completed: 2026-06-03]
+- [x] **RAGAS Evaluation Integration**: Implement evaluation harnesses using RAGAS to monitor retrieval accuracy, faithfulness, and answer relevance. [Completed: 2026-06-03]
 
 ---
 
@@ -47,13 +47,13 @@
 - [x] **LiteLLM Router**: Abstraction layer for LLM routing.
 - [x] **LangGraph Engine**: Stateful graph-based loop execution.
 - [x] **Execution Modes**: Simple ReAct, Plan-and-Execute, and basic routing.
-- [ ] **Plan-Execute-Reflect Loop**: Modernize agent architecture. Add an explicit reasoning-reflection module (`amberclaw/agent/learning_loop.py`) where agents evaluate their own outputs and self-correct on failures.
-- [ ] **Autonomous Skill Creator (`SkillCreator`)**: Monitor tool use trajectories. When a task takes >3 turns or >5 tool calls, automatically synthesize a structured Markdown skill document (with steps, known facts, and verification) and save it to `~/.amberclaw/skills/auto-created/[skill].md`.
-- [ ] **Skill Self-Improver (`SkillImprover`)**: Track skill success/failure rates. If a skill's success rate falls below 50%, trigger auto-refinement (adding error handling, adjusting constraints). Expose a `skill_manage` tool to let the agent edit, merge, or delete its own skills.
-- [ ] **Memory Nudge System (`MemoryNudgeSystem`)**: Implement proactive agent self-prompting (session-end, pattern-detected, periodic every 10 turns) to identify key user facts and preferences to persist long-term.
-- [ ] **A2A (Agent-to-Agent) Collaboration**: Add Agent-to-Agent protocol support based on JSON-RPC 2.0 to allow AmberClaw instances to delegate tasks to other local/remote agents.
-- [ ] **Hierarchical Agent Orchestration**: Support a root coordinator agent routing sub-tasks to specialized worker agents with different tool access.
-- [ ] **Computer Use / GUI Agent**: Integrate OSWorld-like GUI interaction capabilities to allow keyboard/mouse control in sandboxed desktops.
+- [x] **Plan-Execute-Reflect Loop**: Modernize agent architecture. Add an explicit reasoning-reflection module (`amberclaw/agent/learning_loop.py`) where agents evaluate their own outputs and self-correct on failures. [Completed: 2026-06-04]
+- [x] **Autonomous Skill Creator (`SkillCreator`)**: Monitor tool use trajectories. When a task takes >3 turns or >5 tool calls, automatically synthesize a structured Markdown skill document (with steps, known facts, and verification) and save it to `~/.amberclaw/skills/auto-created/[skill].md`. [Completed: 2026-06-04]
+- [x] **Skill Self-Improver (`SkillImprover`)**: Track skill success/failure rates. If a skill's success rate falls below 50%, trigger auto-refinement (adding error handling, adjusting constraints). Expose a `skill_manage` tool to let the agent edit, merge, or delete its own skills. [Completed: 2026-06-04]
+- [x] **Memory Nudge System (`MemoryNudgeSystem`)**: Implement proactive agent self-prompting (session-end, pattern-detected, periodic every 10 turns) to identify key user facts and preferences to persist long-term. [Completed: 2026-06-04]
+- [x] **A2A (Agent-to-Agent) Collaboration**: Add Agent-to-Agent protocol support based on JSON-RPC 2.0 to allow AmberClaw instances to delegate tasks to other local/remote agents. [Completed: 2026-06-04]
+- [x] **Hierarchical Agent Orchestration**: Support a root coordinator agent routing sub-tasks to specialized worker agents with different tool access. [Completed: 2026-06-04]
+- [x] **Computer Use / GUI Agent**: Integrate OSWorld-like GUI interaction capabilities to allow keyboard/mouse control in sandboxed desktops. [Completed: 2026-06-04]
 
 ---
 
@@ -63,11 +63,11 @@
 - [x] **Fernet Secret Vault**: Encrypted credential storage with proxy resolution.
 - [x] **Cryptographic Audit Log**: Tamper-evident, SHA-256 hash-chained JSONL logging.
 - [x] **YAML Security Blueprints**: Posture profiles (Paranoid, Dev, Minimal).
-- [ ] **PII Redaction Engine**: Upgrade basic regex scrubbers to Microsoft Presidio for advanced NER-based detection of PII/PHI in prompt inputs and outputs.
-- [ ] **Human-in-the-Loop (HITL) Board**: Wire existing risk assessment logic to TUI and Web interfaces for operator approval before high-risk actions.
-- [ ] **Security Sandbox Core (Landlock + seccomp)**: Implement `amberclaw/security/sandbox.py` using Landlock LSM (isolate workspace/tmp), seccomp-bpf filters (block `execve`, `ptrace`), namespaces (`unshare`), capability dropping (`cap-drop ALL`), non-root execution (`sandbox` user), and process limit controls.
-- [ ] **SSRF & TLS Egress Guard**: Refactor network security to enforce SSRF validation, TLS-only endpoints, and per-binary restriction (e.g., git can only hit GitHub, python only PyPI).
-- [ ] **WhatsApp Bridge Security Audit**: Perform a deep-dive audit and runtime isolation of the unaudited Node.js subprocess spawned by the WhatsApp channel adapter.
+- [x] **PII Redaction Engine**: Upgrade basic regex scrubbers to Microsoft Presidio for advanced NER-based detection of PII/PHI in prompt inputs and outputs. [Completed: 2026-06-04]
+- [x] **Human-in-the-Loop (HITL) Board**: Wire existing risk assessment logic to TUI and Web interfaces for operator approval before high-risk actions. [Completed: 2026-06-04]
+- [x] **Security Sandbox Core (Landlock + seccomp)**: Implement `amberclaw/security/sandbox.py` using Landlock LSM (isolate workspace/tmp), seccomp-bpf filters (block `execve`, `ptrace`), namespaces (`unshare`), capability dropping (`cap-drop ALL`), non-root execution (`sandbox` user), and process limit controls. [Completed: 2026-06-03]
+- [x] **SSRF & TLS Egress Guard**: Refactor network security to enforce SSRF validation, TLS-only endpoints, and per-binary restriction (e.g., git can only hit GitHub, python only PyPI). [Completed: 2026-06-04]
+- [x] **WhatsApp Bridge Security Audit**: Completed audit and sandboxed Node.js bridge runtime using bubblewrap (bwrap) namespaces, path traversal fixes, CSWSH protections, and constant-time token validation. [Completed: 2026-06-04]
 - [ ] **Container Isolation Validation**: Add automated checks to ensure running container backends enforce read-only roots, drop capabilities, and prevent privilege escalation.
 - [ ] **DM Pairing (`/pair`)**: Implement secure verification code flow for messaging platforms to pair user IDs with access permissions.
 - [ ] **RBAC (Role-Based Access Control)**: Enforce role permissions checking user IDs against permission maps for tool execution.
@@ -77,7 +77,7 @@
 
 ## 5. Terminal & Execution Backends (6+ Backends)
 - [x] **Local Backend**: `subprocess.run()` command execution.
-- [ ] **Docker Backend**: Isolated container execution using `docker-py` with namespaces, read-only root, cap drops, and configurable resources (`container_cpu`, `container_memory`).
+- [x] **Docker Backend**: Isolated container execution using docker CLI / asyncio subprocesses with namespaces, read-only root, cap drops, and resource caps. [Completed: 2026-06-03]
 - [ ] **SSH Backend**: Remote system execution via `paramiko` supporting agent forwarding and reconnection.
 - [ ] **Daytona Backend**: Managed serverless dev environments that hibernate when idle and wake on demand.
 - [ ] **Singularity / Apptainer Backend**: Containerized execution for HPC clusters without Docker daemon, running `singularity exec --containall --no-home`.

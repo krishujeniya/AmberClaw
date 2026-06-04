@@ -23,6 +23,8 @@ if sys.platform == "win32":
         except Exception:
             pass
 
+import contextlib
+
 import typer
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import HTML
@@ -73,7 +75,9 @@ app.add_typer(skills_app, name="skill")
 
 
 @skills_app.command("search")
-def skill_search(query: str = typer.Argument(..., help="Search query (natural language)")) -> None:
+def skill_search(
+    query: str = typer.Argument(..., help="Search query (natural language)"),
+) -> None:
     """Search for skills on ClawHub."""
     import subprocess
 
@@ -87,7 +91,9 @@ def skill_search(query: str = typer.Argument(..., help="Search query (natural la
 
 
 @skills_app.command("install")
-def skill_install(slug: str = typer.Argument(..., help="The unique slug of the skill")) -> None:
+def skill_install(
+    slug: str = typer.Argument(..., help="The unique slug of the skill"),
+) -> None:
     """Install a skill from ClawHub."""
     import subprocess
 
@@ -95,7 +101,15 @@ def skill_install(slug: str = typer.Argument(..., help="The unique slug of the s
     console.print(f"Installing [bold cyan]{slug}[/bold cyan] to {workspace}...")
     try:
         subprocess.run(
-            ["npx", "--yes", "clawhub@latest", "install", slug, "--workdir", str(workspace)],
+            [
+                "npx",
+                "--yes",
+                "clawhub@latest",
+                "install",
+                slug,
+                "--workdir",
+                str(workspace),
+            ],
             check=True,
         )
         console.print(f"[green]✓[/green] Successfully installed {slug}.")
@@ -112,7 +126,10 @@ def skill_list() -> None:
 
     workspace = get_workspace_path()
     try:
-        subprocess.run(["npx", "--yes", "clawhub@latest", "list", "--workdir", str(workspace)], check=True)
+        subprocess.run(
+            ["npx", "--yes", "clawhub@latest", "list", "--workdir", str(workspace)],
+            check=True,
+        )
     except subprocess.CalledProcessError as e:
         console.print(f"[red]Error: {e}[/red]")
     except Exception as e:
@@ -226,7 +243,9 @@ class TokenStreamer:
             self.console.print(f"[cyan]{__logo__} AmberClaw[/cyan]")
             from rich.live import Live
 
-            self.live = Live("", console=self.console, refresh_per_second=12, auto_refresh=True)
+            self.live = Live(
+                "", console=self.console, refresh_per_second=12, auto_refresh=True
+            )
             self.live.start()
             self.header_printed = True
 
@@ -273,7 +292,9 @@ def version_callback(value: bool) -> None:
 
 @app.callback()
 def main(
-    version: bool = typer.Option(None, "--version", "-v", callback=version_callback, is_eager=True),
+    version: bool = typer.Option(
+        None, "--version", "-v", callback=version_callback, is_eager=True
+    ),
 ) -> None:
     """AmberClaw - Personal AI Assistant."""
     pass
@@ -293,7 +314,9 @@ def onboard() -> None:
 
     if config_path.exists():
         console.print(f"[yellow]Config already exists at {config_path}[/yellow]")
-        console.print("  [bold]y[/bold] = overwrite with defaults (existing values will be lost)")
+        console.print(
+            "  [bold]y[/bold] = overwrite with defaults (existing values will be lost)"
+        )
         console.print(
             "  [bold]N[/bold] = refresh config, keeping existing values and adding new fields",
         )
@@ -338,9 +361,13 @@ def onboard() -> None:
 @app.command()
 def gateway(
     port: int | None = typer.Option(None, "--port", "-p", help="Gateway port"),
-    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
+    workspace: str | None = typer.Option(
+        None, "--workspace", "-w", help="Workspace directory"
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
-    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
+    config: str | None = typer.Option(
+        None, "--config", "-c", help="Path to config file"
+    ),
 ) -> None:
     """Start the AmberClaw gateway."""
     from amberclaw.agent.loop import AgentLoop
@@ -434,7 +461,9 @@ def gateway(
 
             await bus.publish_outbound(
                 OutboundMessage(
-                    channel=job.payload.channel or "cli", chat_id=job.payload.to, content=response,
+                    channel=job.payload.channel or "cli",
+                    chat_id=job.payload.to,
+                    content=response,
                 ),
             )
         return response
@@ -499,7 +528,9 @@ def gateway(
     )
 
     if channels.enabled_channels:
-        console.print(f"[green]✓[/green] Channels enabled: {', '.join(channels.enabled_channels)}")
+        console.print(
+            f"[green]✓[/green] Channels enabled: {', '.join(channels.enabled_channels)}"
+        )
     else:
         console.print("[yellow]Warning: No channels enabled[/yellow]")
 
@@ -536,15 +567,23 @@ def gateway(
 
 @app.command()
 def agent(
-    message: str = typer.Option(None, "--message", "-m", help="Message to send to the agent"),
+    message: str = typer.Option(
+        None, "--message", "-m", help="Message to send to the agent"
+    ),
     session_id: str = typer.Option("cli:direct", "--session", "-s", help="Session ID"),
-    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
+    workspace: str | None = typer.Option(
+        None, "--workspace", "-w", help="Workspace directory"
+    ),
     config: str | None = typer.Option(None, "--config", "-c", help="Config file path"),
     markdown: bool = typer.Option(
-        True, "--markdown/--no-markdown", help="Render assistant output as Markdown",
+        True,
+        "--markdown/--no-markdown",
+        help="Render assistant output as Markdown",
     ),
     logs: bool = typer.Option(
-        False, "--logs/--no-logs", help="Show amberclaw runtime logs during chat",
+        False,
+        "--logs/--no-logs",
+        help="Show amberclaw runtime logs during chat",
     ),
 ) -> None:
     """Interact with the agent directly."""
@@ -624,7 +663,10 @@ def agent(
             streamer = TokenStreamer(console, render_markdown=markdown)
             with _thinking_ctx():
                 response = await agent_loop.process_direct(
-                    message, session_id, on_progress=_cli_progress, on_token=streamer.on_token,
+                    message,
+                    session_id,
+                    on_progress=_cli_progress,
+                    on_token=streamer.on_token,
                 )
             streamer.stop()
             if not streamer.content:
@@ -677,7 +719,9 @@ def agent(
             async def _consume_outbound() -> None:
                 while True:
                     try:
-                        msg = await asyncio.wait_for(bus.consume_outbound(), timeout=1.0)
+                        msg = await asyncio.wait_for(
+                            bus.consume_outbound(), timeout=1.0
+                        )
 
                         # Streaming tokens
                         if msg.metadata.get("_token"):
@@ -700,7 +744,9 @@ def agent(
                             if state["streamer"].header_printed:
                                 state["streamer"].stop()
                                 # Content was already streamed, reset streamer for next turn
-                                state["streamer"] = TokenStreamer(console, render_markdown=markdown)
+                                state["streamer"] = TokenStreamer(
+                                    console, render_markdown=markdown
+                                )
                             elif msg.content:
                                 turn_response.append(msg.content)
                             turn_done.set()
@@ -745,7 +791,9 @@ def agent(
                             await turn_done.wait()
 
                         if turn_response:
-                            _print_agent_response(turn_response[0], render_markdown=markdown)
+                            _print_agent_response(
+                                turn_response[0], render_markdown=markdown
+                            )
                     except KeyboardInterrupt:
                         _restore_terminal()
                         console.print("\nGoodbye!")
@@ -793,7 +841,9 @@ def channels_status() -> None:
 
     # Feishu
     fs = cfg.channels.feishu
-    fs_config = f"app_id: {fs.app_id[:10]}..." if fs.app_id else "[dim]not configured[/dim]"
+    fs_config = (
+        f"app_id: {fs.app_id[:10]}..." if fs.app_id else "[dim]not configured[/dim]"
+    )
     table.add_row("Feishu", "✓" if fs.enabled else "✗", fs_config)
 
     # Mochat
@@ -803,24 +853,32 @@ def channels_status() -> None:
 
     # Telegram
     tg = cfg.channels.telegram
-    tg_config = f"token: {tg.token[:10]}..." if tg.token else "[dim]not configured[/dim]"
+    tg_config = (
+        f"token: {tg.token[:10]}..." if tg.token else "[dim]not configured[/dim]"
+    )
     table.add_row("Telegram", "✓" if tg.enabled else "✗", tg_config)
 
     # Slack
     slack = cfg.channels.slack
-    slack_config = "socket" if slack.app_token and slack.bot_token else "[dim]not configured[/dim]"
+    slack_config = (
+        "socket" if slack.app_token and slack.bot_token else "[dim]not configured[/dim]"
+    )
     table.add_row("Slack", "✓" if slack.enabled else "✗", slack_config)
 
     # DingTalk
     dt = cfg.channels.dingtalk
     dt_config = (
-        f"client_id: {dt.client_id[:10]}..." if dt.client_id else "[dim]not configured[/dim]"
+        f"client_id: {dt.client_id[:10]}..."
+        if dt.client_id
+        else "[dim]not configured[/dim]"
     )
     table.add_row("DingTalk", "✓" if dt.enabled else "✗", dt_config)
 
     # QQ
     qq = cfg.channels.qq
-    qq_config = f"app_id: {qq.app_id[:10]}..." if qq.app_id else "[dim]not configured[/dim]"
+    qq_config = (
+        f"app_id: {qq.app_id[:10]}..." if qq.app_id else "[dim]not configured[/dim]"
+    )
     table.add_row("QQ", "✓" if qq.enabled else "✗", qq_config)
 
     # Email
@@ -850,15 +908,10 @@ def _get_bridge_dir() -> Path:
         console.print("[red]npm not found. Please install Node.js >= 18.[/red]")
         raise typer.Exit(1)
 
-    # Find source bridge: first check package data, then source dir
-    pkg_bridge = Path(__file__).parent.parent / "bridge"  # amberclaw/bridge (installed)
-    src_bridge = Path(__file__).parent.parent.parent / "bridge"  # repo root/bridge (dev)
+    # Find source bridge: check package data or dev path
+    pkg_bridge = Path(__file__).parent.parent / "bridge"  # amberclaw/bridge
 
-    source = None
-    if (pkg_bridge / "package.json").exists():
-        source = pkg_bridge
-    elif (src_bridge / "package.json").exists():
-        source = src_bridge
+    source = pkg_bridge if (pkg_bridge / "package.json").exists() else None
 
     if not source:
         console.print("[red]Bridge source not found.[/red]")
@@ -871,15 +924,21 @@ def _get_bridge_dir() -> Path:
     user_bridge.parent.mkdir(parents=True, exist_ok=True)
     if user_bridge.exists():
         shutil.rmtree(user_bridge)
-    shutil.copytree(source, user_bridge, ignore=shutil.ignore_patterns("node_modules", "dist"))
+    shutil.copytree(
+        source, user_bridge, ignore=shutil.ignore_patterns("node_modules", "dist")
+    )
 
     # Install and build
     try:
         console.print("  Installing dependencies...")
-        subprocess.run(["npm", "install"], cwd=user_bridge, check=True, capture_output=True)
+        subprocess.run(
+            ["npm", "install"], cwd=user_bridge, check=True, capture_output=True
+        )
 
         console.print("  Building...")
-        subprocess.run(["npm", "run", "build"], cwd=user_bridge, check=True, capture_output=True)
+        subprocess.run(
+            ["npm", "run", "build"], cwd=user_bridge, check=True, capture_output=True
+        )
 
         console.print("[green]✓[/green] Bridge ready\n")
     except subprocess.CalledProcessError as e:
@@ -894,28 +953,29 @@ def _get_bridge_dir() -> Path:
 @channels_app.command("login")
 def channels_login() -> None:
     """Link device via QR code."""
-    import subprocess
+    import asyncio
 
     from amberclaw.config.loader import load_config
-    from amberclaw.config.paths import get_runtime_subdir
+    from amberclaw.security.whatsapp_sandbox import spawn_isolated_whatsapp_bridge
 
     cfg = load_config()
-    bridge_dir = _get_bridge_dir()
+    _get_bridge_dir()
 
-    console.print(f"{__logo__} Starting bridge...")
+    console.print(f"{__logo__} Starting secure WhatsApp bridge...")
     console.print("Scan the QR code to connect.\n")
 
-    env = {**os.environ}
-    if cfg.channels.whatsapp.bridge_token:
-        env["BRIDGE_TOKEN"] = cfg.channels.whatsapp.bridge_token
-    env["AUTH_DIR"] = str(get_runtime_subdir("whatsapp-auth"))
+    async def run_bridge():
+        proc = await spawn_isolated_whatsapp_bridge(
+            cfg,
+            stdout=None,  # Inherit stdout so it prints to terminal
+            stderr=None,  # Inherit stderr
+        )
+        await proc.wait()
 
     try:
-        subprocess.run(["npm", "start"], cwd=bridge_dir, check=True, env=env)
-    except subprocess.CalledProcessError as e:
+        asyncio.run(run_bridge())
+    except Exception as e:
         console.print(f"[red]Bridge failed: {e}[/red]")
-    except FileNotFoundError:
-        console.print("[red]npm not found. Please install Node.js.[/red]")
 
 
 # ============================================================================
@@ -927,9 +987,14 @@ def channels_login() -> None:
 def council(
     query: str = typer.Argument(..., help="Question or task to put to the council."),
     models: list[str] = typer.Option(
-        [], "--model", "-m", help="Model IDs (repeat for each). Defaults to primary.",
+        [],
+        "--model",
+        "-m",
+        help="Model IDs (repeat for each). Defaults to primary.",
     ),
-    depth: int = typer.Option(1, "--depth", "-d", min=1, max=3, help="Peer-ranking rounds (1-3)."),
+    depth: int = typer.Option(
+        1, "--depth", "-d", min=1, max=3, help="Peer-ranking rounds (1-3)."
+    ),
     workspace: str | None = typer.Option(None, "--workspace", "-w"),
     config: str | None = typer.Option(None, "--config", "-c"),
 ) -> None:
@@ -981,8 +1046,12 @@ def council(
 
 @app.command()
 def mythos(
-    query: str = typer.Argument(..., help="Question or problem to reason through deeply."),
-    depth: int = typer.Option(3, "--depth", "-d", min=1, max=5, help="Reasoning depth (1-5)."),
+    query: str = typer.Argument(
+        ..., help="Question or problem to reason through deeply."
+    ),
+    depth: int = typer.Option(
+        3, "--depth", "-d", min=1, max=5, help="Reasoning depth (1-5)."
+    ),
     workspace: str | None = typer.Option(None, "--workspace", "-w"),
     config: str | None = typer.Option(None, "--config", "-c"),
 ) -> None:
@@ -1004,7 +1073,9 @@ def mythos(
         max_tokens=min(cfg.agents.defaults.max_tokens, 2048),
     )
 
-    console.print(f"{__logo__} [bold magenta]Mythos[/bold magenta] — {depth}-depth reasoning...\n")
+    console.print(
+        f"{__logo__} [bold magenta]Mythos[/bold magenta] — {depth}-depth reasoning...\n"
+    )
 
     async def run() -> tuple[str, str]:
         args = MythosArgs(query=query, depth=depth)
@@ -1093,7 +1164,8 @@ def _register_login(name: str) -> Callable[[Callable[[], None]], Callable[[], No
 @provider_app.command("login")
 def provider_login(
     provider: str = typer.Argument(
-        ..., help="OAuth provider (e.g. 'openai-codex', 'github-copilot')",
+        ...,
+        help="OAuth provider (e.g. 'openai-codex', 'github-copilot')",
     ),
 ) -> None:
     """Authenticate with an OAuth provider."""
@@ -1103,7 +1175,9 @@ def provider_login(
     spec = next((s for s in PROVIDERS if s.name == key and s.is_oauth), None)
     if not spec:
         names = ", ".join(s.name.replace("_", "-") for s in PROVIDERS if s.is_oauth)
-        console.print(f"[red]Unknown OAuth provider: {provider}[/red]  Supported: {names}")
+        console.print(
+            f"[red]Unknown OAuth provider: {provider}[/red]  Supported: {names}"
+        )
         raise typer.Exit(1)
 
     handler = _LOGIN_HANDLERS.get(spec.name)
@@ -1121,15 +1195,13 @@ def _login_openai_codex() -> None:
         from oauth_cli_kit import get_token, login_oauth_interactive
 
         token = None
-        try:
+        with contextlib.suppress(Exception):
             token = get_token()
-        except Exception:
-            pass
         if not (token and token.access):
             console.print("[cyan]Starting interactive OAuth login...[/cyan]\n")
             token = login_oauth_interactive(
-                print_fn=lambda s: console.print(s),
-                prompt_fn=lambda s: typer.prompt(s),
+                print_fn=console.print,
+                prompt_fn=typer.prompt,
             )
         if not (token and token.access):
             console.print("[red]✗ Authentication failed[/red]")
@@ -1138,7 +1210,9 @@ def _login_openai_codex() -> None:
             f"[green]✓ Authenticated with OpenAI Codex[/green]  [dim]{token.account_id}[/dim]",
         )
     except ImportError:
-        console.print("[red]oauth_cli_kit not installed. Run: pip install oauth-cli-kit[/red]")
+        console.print(
+            "[red]oauth_cli_kit not installed. Run: pip install oauth-cli-kit[/red]"
+        )
         raise typer.Exit(1)
 
 
@@ -1167,7 +1241,9 @@ def _login_github_copilot() -> None:
 
 @app.command()
 def usage(
-    days: int = typer.Option(7, "--days", "-d", help="Number of days to show usage for"),
+    days: int = typer.Option(
+        7, "--days", "-d", help="Number of days to show usage for"
+    ),
     all_time: bool = typer.Option(False, "--all", "-a", help="Show all-time usage"),
 ) -> None:
     """Show token usage and cost monitoring dashboard."""
@@ -1199,7 +1275,9 @@ def usage(
     total_cost = 0.0
 
     # Sort models by cost descending
-    sorted_models = sorted(costs.items(), key=lambda x: x[1]["total_cost"], reverse=True)
+    sorted_models = sorted(
+        costs.items(), key=lambda x: x[1]["total_cost"], reverse=True
+    )
 
     for model, data in sorted_models:
         table.add_row(
@@ -1247,7 +1325,9 @@ def ingest(
 
         retriever = HybridRetriever(db_dir)
         retriever.ingest(docs)
-        console.print(f"[green]✓ Successfully ingested {len(docs)} chunks into knowledge base.[/green]")
+        console.print(
+            f"[green]✓ Successfully ingested {len(docs)} chunks into knowledge base.[/green]"
+        )
     except ImportError as e:
         console.print(f"[red]Dependency missing: {e}[/red]")
         console.print("Run: pip install amberclaw[docs,vectordb]")
@@ -1255,10 +1335,212 @@ def ingest(
         console.print(f"[red]Ingestion failed: {e}[/red]")
 
 
+kernel_app = typer.Typer(help="Manage AmberClaw kernel supervisor")
+app.add_typer(kernel_app, name="kernel")
+
+
+@kernel_app.command("start")
+def kernel_start(
+    port: int | None = typer.Option(None, "--port", "-p", help="Gateway port"),
+    workspace: str | None = typer.Option(
+        None, "--workspace", "-w", help="Workspace directory"
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+    config: str | None = typer.Option(
+        None, "--config", "-c", help="Path to config file"
+    ),
+) -> None:
+    """Start the ClawOS Kernel Supervisor running background services and gateway."""
+    import logging
+
+    from amberclaw.agent.loop import AgentLoop
+    from amberclaw.bus.queue import MessageBus
+    from amberclaw.channels.manager import ChannelManager
+    from amberclaw.config.paths import get_cron_dir
+    from amberclaw.core.kernel import ClawOSSupervisor
+    from amberclaw.cron import HeartbeatService
+    from amberclaw.cron.service import CronService
+    from amberclaw.cron.types import CronJob
+    from amberclaw.session.manager import SessionManager
+
+    if verbose:
+        logging.basicConfig(level=logging.DEBUG)
+
+    try:
+        cfg = load_runtime_config(config, workspace)
+    except FileNotFoundError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+    console.print(f"{__logo__} Starting ClawOS Kernel Supervisor...")
+    sync_workspace_templates(cfg.workspace_path)
+    bus = MessageBus()
+    provider = make_provider(cfg)
+    session_manager = SessionManager(cfg.workspace_path)
+
+    # Create cron service
+    cron_store_path = get_cron_dir() / "jobs.json"
+    cron = CronService(cron_store_path)
+
+    # Create agent
+    agent = AgentLoop(
+        bus=bus,
+        provider=provider,
+        workspace=cfg.workspace_path,
+        model=cfg.agents.defaults.model,
+        temperature=cfg.agents.defaults.temperature,
+        max_tokens=cfg.agents.defaults.max_tokens,
+        max_iterations=cfg.agents.defaults.max_tool_iterations,
+        memory_window=cfg.agents.defaults.memory_window,
+        reasoning_effort=cfg.agents.defaults.reasoning_effort,
+        brave_api_key=cfg.tools.web.search.api_key or None,
+        web_proxy=cfg.tools.web.proxy or None,
+        exec_config=cfg.tools.exec,
+        cron_service=cron,
+        restrict_to_workspace=cfg.tools.restrict_to_workspace,
+        session_manager=session_manager,
+        mcp_servers=cfg.tools.mcp_servers,
+        channels_config=cfg.channels,
+        embedding_model=cfg.agents.defaults.embedding_model,
+        reranker_model=cfg.agents.defaults.reranker_model,
+    )
+
+    # Set cron callback
+    async def on_cron_job(job: CronJob) -> str | None:
+        from amberclaw.agent.tools.cron import CronTool
+        from amberclaw.agent.tools.message import MessageTool
+
+        reminder_note = (
+            "[Scheduled Task] Timer finished.\n\n"
+            f"Task '{job.name}' has been triggered.\n"
+            f"Scheduled instruction: {job.payload.message}"
+        )
+
+        cron_tool = agent.tools.get("cron")
+        cron_token = None
+        if isinstance(cron_tool, CronTool):
+            cron_token = cron_tool.set_cron_context(True)
+        try:
+            response = await agent.process_direct(
+                reminder_note,
+                session_key=f"cron:{job.id}",
+                channel=job.payload.channel or "cli",
+                chat_id=job.payload.to or "direct",
+            )
+        finally:
+            if isinstance(cron_tool, CronTool) and cron_token is not None:
+                cron_tool.reset_cron_context(cron_token)
+
+        message_tool = agent.tools.get("message")
+        if isinstance(message_tool, MessageTool) and message_tool._sent_in_turn:
+            return response
+
+        if job.payload.deliver and job.payload.to and response:
+            from amberclaw.bus.events import OutboundMessage
+
+            await bus.publish_outbound(
+                OutboundMessage(
+                    channel=job.payload.channel or "cli",
+                    chat_id=job.payload.to,
+                    content=response,
+                ),
+            )
+        return response
+
+    cron.on_job = on_cron_job
+
+    # Create channel manager
+    channels = ChannelManager(cfg, bus)
+
+    def _pick_heartbeat_target() -> tuple[str, str]:
+        enabled = set(channels.enabled_channels)
+        for item in session_manager.list_sessions():
+            key = item.get("key") or ""
+            if ":" not in key:
+                continue
+            channel, chat_id = key.split(":", 1)
+            if channel in {"cli", "system"}:
+                continue
+            if channel in enabled and chat_id:
+                return channel, chat_id
+        return "cli", "direct"
+
+    # Create heartbeat service
+    async def on_heartbeat_execute(tasks: str) -> str:
+        channel, chat_id = _pick_heartbeat_target()
+
+        async def _silent(*_args: Any, **_kwargs: Any) -> None:
+            pass
+
+        return await agent.process_direct(
+            tasks,
+            session_key="heartbeat",
+            channel=channel,
+            chat_id=chat_id,
+            on_progress=_silent,
+        )
+
+    async def on_heartbeat_notify(response: str) -> None:
+        from amberclaw.bus.events import OutboundMessage
+
+        channel, chat_id = _pick_heartbeat_target()
+        if channel == "cli":
+            return
+        await bus.publish_outbound(
+            OutboundMessage(channel=channel, chat_id=chat_id, content=response),
+        )
+
+    hb_cfg = cfg.gateway.heartbeat
+    heartbeat = HeartbeatService(
+        workspace=cfg.workspace_path,
+        provider=provider,
+        model=agent.model,
+        on_execute=on_heartbeat_execute,
+        on_notify=on_heartbeat_notify,
+        interval_s=hb_cfg.interval_s,
+        enabled=hb_cfg.enabled,
+    )
+
+    # Initialize Supervisor
+    supervisor = ClawOSSupervisor(bus=bus, workspace=cfg.workspace_path, config=cfg)
+    supervisor.register_service("agent", agent.run, agent.stop)
+    supervisor.register_service("cron", cron.start, cron.stop)
+    supervisor.register_service("heartbeat", heartbeat.start, heartbeat.stop)
+    supervisor.register_service("channels", channels.start_all, channels.stop_all)
+
+    async def main_run():
+        loop = asyncio.get_running_loop()
+        stop_event = asyncio.Event()
+
+        async def shutdown():
+            console.print("\n[yellow]Shutting down ClawOS Supervisor...[/yellow]")
+            await supervisor.stop()
+            stop_event.set()
+
+        def handle_signal(sig):
+            console.print(f"\n[red]Received signal {sig.name}[/red]")
+            asyncio.create_task(shutdown())
+
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            with contextlib.suppress(NotImplementedError):
+                loop.add_signal_handler(sig, lambda s=sig: handle_signal(s))
+
+        await supervisor.start()
+        console.print(
+            "[green]✓ ClawOS Supervisor running. Press Ctrl+C to stop.[/green]"
+        )
+        await stop_event.wait()
+
+    with contextlib.suppress(KeyboardInterrupt):
+        asyncio.run(main_run())
+
+
 if __name__ == "__main__":
     app()
 
+
 def run_onboard():
     import sys
-    sys.argv = ["amberclaw", "onboard"] + sys.argv[1:]
+
+    sys.argv = ["amberclaw", "onboard", *sys.argv[1:]]
     app()

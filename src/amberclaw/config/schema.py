@@ -21,6 +21,8 @@ class WhatsAppConfig(Base):
     bridge_url: str = "ws://localhost:3001"
     bridge_token: str = "local-dev-token-please-change"  # Shared token for bridge auth
     allow_from: list[str] = Field(default_factory=list)  # Allowed phone numbers
+    spawn_bridge: bool = True  # Dynamically spawn the bridge subprocess
+    bridge_port: int = 3001  # Local port for the bridge
 
 
 class TelegramConfig(Base):
@@ -233,6 +235,8 @@ class AgentDefaults(Base):
     memory_window: int = 100
     reasoning_effort: str | None = None  # low / medium / high — enables LLM thinking mode
     fallback_models: list[str] = Field(default_factory=list)  # Models to try if primary fails
+    enable_prompt_caching: bool = True  # Enable Anthropic/OpenAI prompt caching
+    enforce_strict_tools: bool = True  # Enforce strict structured tool calls if supported
     embedding_model: str = "openai/text-embedding-3-small"
     reranker_model: str | None = None  # e.g. "cohere/rerank-v3-english"
 
@@ -249,6 +253,9 @@ class ProviderConfig(Base):
     api_key: str = ""
     api_base: str | None = None
     extra_headers: dict[str, str] | None = None  # Custom headers (e.g. APP-Code for AiHubMix)
+    quantization: str | None = None  # Model quantization type (e.g. awq, gptq, fp8, squeezellm)
+    speculative_model: str | None = None  # Draft model path/name for speculative decoding
+    num_speculative_tokens: int | None = None  # Number of speculative tokens to sample
 
 
 class ProvidersConfig(Base):

@@ -29,16 +29,29 @@ class WhatsAppChannel(BaseChannel):
         self._ws = None
         self._connected = False
         self._processed_message_ids: OrderedDict[str, None] = OrderedDict()
+        self._bridge_process = None
+        self._monitor_task = None
 
     async def start(self) -> None:
         """Start the WhatsApp channel by connecting to the bridge."""
         import websockets
 
+        from amberclaw.config.schema import settings
+        from amberclaw.security.whatsapp_sandbox import spawn_isolated_whatsapp_bridge
+
+        self._running = True
+
+        if self.config.spawn_bridge:
+            logger.info("Spawning sandboxed WhatsApp bridge...")
+            try:
+                self._bridge_process = await spawn_isolated_whatsapp_bridge(settings)
+                self._monitor_task = asyncio.create_task(self._monitor_bridge_process())
+            except Exception as e:
+                logger.error("Failed to spawn WhatsApp bridge: {}", e)
+
         bridge_url = self.config.bridge_url
 
         logger.info("Connecting to WhatsApp bridge at {}...", bridge_url)
-
-        self._running = True
 
         while self._running:
             try:
@@ -70,6 +83,33 @@ class WhatsAppChannel(BaseChannel):
                     logger.info("Reconnecting in 5 seconds...")
                     await asyncio.sleep(5)
 
+    async def _monitor_bridge_process(self) -> None:
+        """Reads and logs stdout/stderr from the WhatsApp bridge subprocess."""
+        if not self._bridge_process:
+            return
+
+        async def read_stream(stream, name):
+            while self._running:
+                try:
+                    line = await stream.readline()
+                    if not line:
+                        break
+                    decoded = line.decode(errors="replace").strip()
+                    if decoded:
+                        if "Scan this QR code" in decoded:
+                            logger.info("[Bridge] WhatsApp QR code generated. Please link device via CLI.")
+                        logger.debug("[Bridge {}] {}", name, decoded)
+                except Exception:
+                    break
+
+        try:
+            await asyncio.gather(
+                read_stream(self._bridge_process.stdout, "stdout"),
+                read_stream(self._bridge_process.stderr, "stderr"),
+            )
+        except Exception as e:
+            logger.debug("Error monitoring WhatsApp bridge streams: {}", e)
+
     async def stop(self) -> None:
         """Stop the WhatsApp channel."""
         self._running = False
@@ -78,6 +118,26 @@ class WhatsAppChannel(BaseChannel):
         if self._ws:
             await self._ws.close()
             self._ws = None
+
+        if self._monitor_task:
+            self._monitor_task.cancel()
+            self._monitor_task = None
+
+        if self._bridge_process:
+            logger.info("Terminating WhatsApp bridge subprocess...")
+            try:
+                self._bridge_process.terminate()
+                await asyncio.wait_for(self._bridge_process.wait(), timeout=3.0)
+            except asyncio.TimeoutError:
+                logger.warning("WhatsApp bridge did not exit gracefully, killing...")
+                try:
+                    self._bridge_process.kill()
+                    await self._bridge_process.wait()
+                except Exception:
+                    pass
+            except Exception as e:
+                logger.error("Error stopping WhatsApp bridge process: {}", e)
+            self._bridge_process = None
 
     async def send(self, msg: OutboundMessage) -> None:
         """Send a message through WhatsApp."""
