@@ -8,7 +8,7 @@ class BackendFactory:
     """Factory to dynamically instantiate terminal execution backends."""
 
     @staticmethod
-    def create_backend(
+    def create_backend(  # noqa: PLR0911
         backend_type: str,
         workspace_dir: str,
         **kwargs: Any,
@@ -17,7 +17,7 @@ class BackendFactory:
         Instantiate a terminal execution backend based on the type.
 
         Args:
-            backend_type: One of 'local', 'docker', 'ssh', 'daytona', 'singularity', 'modal'.
+            backend_type: One of 'local', 'docker', 'ssh', 'daytona', 'singularity', 'modal', 'vercel'.
             workspace_dir: Directory context for execution.
             **kwargs: Backend-specific arguments:
                 - image (str) for docker and singularity backends.
@@ -25,6 +25,8 @@ class BackendFactory:
                   key_filename (str), agent_forwarding (bool) for SSH backend.
                 - api_key (str), api_url (str), target (str), create_kwargs (dict) for Daytona backend.
                 - app_name (str) for Modal backend.
+                - runtime (str), token (str), project_id (str), team_id (str),
+                  sandbox_timeout_ms (int) for Vercel Sandbox backend.
         """
         backend_type = backend_type.lower()
         if backend_type == "local":
@@ -84,6 +86,20 @@ class BackendFactory:
             return ModalTerminalBackend(
                 workspace_dir=workspace_dir,
                 app_name=app_name,
+            )
+
+        if backend_type == "vercel":
+            from amberclaw.terminal.vercel import (
+                VercelTerminalBackend,
+            )
+
+            return VercelTerminalBackend(
+                workspace_dir=workspace_dir,
+                runtime=kwargs.get("runtime", "python3.13"),
+                token=kwargs.get("token"),
+                project_id=kwargs.get("project_id"),
+                team_id=kwargs.get("team_id"),
+                sandbox_timeout_ms=kwargs.get("sandbox_timeout_ms", 300_000),
             )
 
         raise ValueError(f"Unknown terminal backend type: '{backend_type}'")

@@ -12,6 +12,7 @@ from amberclaw.terminal.local import LocalTerminalBackend
 from amberclaw.terminal.modal import ModalTerminalBackend
 from amberclaw.terminal.singularity import SingularityTerminalBackend
 from amberclaw.terminal.ssh import SSHTerminalBackend
+from amberclaw.terminal.vercel import VercelTerminalBackend
 
 
 class TerminalModuleConfig(BaseModel):
@@ -30,4 +31,5 @@ __all__ = [
     "SSHTerminalBackend",
     "SingularityTerminalBackend",
     "TerminalModuleConfig",
+    "VercelTerminalBackend",
 ]
