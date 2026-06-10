@@ -55,6 +55,9 @@ dependencies = [
     "croniter>=2.0.0",
     "asyncpg>=0.29.0",
     "redis>=5.0.0",
+    "paramiko>=3.4.0",
+    "daytona>=0.184.0",
+    "modal>=0.63.0",
 ]
 
 [project.scripts]

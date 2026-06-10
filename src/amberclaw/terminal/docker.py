@@ -19,7 +19,7 @@ class DockerTerminalBackend(BaseTerminalBackend):
         self.container_name = f"amberclaw-sandbox-{uuid.uuid4().hex[:12]}"
         self.container_running = False
         self._lock = asyncio.Lock()
-        self._cleanup_task = None
+        self._cleanup_task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         """Start the Docker container if not already running."""
