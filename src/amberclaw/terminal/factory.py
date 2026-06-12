@@ -17,7 +17,7 @@ class BackendFactory:
         Instantiate a terminal execution backend based on the type.
 
         Args:
-            backend_type: One of 'local', 'docker', 'ssh', 'daytona', 'singularity', 'modal', 'vercel'.
+            backend_type: One of 'local', 'docker', 'ssh', 'daytona', 'singularity', 'modal', 'vercel', 'wasm'.
             workspace_dir: Directory context for execution.
             **kwargs: Backend-specific arguments:
                 - image (str) for docker and singularity backends.
@@ -27,6 +27,7 @@ class BackendFactory:
                 - app_name (str) for Modal backend.
                 - runtime (str), token (str), project_id (str), team_id (str),
                   sandbox_timeout_ms (int) for Vercel Sandbox backend.
+                - memory_bytes (int), fuel (int), host_result_bytes (int) for WASM backend.
         """
         backend_type = backend_type.lower()
         if backend_type == "local":
@@ -100,6 +101,18 @@ class BackendFactory:
                 project_id=kwargs.get("project_id"),
                 team_id=kwargs.get("team_id"),
                 sandbox_timeout_ms=kwargs.get("sandbox_timeout_ms", 300_000),
+            )
+
+        if backend_type == "wasm":
+            from amberclaw.terminal.wasm import (
+                WasmTerminalBackend,
+            )
+
+            return WasmTerminalBackend(
+                workspace_dir=workspace_dir,
+                memory_bytes=kwargs.get("memory_bytes", 16 * 1024 * 1024),
+                fuel=kwargs.get("fuel", 20_000_000),
+                host_result_bytes=kwargs.get("host_result_bytes", 256 * 1024),
             )
 
         raise ValueError(f"Unknown terminal backend type: '{backend_type}'")

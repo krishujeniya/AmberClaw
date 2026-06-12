@@ -59,6 +59,8 @@ dependencies = [
     "daytona>=0.184.0",
     "modal>=0.63.0",
     "vercel>=0.5.9",
+    "wasmtime>=20.0.0",
+    "micropython-wasm>=0.1a2",
 ]
 
 [project.scripts]
