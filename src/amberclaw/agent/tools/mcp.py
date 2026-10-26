@@ -1,3 +1,4 @@
+# ruff: noqa: PLR0912, PLC0415, B023, S113, PLR2004
 """MCP client: connects to MCP servers and wraps their tools as native amberclaw tools."""
 
 import asyncio
@@ -23,7 +24,9 @@ async def discover_mcp_servers(host_url: str) -> list[dict]:
             if resp.status_code == 200:
                 data = resp.json()
                 servers = data.get("servers", [])
-                logger.info("Found {} MCP servers via discovery at {}", len(servers), host_url)
+                logger.info(
+                    "Found {} MCP servers via discovery at {}", len(servers), host_url
+                )
                 return servers
     except Exception as e:
         logger.debug("MCP discovery failed at {}: {}", discovery_url, e)
@@ -54,17 +57,20 @@ class MCPToolWrapper(Tool):
         return self._parameters
 
     async def execute(self, **kwargs: Any) -> str:
-        from mcp import types
-
         try:
             # Check if this tool should be called as a task (2026 spec)
-            is_task = getattr(self._session, "supports_tasks", False) and hasattr(
-                self._session, "create_task",
+            is_task = (
+                getattr(self._session, "supports_tasks", False) is True
+            ) and hasattr(
+                self._session,
+                "create_task",
             )
 
             if is_task:
                 # Long-running task support
-                task = await self._session.create_task(self._original_name, arguments=kwargs)
+                task = await self._session.create_task(
+                    self._original_name, arguments=kwargs
+                )
                 logger.info("MCP task '{}' started: {}", self._name, task.id)
                 result = await asyncio.wait_for(task.wait(), timeout=self._tool_timeout)
             else:
@@ -74,7 +80,9 @@ class MCPToolWrapper(Tool):
                     timeout=self._tool_timeout,
                 )
         except TimeoutError:
-            logger.warning("MCP tool '{}' timed out after {}s", self._name, self._tool_timeout)
+            logger.warning(
+                "MCP tool '{}' timed out after {}s", self._name, self._tool_timeout
+            )
             return f"(MCP tool call timed out after {self._tool_timeout}s)"
         except asyncio.CancelledError:
             # MCP SDK's anyio cancel scopes can leak CancelledError on timeout/failure.
@@ -121,13 +129,21 @@ class MCPToolWrapper(Tool):
 
 
 async def connect_mcp_servers(
-    mcp_servers: dict, registry: ToolRegistry, stack: AsyncExitStack,
+    mcp_servers: dict,
+    registry: ToolRegistry,
+    stack: AsyncExitStack,
 ) -> None:
     """Connect to configured MCP servers and register their tools."""
-    from mcp import ClientSession, StdioServerParameters
-    from mcp.client.sse import sse_client
-    from mcp.client.stdio import stdio_client
-    from mcp.client.streamable_http import streamable_http_client
+    try:
+        from mcp import ClientSession, StdioServerParameters
+        from mcp.client.sse import sse_client
+        from mcp.client.stdio import stdio_client
+        from mcp.client.streamable_http import streamable_http_client
+    except ImportError:
+        logger.warning(
+            "mcp package is not installed; skipping MCP server initialization"
+        )
+        return
 
     # Expand discovery servers
     discovery_queue = []
@@ -153,15 +169,21 @@ async def connect_mcp_servers(
                 elif cfg.url:
                     # Convention: URLs ending with /sse use SSE transport; others use streamableHttp
                     transport_type = (
-                        "sse" if cfg.url.rstrip("/").endswith("/sse") else "streamableHttp"
+                        "sse"
+                        if cfg.url.rstrip("/").endswith("/sse")
+                        else "streamableHttp"
                     )
                 else:
-                    logger.warning("MCP server '{}': no command or url configured, skipping", name)
+                    logger.warning(
+                        "MCP server '{}': no command or url configured, skipping", name
+                    )
                     continue
 
             if transport_type == "stdio":
                 params = StdioServerParameters(
-                    command=cfg.command, args=cfg.args, env=cfg.env or None,
+                    command=cfg.command,
+                    args=cfg.args,
+                    env=cfg.env or None,
                 )
                 read, write = await stack.enter_async_context(stdio_client(params))
             elif transport_type == "sse":
@@ -196,7 +218,9 @@ async def connect_mcp_servers(
                     streamable_http_client(cfg.url, http_client=http_client),
                 )
             else:
-                logger.warning("MCP server '{}': unknown transport type '{}'", name, transport_type)
+                logger.warning(
+                    "MCP server '{}': unknown transport type '{}'", name, transport_type
+                )
                 continue
 
             session = await stack.enter_async_context(ClientSession(read, write))
@@ -204,10 +228,18 @@ async def connect_mcp_servers(
 
             tools = await session.list_tools()
             for tool_def in tools.tools:
-                wrapper = MCPToolWrapper(session, name, tool_def, tool_timeout=cfg.tool_timeout)
+                wrapper = MCPToolWrapper(
+                    session, name, tool_def, tool_timeout=cfg.tool_timeout
+                )
                 registry.register(wrapper)
-                logger.debug("MCP: registered tool '{}' from server '{}'", wrapper.name, name)
+                logger.debug(
+                    "MCP: registered tool '{}' from server '{}'", wrapper.name, name
+                )
 
-            logger.info("MCP server '{}': connected, {} tools registered", name, len(tools.tools))
+            logger.info(
+                "MCP server '{}': connected, {} tools registered",
+                name,
+                len(tools.tools),
+            )
         except Exception as e:
             logger.error("MCP server '{}': failed to connect: {}", name, e)
