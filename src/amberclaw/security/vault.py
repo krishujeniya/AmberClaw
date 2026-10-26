@@ -1,3 +1,4 @@
+# ruff: noqa: PLC0415, ERA001
 """Encrypted credential vault for AmberClaw.
 
 Stores secrets encrypted at rest and resolves vault reference URIs.
@@ -8,19 +9,28 @@ import os
 from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 
 from cryptography.fernet import Fernet
 from loguru import logger
+
+from amberclaw.security.kms.manager import KMSSecretManager
+from amberclaw.security.kms.models import KMSConfig
 
 
 class SecretVault:
     """Manages secure key generation, encryption, storage, and retrieval."""
 
-    def __init__(self, key_dir: Path | None = None) -> None:
+    def __init__(
+        self, key_dir: Path | None = None, kms_config: KMSConfig | None = None
+    ) -> None:
         self.base_dir = key_dir or Path.home() / ".amberclaw"
         self.key_file = self.base_dir / ".vault_key"
         self.vault_file = self.base_dir / "vault.enc"
         self._fernet: Fernet | None = None
+        self.kms_manager = KMSSecretManager(config=kms_config) if kms_config else None
+        # {secret_name: [callable(new_value), ...]}
+        self._rotation_hooks: dict[str, list[Any]] = {}
 
     def _get_fernet(self) -> Fernet:
         """Initialize and return the Fernet cipher suite."""
@@ -88,16 +98,71 @@ class SecretVault:
         except Exception as e:
             logger.error("Failed to save/encrypt vault: {}", e)
 
-    def store_secret(self, name: str, value: str) -> None:
+    def register_rotation_hook(self, name: str, hook: Any) -> None:
+        """Register a callback invoked when a secret is rotated in-memory."""
+        if name not in self._rotation_hooks:
+            self._rotation_hooks[name] = []
+        self._rotation_hooks[name].append(hook)
+
+    def store_secret(self, name: str, value: str, actor: str = "system") -> None:
         """Encrypt and store a secret in the vault."""
         data = self._load_vault_data()
         data[name] = value
         self._save_vault_data(data)
 
-    def get_secret(self, name: str) -> str | None:
+        # Fire any live rotation listeners
+        for hook in self._rotation_hooks.get(name, []):
+            try:
+                hook(value)
+            except Exception as e:
+                logger.error(
+                    "Error executing rotation hook for secret '{}': {}", name, e
+                )
+
+        from amberclaw.security.audit import AuditEvent, SecurityAuditLogger
+
+        SecurityAuditLogger.get_logger().log_event(
+            AuditEvent(
+                actor=actor,
+                action="vault.secret_stored",
+                resource_type="secret",
+                resource_id=name,
+                outcome="success",
+            )
+        )
+
+    def rotate_secret(self, name: str, new_value: str, actor: str = "operator") -> None:
+        """Rotate an existing secret live and dispatch updates to registered subscribers."""
+        self.store_secret(name, new_value, actor=actor)
+        from amberclaw.security.audit import AuditEvent, SecurityAuditLogger
+
+        SecurityAuditLogger.get_logger().log_event(
+            AuditEvent(
+                actor=actor,
+                action="vault.secret_rotated",
+                resource_type="secret",
+                resource_id=name,
+                outcome="success",
+            )
+        )
+
+    def get_secret(self, name: str, actor: str = "system") -> str | None:
         """Retrieve and decrypt a secret from the vault."""
         data = self._load_vault_data()
-        return data.get(name)
+        secret = data.get(name)
+
+        from amberclaw.security.audit import AuditEvent, SecurityAuditLogger
+
+        SecurityAuditLogger.get_logger().log_event(
+            AuditEvent(
+                actor=actor,
+                action="vault.secret_accessed",
+                resource_type="secret",
+                resource_id=name,
+                outcome="success" if secret is not None else "not_found",
+            )
+        )
+        return secret
 
     def resolve_secret(self, value: str | None) -> str | None:
         """Resolve a vault reference URL or return the string as-is."""

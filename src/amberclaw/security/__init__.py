@@ -2,6 +2,16 @@
 
 from pydantic import BaseModel, Field
 
+from amberclaw.security.abac import (
+    ABACAccessDeniedError,
+    ABACPolicyEngine,
+    ABACPolicyRule,
+    JITElevationToken,
+    JustInTimeElevationManager,
+    PolicyEffect,
+    ResourceBoundary,
+    SubjectAttributes,
+)
 from amberclaw.security.approval import (
     ApprovalDecision,
     ApprovalStatus,
@@ -25,6 +35,10 @@ from amberclaw.security.dlp import (
     DLPViolationError,
 )
 from amberclaw.security.egress_controller import NetworkAccessDenied, egress_sandbox
+from amberclaw.security.envelope import (
+    EnvelopeEncryptionManager,
+    EnvelopePayload,
+)
 from amberclaw.security.filters import (
     ArgumentValidationError,
     OutputPolicyViolationError,
@@ -46,6 +60,11 @@ from amberclaw.security.prompt_guard import (
     UntrustedContentFormatter,
 )
 from amberclaw.security.secret_scanner import SecretScanner
+from amberclaw.security.siem import (
+    AuditRetentionManager,
+    SIEMExporter,
+    SIEMFormat,
+)
 from amberclaw.security.tokens import (
     APIKeyManager,
     APIKeyRecord,
@@ -67,11 +86,15 @@ class SecurityModuleConfig(BaseModel):
 
 
 __all__ = [
+    "ABACAccessDeniedError",
+    "ABACPolicyEngine",
+    "ABACPolicyRule",
     "APIKeyManager",
     "APIKeyRecord",
     "ApprovalDecision",
     "ApprovalStatus",
     "ArgumentValidationError",
+    "AuditRetentionManager",
     "BreakGlassElevation",
     "BreakGlassManager",
     "DLPAction",
@@ -80,21 +103,30 @@ __all__ = [
     "DLPViolation",
     "DLPViolationError",
     "DataLossPreventionEngine",
+    "EnvelopeEncryptionManager",
+    "EnvelopePayload",
     "InjectionScanResult",
+    "JITElevationToken",
+    "JustInTimeElevationManager",
     "NetworkAccessDenied",
     "NetworkPolicy",
     "OutputPolicyViolationError",
+    "PolicyEffect",
     "ProcessIsolationConfig",
     "PromptInjectionDetector",
     "RBACPermissionDenied",
     "RefreshTokenManager",
+    "ResourceBoundary",
     "ResourceLimits",
     "RunawayLoopDetected",
     "RunawayLoopGuard",
+    "SIEMExporter",
+    "SIEMFormat",
     "SecretScanner",
     "SecretVault",
     "SecurityCompromiseError",
     "SecurityModuleConfig",
+    "SubjectAttributes",
     "TokenPair",
     "TokenRevocationStore",
     "ToolApprovalManager",
