@@ -29,6 +29,8 @@ def test_cli_help():
     assert "scan-secrets" in result.output
     assert "skill" in result.output
     assert "db" in result.output
+    assert "backup" in result.output
+    assert "restore" in result.output
 
 
 def test_cli_version():
