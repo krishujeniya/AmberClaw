@@ -1,8 +1,14 @@
-"""
-AmberClaw amberclaw.tools module.
-"""
+"""AmberClaw unified agent toolsets and extensible tool registry."""
 
 from pydantic import BaseModel, Field
+
+from amberclaw.tools.meta_tools import InspectToolSchemaTool, ListToolsTool
+from amberclaw.tools.registry import BaseTool, ToolRegistry
+from amberclaw.tools.rl_tools import (
+    RecordTrajectoryStepTool,
+    RLBufferStatsTool,
+    RLDiagnosticsTool,
+)
 
 
 class ToolsModuleConfig(BaseModel):
@@ -12,4 +18,13 @@ class ToolsModuleConfig(BaseModel):
     version: str = Field(default="2026.0.1", description="Module version")
 
 
-__all__ = ["ToolsModuleConfig"]
+__all__ = [
+    "BaseTool",
+    "InspectToolSchemaTool",
+    "ListToolsTool",
+    "RLBufferStatsTool",
+    "RLDiagnosticsTool",
+    "RecordTrajectoryStepTool",
+    "ToolRegistry",
+    "ToolsModuleConfig",
+]
