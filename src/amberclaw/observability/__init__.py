@@ -1,5 +1,15 @@
-"""Observability module providing Prometheus metrics and OpenTelemetry distributed tracing."""
+"""Observability module providing Prometheus metrics, OpenTelemetry tracing, redacting logging, and SLO alerts."""
 
+from amberclaw.observability.alerts import (
+    AlertNotification,
+    AuditHealthReport,
+    AuditLogHealthChecker,
+    SLOMonitor,
+)
+from amberclaw.observability.logging import (
+    PrivacyPreservingErrorTracker,
+    RedactingJsonLogFormatter,
+)
 from amberclaw.observability.metrics import (
     ACTIVE_AGENTS_GAUGE,
     HTTP_REQUEST_DURATION_SECONDS,
@@ -23,6 +33,12 @@ __all__ = [
     "HTTP_REQUESTS_TOTAL",
     "HTTP_REQUEST_DURATION_SECONDS",
     "LLM_TOKENS_TOTAL",
+    "AlertNotification",
+    "AuditHealthReport",
+    "AuditLogHealthChecker",
+    "PrivacyPreservingErrorTracker",
+    "RedactingJsonLogFormatter",
+    "SLOMonitor",
     "SpanKind",
     "SpanStatusCode",
     "TraceContext",

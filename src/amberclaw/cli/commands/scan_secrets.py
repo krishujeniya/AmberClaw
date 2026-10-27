@@ -18,6 +18,18 @@ def scan_secrets(
         "-p",
         help="Path to scan for secrets (defaults to active workspace).",
     ),
+    entropy: bool = typer.Option(
+        False,
+        "--entropy",
+        "-e",
+        help="Enable Shannon entropy analysis for high-entropy candidate secrets.",
+    ),
+    git_history: bool = typer.Option(
+        False,
+        "--git-history",
+        "-g",
+        help="Scan git commit diff history for committed and deleted credentials.",
+    ),
 ) -> None:
     """
     Scan files for unredacted secrets/credentials.
@@ -28,10 +40,20 @@ def scan_secrets(
 
     console.print(f"[bold blue]Scanning {scan_path} for secrets...[/bold blue]")
 
-    if scan_path.is_file():
-        findings = SecretScanner.scan_file(scan_path)
+    findings: list[dict] = []
+    if git_history:
+        findings.extend(
+            SecretScanner.scan_git_history(scan_path, check_entropy=entropy)
+        )
+    elif scan_path.is_file():
+        if scan_path.suffix in [".zip", ".tar", ".gz"]:
+            findings.extend(
+                SecretScanner.scan_archive(scan_path, check_entropy=entropy)
+            )
+        else:
+            findings.extend(SecretScanner.scan_file(scan_path, check_entropy=entropy))
     else:
-        findings = SecretScanner.scan_workspace(scan_path)
+        findings.extend(SecretScanner.scan_workspace(scan_path, check_entropy=entropy))
 
     if not findings:
         console.print("[bold green]✓ No secrets found in workspace![/bold green]")
@@ -48,16 +70,16 @@ def scan_secrets(
     table.add_column("Preview", style="green")
 
     for f in findings:
-        rel_path = f["file"]
-        with contextlib.suppress(ValueError):
-            # Try to show path relative to the scanned directory
-            rel_path = str(Path(f["file"]).relative_to(scan_path.parent))
+        rel_path = f.get("file", f.get("member", "unknown"))
+        line_info = str(f.get("line") or f.get("commit") or "-")
+        with contextlib.suppress(Exception):
+            rel_path = str(Path(rel_path).relative_to(scan_path.parent))
 
         table.add_row(
             rel_path,
-            str(f["line"]),
-            f["type"],
-            f["match_preview"],
+            line_info,
+            f.get("type", "Secret"),
+            f.get("match_preview", "..."),
         )
 
     console.print(table)

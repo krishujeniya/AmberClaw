@@ -78,6 +78,18 @@ def test_cli_scan_secrets_detects_leak(tmp_path: Path):
     assert result.exit_code == 1
     assert "potential secret" in result.output.lower()
 
+    # Test high-entropy flag
+    entropy_dir = tmp_path / "entropy_ws"
+    entropy_dir.mkdir()
+    (entropy_dir / "secret.env").write_text(
+        "DB_TOKEN=kL8$mZ9!pQ2#vR5*wT3^\n", encoding="utf-8"
+    )
+    res_entropy = runner.invoke(
+        app, ["scan-secrets", "--path", str(entropy_dir), "--entropy"]
+    )
+    assert res_entropy.exit_code == 1
+    assert "potential secret" in res_entropy.output.lower()
+
 
 def test_cli_db_commands():
     with patch(
