@@ -556,3 +556,40 @@ def test_cli_cron_commands():
     # 2. Cron list
     res_list = runner.invoke(app, ["cron", "list"])
     assert res_list.exit_code == 0
+
+
+def test_cli_company_commands():
+    # 1. Company tree
+    res_tree = runner.invoke(app, ["company", "tree"])
+    assert res_tree.exit_code == 0
+    assert "AmberClaw Company Hierarchy" in res_tree.stdout
+    assert "Executive Admin" in res_tree.stdout
+
+    # 2. Company audit
+    res_audit = runner.invoke(app, ["company", "audit"])
+    assert res_audit.exit_code == 0
+    assert "Organization audit passed" in res_audit.stdout
+
+
+def test_cli_update_commands():
+    res_check = runner.invoke(app, ["update", "check"])
+    assert res_check.exit_code == 0
+    assert "AmberClaw Version" in res_check.stdout
+
+
+def test_cli_logs_commands(tmp_path: Path):
+    from amberclaw.security.audit import SecurityAuditLogger  # noqa: PLC0415
+    audit_logger = SecurityAuditLogger(log_dir=tmp_path)
+    audit_logger.log_event(actor="cli_tester", action="test.run", outcome="success")
+    log_file = tmp_path / "audit.jsonl"
+
+    # 1. Tail logs
+    res_tail = runner.invoke(app, ["logs", "tail", "--file", str(log_file), "-n", "10"])
+    assert res_tail.exit_code == 0
+    assert "cli_tester" in res_tail.stdout
+    assert "test.run" in res_tail.stdout
+
+    # 2. Verify hash chain
+    res_verify = runner.invoke(app, ["logs", "verify", "--file", str(log_file)])
+    assert res_verify.exit_code == 0
+    assert "Audit log integrity verified" in res_verify.stdout

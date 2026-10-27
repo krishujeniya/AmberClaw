@@ -19,12 +19,14 @@ from . import (
     blueprint,
     budget,
     channels,
+    company,
     council,
     cron,
     db,
     doctor,
     gateway,
     ingest,
+    logs,
     mythos,
     onboard,
     org,
@@ -37,6 +39,8 @@ from . import (
     status,
     ticket,
     tui,
+    update,
+    web,
 )
 
 # Register commands
@@ -66,6 +70,10 @@ app.add_typer(blueprint.blueprint_app, name="blueprint")
 app.add_typer(policy.policy_app, name="policy")
 app.add_typer(ticket.ticket_app, name="ticket")
 app.add_typer(cron.cron_app, name="cron")
+app.add_typer(logs.logs_app, name="logs")
+app.add_typer(web.web_app, name="web")
+app.add_typer(update.update_app, name="update")
+app.add_typer(company.company_app, name="company")
 
 
 # Callback for version
