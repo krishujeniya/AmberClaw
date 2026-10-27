@@ -2,16 +2,18 @@
 
 import os
 import sys
+from pathlib import Path
+
+from loguru import logger
 
 
 class PlatformManager:
-    """
-    Detects and optimizes AmberClaw for Android, Linux, or Windows.
-    """
+    """Detects and optimizes AmberClaw for Android, Linux, or Windows."""
 
     @staticmethod
     def get_platform() -> str:
-        if os.path.exists("/data/data/com.termux"):
+        """Identify host environment platform."""
+        if Path("/data/data/com.termux").exists():
             return "android_termux"
         if sys.platform.startswith("linux"):
             return "linux"
@@ -20,15 +22,13 @@ class PlatformManager:
         return "unknown"
 
     @staticmethod
-    def apply_platform_optimizations():
+    def apply_platform_optimizations() -> None:
+        """Configure platform-specific execution parameters."""
         platform = PlatformManager.get_platform()
-        print(f"[Platform] Detected environment: {platform}")
+        logger.info("Detected environment platform: {}", platform)
 
         if platform == "android_termux":
-            # Apply Termux-specific bridge logic
             os.environ["AMBERCLAW_PLATFORM"] = "android"
-            # (In a real impl, we would source the env.sh here)
-            print("[Platform] Applying Android/Termux patches...")
-
+            logger.info("Applying Android Termux environmental adjustments...")
         elif platform == "windows":
-            print("[Platform] Optimizing for Windows (CMD/PowerShell)...")
+            logger.info("Optimizing terminal streams for Windows environments...")

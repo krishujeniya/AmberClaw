@@ -74,6 +74,9 @@ app.add_typer(logs.logs_app, name="logs")
 app.add_typer(web.web_app, name="web")
 app.add_typer(update.update_app, name="update")
 app.add_typer(company.company_app, name="company")
+from amberclaw.cli.oauth import oauth_app
+
+app.add_typer(oauth_app, name="oauth")
 
 
 # Callback for version
