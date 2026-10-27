@@ -1,5 +1,19 @@
 """Configuration module for amberclaw."""
 
+from amberclaw.config.defaults import (
+    DEFAULT_AUDIT_LOG_DIR,
+    DEFAULT_FAST_MODEL,
+    DEFAULT_GATEWAY_HOST,
+    DEFAULT_GATEWAY_PORT,
+    DEFAULT_MAX_TOKENS,
+    DEFAULT_MEMORY_DIR,
+    DEFAULT_MODEL,
+    DEFAULT_SANDBOX_TYPE,
+    DEFAULT_STORAGE_DIR,
+    DEFAULT_TEMPERATURE,
+    DEFAULT_WEB_PORT,
+    get_default_config_dict,
+)
 from amberclaw.config.loader import get_config_path, load_config
 from amberclaw.config.paths import (
     get_bridge_install_dir,
@@ -13,8 +27,26 @@ from amberclaw.config.paths import (
     get_workspace_path,
 )
 from amberclaw.config.schema import Config, ControlPlaneConfig, DataPlaneConfig
+from amberclaw.config.validators import (
+    validate_config_dict,
+    validate_model_identifier,
+    validate_network_bind,
+    validate_storage_directory,
+    validate_temperature,
+)
 
 __all__ = [
+    "DEFAULT_AUDIT_LOG_DIR",
+    "DEFAULT_FAST_MODEL",
+    "DEFAULT_GATEWAY_HOST",
+    "DEFAULT_GATEWAY_PORT",
+    "DEFAULT_MAX_TOKENS",
+    "DEFAULT_MEMORY_DIR",
+    "DEFAULT_MODEL",
+    "DEFAULT_SANDBOX_TYPE",
+    "DEFAULT_STORAGE_DIR",
+    "DEFAULT_TEMPERATURE",
+    "DEFAULT_WEB_PORT",
     "Config",
     "ControlPlaneConfig",
     "DataPlaneConfig",
@@ -23,10 +55,16 @@ __all__ = [
     "get_config_path",
     "get_cron_dir",
     "get_data_dir",
+    "get_default_config_dict",
     "get_legacy_sessions_dir",
     "get_logs_dir",
     "get_media_dir",
     "get_runtime_subdir",
     "get_workspace_path",
     "load_config",
+    "validate_config_dict",
+    "validate_model_identifier",
+    "validate_network_bind",
+    "validate_storage_directory",
+    "validate_temperature",
 ]
