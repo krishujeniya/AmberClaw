@@ -31,7 +31,9 @@ async def test_browser_action_tool_click_and_type():
     assert "Error: 'selector' parameter is required" in res
 
     # Success type
-    res = await tool.execute({"action": "type", "selector": "input#name", "text": "AmberClaw"})
+    res = await tool.execute(
+        {"action": "type", "selector": "input#name", "text": "AmberClaw"}
+    )
     assert "Successfully typed 'AmberClaw' into element 'input#name'" in res
 
     # Type validation

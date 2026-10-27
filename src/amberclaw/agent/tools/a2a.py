@@ -10,7 +10,10 @@ from amberclaw.agent.tools.base import PydanticTool
 
 
 class A2ADelegateArgs(BaseModel):
-    target_url: str = Field(..., description="The remote agent A2A HTTP endpoint URL, e.g. http://localhost:8000/api/v1/a2a")
+    target_url: str = Field(
+        ...,
+        description="The remote agent A2A HTTP endpoint URL, e.g. http://localhost:8000/api/v1/a2a",
+    )
     task: str = Field(..., description="The task to delegate to the remote agent")
 
 
@@ -41,8 +44,12 @@ class A2ADelegateTool(PydanticTool):
 
 class A2AArgs(BaseModel):
     target_url: str = Field(..., description="The remote agent's A2A JSON-RPC URL")
-    method: str = Field(..., description="The A2A method to call (e.g. execute_task, get_capabilities)")
-    params: dict[str, Any] = Field(default_factory=dict, description="Parameters for the method call")
+    method: str = Field(
+        ..., description="The A2A method to call (e.g. execute_task, get_capabilities)"
+    )
+    params: dict[str, Any] = Field(
+        default_factory=dict, description="Parameters for the method call"
+    )
 
 
 class A2ATool(PydanticTool):
@@ -66,7 +73,9 @@ class A2ATool(PydanticTool):
 
     async def run(self, args: A2AArgs) -> str:
         try:
-            res = await self.a2a_manager.send_message(args.target_url, args.method, args.params)
+            res = await self.a2a_manager.send_message(
+                args.target_url, args.method, args.params
+            )
             return f"Success: {res}"
         except Exception as e:
             return f"A2A send failed: {e}"

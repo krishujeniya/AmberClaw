@@ -1,6 +1,7 @@
 """
 AmberClaw Logging Configuration
 """
+
 import logging
 import sys
 

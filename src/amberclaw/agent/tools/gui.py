@@ -21,14 +21,22 @@ class BrowserActionTool(Tool):
                 "enum": ["navigate", "click", "type", "screenshot", "get_content"],
                 "description": "The action to perform.",
             },
-            "url": {"type": "string", "description": "URL to navigate to (if action=navigate)."},
-            "selector": {"type": "string", "description": "CSS selector to interact with."},
+            "url": {
+                "type": "string",
+                "description": "URL to navigate to (if action=navigate).",
+            },
+            "selector": {
+                "type": "string",
+                "description": "CSS selector to interact with.",
+            },
             "text": {"type": "string", "description": "Text to type (if action=type)."},
         },
         "required": ["action"],
     }
 
-    async def _execute_playwright(self, action: str, url: str | None, selector: str | None, text: str | None) -> str:
+    async def _execute_playwright(
+        self, action: str, url: str | None, selector: str | None, text: str | None
+    ) -> str:
         import base64  # noqa: PLC0415
 
         from playwright.async_api import async_playwright  # noqa: PLC0415
@@ -50,7 +58,9 @@ class BrowserActionTool(Tool):
 
                 async def do_click() -> str:
                     if not selector:
-                        return "Error: 'selector' parameter is required for click action."
+                        return (
+                            "Error: 'selector' parameter is required for click action."
+                        )
                     await page.click(selector, timeout=10000)
                     return f"Successfully clicked element '{selector}'."
 
@@ -62,7 +72,9 @@ class BrowserActionTool(Tool):
 
                 async def do_screenshot() -> str:
                     screenshot_bytes = await page.screenshot()
-                    b64_str = base64.b64encode(screenshot_bytes).decode("utf-8")[:100] + "..."
+                    b64_str = (
+                        base64.b64encode(screenshot_bytes).decode("utf-8")[:100] + "..."
+                    )
                     return f"Successfully captured page screenshot (Base64 prefix: {b64_str})."
 
                 async def do_get_content() -> str:
@@ -93,7 +105,9 @@ class BrowserActionTool(Tool):
         try:
             return await self._execute_playwright(action, url, selector, text)
         except Exception as e:
-            logger.warning("Playwright execution failed: {}. Falling back to simulation.", e)
+            logger.warning(
+                "Playwright execution failed: {}. Falling back to simulation.", e
+            )
 
         logger.info("Executing simulated browser action: {}", action)
 
@@ -152,8 +166,11 @@ class DesktopAutomationTool(Tool):
         "required": ["action"],
     }
 
-    def _execute_pyautogui(self, action: str, x: int | None, y: int | None, text: str | None) -> str:
+    def _execute_pyautogui(
+        self, action: str, x: int | None, y: int | None, text: str | None
+    ) -> str:
         import pyautogui  # noqa: PLC0415
+
         pyautogui.FAILSAFE = True  # Enable failsafe
 
         def do_click() -> str:
@@ -176,7 +193,9 @@ class DesktopAutomationTool(Tool):
 
         def do_move_mouse() -> str:
             if x is None or y is None:
-                return "Error: 'x' and 'y' coordinates are required for move_mouse action."
+                return (
+                    "Error: 'x' and 'y' coordinates are required for move_mouse action."
+                )
             pyautogui.moveTo(x, y)
             return f"Successfully moved mouse to coordinates ({x}, {y})."
 
@@ -200,17 +219,22 @@ class DesktopAutomationTool(Tool):
 
         try:
             import pyautogui  # noqa: PLC0415, F401
+
             has_display = bool(os.environ.get("DISPLAY"))
             if has_display:
                 return self._execute_pyautogui(action, x, y, text)
         except (ImportError, Exception) as e:
-            logger.warning("PyAutoGUI action failed: {}. Falling back to simulation.", e)
+            logger.warning(
+                "PyAutoGUI action failed: {}. Falling back to simulation.", e
+            )
 
         logger.info("Executing simulated desktop action: {}", action)
 
         def sim_click_or_move() -> str:
             if x is None or y is None:
-                return f"Error: 'x' and 'y' coordinates are required for {action} action."
+                return (
+                    f"Error: 'x' and 'y' coordinates are required for {action} action."
+                )
             if x < 0 or y < 0:
                 return f"Error: Negative coordinates ({x}, {y}) are invalid."
             return f"Successfully executed desktop {action} at coordinates ({x}, {y}) (Simulated)."

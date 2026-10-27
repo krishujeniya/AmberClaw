@@ -79,13 +79,17 @@ class KnowledgeToolBase(PydanticTool):
         if not self.provider:
             # Try to return a zero vector of common dimension (e.g., 1536 for OpenAI)
             # as a last resort, but better to warn.
-            logger.warning("No provider configured for KnowledgeTool. Returning zero vector.")
+            logger.warning(
+                "No provider configured for KnowledgeTool. Returning zero vector."
+            )
             return np.zeros(1536)
 
         import litellm
 
         try:
-            response = await litellm.aembedding(model=self.embedding_model, input=[text])
+            response = await litellm.aembedding(
+                model=self.embedding_model, input=[text]
+            )
             # Handle both object (litellm standard) and dict (some fallbacks)
             data = getattr(response, "data", [])
             if not data and isinstance(response, dict):
@@ -147,7 +151,7 @@ class KnowledgeSearchTool(KnowledgeToolBase):
             keyword_scores = cosine_similarity(query_vec, tfidf_matrix).flatten()
         except (ImportError, ValueError):  # Missing dependency or empty corpus
             keyword_scores = np.zeros(len(corpus))
-            cosine_similarity = None # Signal for vector search
+            cosine_similarity = None  # Signal for vector search
 
         # 2. Vector Search (Semantic)
         vectors = self._load_vectors()
@@ -156,14 +160,17 @@ class KnowledgeSearchTool(KnowledgeToolBase):
             if query_embedding.shape == vectors[0].shape:
                 if cosine_similarity:
                     semantic_scores = cosine_similarity(
-                        query_embedding.reshape(1, -1), vectors,
+                        query_embedding.reshape(1, -1),
+                        vectors,
                     ).flatten()
                 else:
                     # Fallback cosine similarity using numpy
                     norm_q = np.linalg.norm(query_embedding)
                     norm_v = np.linalg.norm(vectors, axis=1)
                     if norm_q > 0:
-                        semantic_scores = np.dot(vectors, query_embedding) / (norm_v * norm_q)
+                        semantic_scores = np.dot(vectors, query_embedding) / (
+                            norm_v * norm_q
+                        )
                     else:
                         semantic_scores = np.zeros(len(corpus))
             else:
@@ -181,7 +188,9 @@ class KnowledgeSearchTool(KnowledgeToolBase):
         fused_scores = (1.0 / (k + kw_ranks)) + (1.0 / (k + sem_ranks))
 
         # Top-K indices
-        top_indices = np.argsort(-fused_scores)[: args.limit * 2]  # Get more for reranking
+        top_indices = np.argsort(-fused_scores)[
+            : args.limit * 2
+        ]  # Get more for reranking
         candidate_entries = [entries[i] for i in top_indices]
 
         # 4. Reranking (optional)
@@ -212,7 +221,9 @@ class KnowledgeSearchTool(KnowledgeToolBase):
 
         formatted = []
         for i, res in enumerate(final_results):
-            tags = f" [tags: {', '.join(res.get('tags', []))}]" if res.get("tags") else ""
+            tags = (
+                f" [tags: {', '.join(res.get('tags', []))}]" if res.get("tags") else ""
+            )
             formatted.append(f"Result {i + 1}:\n{res['content']}{tags}")
 
         return "\n---\n".join(formatted)

@@ -1,0 +1,27 @@
+[Unit]
+Description=AmberClaw AI OS Background Agent Worker
+After=amberclaw-gateway.service
+Wants=amberclaw-gateway.service
+
+[Service]
+Type=simple
+User=amberclaw
+Group=amberclaw
+WorkingDirectory=/opt/amberclaw
+ExecStart=/opt/amberclaw/.venv/bin/python -m amberclaw.agent.worker
+Restart=on-failure
+RestartSec=5s
+
+# Security Hardening Directives
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/opt/amberclaw/data /opt/amberclaw/logs
+
+[Install]
+WantedBy=multi-user.target

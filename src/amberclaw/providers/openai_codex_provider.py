@@ -63,7 +63,10 @@ class OpenAICodexProvider(LLMProvider):
 
         try:
             content, tool_calls, finish_reason = await _request_codex(
-                url, headers, body, verify=True,
+                url,
+                headers,
+                body,
+                verify=True,
             )
             return LLMResponse(
                 content=content,
@@ -109,7 +112,9 @@ async def _request_codex(
             if response.status_code != 200:
                 text = await response.aread()
                 raise RuntimeError(
-                    _friendly_error(response.status_code, text.decode("utf-8", "ignore")),
+                    _friendly_error(
+                        response.status_code, text.decode("utf-8", "ignore")
+                    ),
                 )
             return await _consume_sse(response)
 
@@ -134,7 +139,9 @@ def _convert_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return converted
 
 
-def _convert_messages(messages: list[dict[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
+def _convert_messages(
+    messages: list[dict[str, Any]],
+) -> tuple[str, list[dict[str, Any]]]:
     system_prompt = ""
     input_items: list[dict[str, Any]] = []
 
@@ -182,7 +189,9 @@ def _convert_messages(messages: list[dict[str, Any]]) -> tuple[str, list[dict[st
         if role == "tool":
             call_id, _ = _split_tool_call_id(msg.get("tool_call_id"))
             output_text = (
-                content if isinstance(content, str) else json.dumps(content, ensure_ascii=False)
+                content
+                if isinstance(content, str)
+                else json.dumps(content, ensure_ascii=False)
             )
             input_items.append(
                 {
@@ -209,7 +218,9 @@ def _convert_user_message(content: Any) -> dict[str, Any]:
             elif item.get("type") == "image_url":
                 url = (item.get("image_url") or {}).get("url")
                 if url:
-                    converted.append({"type": "input_image", "image_url": url, "detail": "auto"})
+                    converted.append(
+                        {"type": "input_image", "image_url": url, "detail": "auto"}
+                    )
         if converted:
             return {"role": "user", "content": converted}
     return {"role": "user", "content": [{"type": "input_text", "text": ""}]}
@@ -235,7 +246,9 @@ async def _iter_sse(response: httpx.Response) -> AsyncGenerator[dict[str, Any], 
         if line == "":
             if buffer:
                 data_lines = [
-                    line_str[5:].strip() for line_str in buffer if line_str.startswith("data:")
+                    line_str[5:].strip()
+                    for line_str in buffer
+                    if line_str.startswith("data:")
                 ]
                 buffer = []
                 if not data_lines:
@@ -251,7 +264,9 @@ async def _iter_sse(response: httpx.Response) -> AsyncGenerator[dict[str, Any], 
         buffer.append(line)
 
 
-async def _consume_sse(response: httpx.Response) -> tuple[str, list[ToolCallRequest], str]:
+async def _consume_sse(
+    response: httpx.Response,
+) -> tuple[str, list[ToolCallRequest], str]:
     content = ""
     tool_calls: list[ToolCallRequest] = []
     tool_call_buffers: dict[str, dict[str, Any]] = {}

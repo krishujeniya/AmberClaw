@@ -10,7 +10,7 @@ from amberclaw.terminal.wasm import WasmTerminalBackend
 async def test_wasm_backend_python_execution() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         backend = WasmTerminalBackend(workspace_dir=tmpdir)
-        
+
         # Test basic python execution
         res = await backend.execute_python("print('hello from wasm python')")
         assert res["exit_code"] == 0
@@ -23,7 +23,7 @@ async def test_wasm_backend_python_execution() -> None:
 async def test_wasm_backend_env_and_os_environ() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         backend = WasmTerminalBackend(workspace_dir=tmpdir)
-        
+
         # Test environment variables passing and our os.environ proxy patch
         code = """
 import os
@@ -47,7 +47,7 @@ print("VAL3:", os.environ.get("NEW_VAR"))
 async def test_wasm_backend_workspace_file_mapping() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         backend = WasmTerminalBackend(workspace_dir=tmpdir)
-        
+
         # Write file from guest python, verify on host
         guest_write = """
 with open("guest_file.txt", "w") as f:
@@ -55,7 +55,7 @@ with open("guest_file.txt", "w") as f:
 """
         res_write = await backend.execute_python(guest_write)
         assert res_write["exit_code"] == 0
-        
+
         host_file = Path(tmpdir) / "guest_file.txt"
         assert host_file.exists()
         assert host_file.read_text() == "hello from sandboxed guest"
@@ -97,62 +97,62 @@ for i in range(100):
 async def test_wasm_backend_bash_emulation() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         backend = WasmTerminalBackend(workspace_dir=tmpdir)
-        
+
         # Test echo
         res = await backend.execute_bash("echo 'hello world'")
         assert res["exit_code"] == 0
         assert res["stdout"].strip() == "hello world"
-        
+
         # Test pwd
         res = await backend.execute_bash("pwd")
         assert res["exit_code"] == 0
         # Guest should print the virtual working directory / workspace path
-        
+
         # Test mkdir and touch
         res = await backend.execute_bash("mkdir test_dir")
         assert res["exit_code"] == 0
         assert (Path(tmpdir) / "test_dir").is_dir()
-        
+
         res = await backend.execute_bash("touch test_dir/file.txt")
         assert res["exit_code"] == 0
         assert (Path(tmpdir) / "test_dir" / "file.txt").is_file()
-        
+
         # Test ls
         res = await backend.execute_bash("ls test_dir")
         assert res["exit_code"] == 0
         assert "file.txt" in res["stdout"]
-        
+
         # Test cp and cat
         res = await backend.execute_bash("cp test_dir/file.txt test_dir/copy.txt")
         assert res["exit_code"] == 0
         assert (Path(tmpdir) / "test_dir" / "copy.txt").is_file()
-        
+
         res = await backend.execute_bash("cat test_dir/copy.txt")
         assert res["exit_code"] == 0
-        
+
         # Test mv
         res = await backend.execute_bash("mv test_dir/copy.txt test_dir/moved.txt")
         assert res["exit_code"] == 0
         assert not (Path(tmpdir) / "test_dir" / "copy.txt").exists()
         assert (Path(tmpdir) / "test_dir" / "moved.txt").is_file()
-        
+
         # Test rm
         res = await backend.execute_bash("rm test_dir/moved.txt")
         assert res["exit_code"] == 0
         assert not (Path(tmpdir) / "test_dir" / "moved.txt").exists()
-        
+
         # Test python command execution inside bash
         res = await backend.execute_bash("python -c \"print('python inside bash')\"")
         assert res["exit_code"] == 0
         assert res["stdout"].strip() == "python inside bash"
-        
+
         # Test script execution
         script_path = Path(tmpdir) / "script.py"
         script_path.write_text("print('script executed')")
         res = await backend.execute_bash("python script.py")
         assert res["exit_code"] == 0
         assert res["stdout"].strip() == "script executed"
-        
+
         # Test command not found
         res = await backend.execute_bash("invalidcmd")
         assert res["exit_code"] == 125  # noqa: PLR2004

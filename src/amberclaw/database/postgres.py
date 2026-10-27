@@ -1,10 +1,11 @@
+# ruff: noqa: PLW0603
 """PostgreSQL database engine and session initialization using SQLAlchemy."""
 
 from collections.abc import AsyncGenerator
 
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
-from loguru import logger
 
 from amberclaw.config.schema import settings
 
@@ -28,7 +29,9 @@ def init_postgres() -> bool:
     global _engine, _sessionmaker
     url = settings.database.url
     if not url:
-        logger.debug("PostgreSQL not configured (url is missing). Falling back to local storage.")
+        logger.debug(
+            "PostgreSQL not configured (url is missing). Falling back to local storage."
+        )
         return False
 
     try:

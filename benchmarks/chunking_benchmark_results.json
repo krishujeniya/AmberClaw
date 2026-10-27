@@ -1,0 +1,42 @@
+{
+  "markdown": {
+    "doc_type": "markdown",
+    "payload_kb": 17.97,
+    "chunk_count": 23,
+    "duration_ms": 0.07,
+    "throughput_kb_s": 262197.42,
+    "mean_chunk_chars": 991.5,
+    "stdev_chunk_chars": 40.7,
+    "mean_tokens_per_chunk": 129.1
+  },
+  "python_code": {
+    "doc_type": "python_code",
+    "payload_kb": 21.19,
+    "chunk_count": 27,
+    "duration_ms": 0.06,
+    "throughput_kb_s": 380825.33,
+    "mean_chunk_chars": 996.3,
+    "stdev_chunk_chars": 19.2,
+    "mean_tokens_per_chunk": 93
+  },
+  "plain_text": {
+    "doc_type": "plain_text",
+    "payload_kb": 19.22,
+    "chunk_count": 25,
+    "duration_ms": 0.06,
+    "throughput_kb_s": 324246.69,
+    "mean_chunk_chars": 979.2,
+    "stdev_chunk_chars": 104.0,
+    "mean_tokens_per_chunk": 133.6
+  },
+  "html": {
+    "doc_type": "html",
+    "payload_kb": 13.05,
+    "chunk_count": 7,
+    "duration_ms": 7.96,
+    "throughput_kb_s": 1639.73,
+    "mean_chunk_chars": 985.4,
+    "stdev_chunk_chars": 38.6,
+    "mean_tokens_per_chunk": 108
+  }
+}

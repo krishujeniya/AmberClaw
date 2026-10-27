@@ -1,9 +1,10 @@
 """Unit tests for model capability detection and dynamic routing in LiteLLMProvider."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from amberclaw.providers.litellm_provider import LiteLLMProvider
-from amberclaw.providers.base import LLMResponse
 
 
 @pytest.fixture
@@ -38,7 +39,7 @@ def test_get_capabilities_fallback_logic(mock_litellm):
     mock_litellm.get_model_info.side_effect = Exception("offline")
 
     provider = LiteLLMProvider(api_key="test-key", default_model="unknown-model")
-    
+
     # Check vision and context window resolution for claude
     caps_claude = provider.get_capabilities("anthropic/claude-3-5-sonnet")
     assert caps_claude["vision"] is True
@@ -59,8 +60,8 @@ def test_analyze_requirements(mock_litellm):
             "role": "user",
             "content": [
                 {"type": "text", "text": "Describe this image:"},
-                {"type": "image_url", "image_url": "data:image/png;base64,abc"}
-            ]
+                {"type": "image_url", "image_url": "data:image/png;base64,abc"},
+            ],
         }
     ]
     reqs_vision = provider._analyze_requirements(messages_vision)
@@ -68,7 +69,10 @@ def test_analyze_requirements(mock_litellm):
 
     # 2. Reasoning prompt via keywords
     messages_reasoning = [
-        {"role": "user", "content": "Please reason deeply and explain step-by-step why 1+1=2."}
+        {
+            "role": "user",
+            "content": "Please reason deeply and explain step-by-step why 1+1=2.",
+        }
     ]
     reqs_reasoning = provider._analyze_requirements(messages_reasoning)
     assert reqs_reasoning["reasoning"] is True
@@ -80,16 +84,16 @@ async def test_dynamic_routing_to_fallback(mock_litellm):
     provider = LiteLLMProvider(
         api_key="test-key",
         default_model="openai/gpt-3.5-turbo",
-        fallback_models=["anthropic/claude-3-5-sonnet", "deepseek/deepseek-r1"]
+        fallback_models=["anthropic/claude-3-5-sonnet", "deepseek/deepseek-r1"],
     )
 
     # Mock capabilities for models
     def mock_get_capabilities(model):
         if "gpt-3.5" in model:
             return {"vision": False, "reasoning": False, "context_size": 4096}
-        elif "claude-3-5" in model:
+        if "claude-3-5" in model:
             return {"vision": True, "reasoning": False, "context_size": 200000}
-        elif "deepseek-r1" in model:
+        if "deepseek-r1" in model:
             return {"vision": False, "reasoning": True, "context_size": 64000}
         return {"vision": False, "reasoning": False, "context_size": 4096}
 
@@ -98,17 +102,24 @@ async def test_dynamic_routing_to_fallback(mock_litellm):
     # Mock acompletion call
     mock_response = MagicMock()
     mock_response.choices = [
-        MagicMock(message=MagicMock(content="Vision result", tool_calls=[]), finish_reason="stop")
+        MagicMock(
+            message=MagicMock(content="Vision result", tool_calls=[]),
+            finish_reason="stop",
+        )
     ]
 
-    with patch("amberclaw.providers.litellm_provider.acompletion", new_callable=AsyncMock) as mock_acompletion:
+    with patch(
+        "amberclaw.providers.litellm_provider.acompletion", new_callable=AsyncMock
+    ) as mock_acompletion:
         mock_acompletion.return_value = mock_response
 
         # Trigger chat with a vision message
         messages = [
             {
                 "role": "user",
-                "content": [{"type": "image_url", "image_url": "http://example.com/img.png"}]
+                "content": [
+                    {"type": "image_url", "image_url": "http://example.com/img.png"}
+                ],
             }
         ]
 
@@ -118,4 +129,3 @@ async def test_dynamic_routing_to_fallback(mock_litellm):
         # (resolved from optimal model 'anthropic/claude-3-5-sonnet')
         called_args, called_kwargs = mock_acompletion.call_args
         assert "claude-3-5-sonnet" in called_kwargs["model"]
-

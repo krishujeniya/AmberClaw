@@ -1,6 +1,5 @@
 """Unit tests for PostgreSQL and Redis state migration and messaging fallbacks."""
 
-import asyncio
 import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -17,14 +16,20 @@ from amberclaw.session.manager import Session, SessionManager
 def test_db_redis_initialization_defaults() -> None:
     """Verify that PostgreSQL and Redis return False when config is empty."""
     # Reset config temporarily to empty urls
-    with patch.object(settings.database, "url", None), patch.object(settings.redis, "url", None):
+    with (
+        patch.object(settings.database, "url", None),
+        patch.object(settings.redis, "url", None),
+    ):
         assert init_postgres() is False
         assert init_redis() is False
 
 
 def test_session_manager_jsonl_fallback(tmp_path: Path) -> None:
     """Verify that SessionManager falls back to JSONL when Postgres/Redis are unconfigured."""
-    with patch.object(settings.database, "url", None), patch.object(settings.redis, "url", None):
+    with (
+        patch.object(settings.database, "url", None),
+        patch.object(settings.redis, "url", None),
+    ):
         manager = SessionManager(tmp_path)
         assert manager.db_active is False
         assert manager.redis_active is False
@@ -58,15 +63,25 @@ async def test_session_manager_postgresql_active(tmp_path: Path) -> None:
     async def fake_get_db_session():
         yield mock_db_session
 
-    with patch("amberclaw.session.manager.init_postgres", return_value=True), \
-         patch("amberclaw.session.manager.create_tables", return_value=None), \
-         patch("amberclaw.session.manager.init_redis", return_value=False), \
-         patch("amberclaw.database.postgres.get_db_session", side_effect=fake_get_db_session):
-
+    with (
+        patch("amberclaw.session.manager.init_postgres", return_value=True),
+        patch("amberclaw.session.manager.create_tables", return_value=None),
+        patch("amberclaw.session.manager.init_redis", return_value=False),
+        patch(
+            "amberclaw.database.postgres.get_db_session",
+            side_effect=fake_get_db_session,
+        ),
+    ):
         # Setup database mock models returning a result
         mock_result = MagicMock()
-        mock_scalar = MagicMock(key="test:postgres", messages=[{"role": "user", "content": "from postgres"}],
-                                created_at=None, updated_at=None, metadata_json={}, last_consolidated=0)
+        mock_scalar = MagicMock(
+            key="test:postgres",
+            messages=[{"role": "user", "content": "from postgres"}],
+            created_at=None,
+            updated_at=None,
+            metadata_json={},
+            last_consolidated=0,
+        )
         mock_result.scalar_one_or_none.return_value = mock_scalar
         mock_execute.return_value = mock_result
 
@@ -84,19 +99,22 @@ async def test_session_manager_postgresql_active(tmp_path: Path) -> None:
 async def test_session_manager_redis_cache(tmp_path: Path) -> None:
     """Verify session caching in Redis is invoked when Redis is configured."""
     mock_redis = AsyncMock()
-    mock_redis.get.return_value = json.dumps({
-        "key": "test:redis",
-        "messages": [{"role": "assistant", "content": "from redis cache"}],
-        "created_at": "2026-06-02T12:00:00",
-        "updated_at": "2026-06-02T12:00:00",
-        "metadata": {},
-        "last_consolidated": 0,
-    })
+    mock_redis.get.return_value = json.dumps(
+        {
+            "key": "test:redis",
+            "messages": [{"role": "assistant", "content": "from redis cache"}],
+            "created_at": "2026-06-02T12:00:00",
+            "updated_at": "2026-06-02T12:00:00",
+            "metadata": {},
+            "last_consolidated": 0,
+        }
+    )
 
-    with patch("amberclaw.session.manager.init_postgres", return_value=False), \
-         patch("amberclaw.session.manager.init_redis", return_value=True), \
-         patch("amberclaw.session.manager.get_redis", return_value=mock_redis):
-
+    with (
+        patch("amberclaw.session.manager.init_postgres", return_value=False),
+        patch("amberclaw.session.manager.init_redis", return_value=True),
+        patch("amberclaw.session.manager.get_redis", return_value=mock_redis),
+    ):
         manager = SessionManager(tmp_path)
         assert manager.redis_active is True
 
@@ -110,15 +128,29 @@ async def test_session_manager_redis_cache(tmp_path: Path) -> None:
 async def test_message_bus_redis_pubsub() -> None:
     """Verify that MessageBus publishes to Redis when client is active."""
     mock_redis = AsyncMock()
-    
+
+    async def fake_listen():
+        if False:
+            yield {}
+
+    mock_pubsub = MagicMock()
+    mock_pubsub.subscribe = AsyncMock()
+    mock_pubsub.unsubscribe = AsyncMock()
+    mock_pubsub.listen = fake_listen
+    mock_redis.pubsub.return_value = mock_pubsub
+
     with patch("amberclaw.bus.queue.get_redis", return_value=mock_redis):
         bus = MessageBus()
-        msg = InboundMessage(channel="cli", sender_id="user", chat_id="direct", content="hello")
-        
+        msg = InboundMessage(
+            channel="cli", sender_id="user", chat_id="direct", content="hello"
+        )
+
         await bus.publish_inbound(msg)
-        
+
         # Redis publish should be called
         mock_redis.publish.assert_called_once()
         args, kwargs = mock_redis.publish.call_args
         assert args[0] == "amberclaw_inbound"
         assert "hello" in args[1]
+        if bus._listener_task:
+            bus._listener_task.cancel()

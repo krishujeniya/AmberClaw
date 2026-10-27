@@ -84,7 +84,9 @@ def _extract_interactive_content(content: dict) -> list[str]:
     if header:
         header_title = header.get("title", {})
         if isinstance(header_title, dict):
-            header_text = header_title.get("content", "") or header_title.get("text", "")
+            header_text = header_title.get("content", "") or header_title.get(
+                "text", ""
+            )
             if header_text:
                 parts.append(f"title: {header_text}")
 
@@ -141,7 +143,9 @@ def _extract_element_content(element: dict) -> list[str]:
 
     elif tag == "img":
         alt = element.get("alt", {})
-        parts.append(alt.get("content", "[image]") if isinstance(alt, dict) else "[image]")
+        parts.append(
+            alt.get("content", "[image]") if isinstance(alt, dict) else "[image]"
+        )
 
     elif tag == "note":
         for ne in element.get("elements", []):
@@ -252,7 +256,9 @@ class FeishuChannel(BaseChannel):
         self._client: Any = None
         self._ws_client: Any = None
         self._ws_thread: threading.Thread | None = None
-        self._processed_message_ids: OrderedDict[str, None] = OrderedDict()  # Ordered dedup cache
+        self._processed_message_ids: OrderedDict[str, None] = (
+            OrderedDict()
+        )  # Ordered dedup cache
         self._loop: asyncio.AbstractEventLoop | None = None
 
     @staticmethod
@@ -289,10 +295,14 @@ class FeishuChannel(BaseChannel):
             self.config.verification_token or "",
         ).register_p2_im_message_receive_v1(self._on_message_sync)
         builder = self._register_optional_event(
-            builder, "register_p2_im_message_reaction_created_v1", self._on_reaction_created,
+            builder,
+            "register_p2_im_message_reaction_created_v1",
+            self._on_reaction_created,
         )
         builder = self._register_optional_event(
-            builder, "register_p2_im_message_message_read_v1", self._on_message_read,
+            builder,
+            "register_p2_im_message_message_read_v1",
+            self._on_message_read,
         )
         builder = self._register_optional_event(
             builder,
@@ -379,14 +389,18 @@ class FeishuChannel(BaseChannel):
 
             if not response.success():
                 logger.warning(
-                    "Failed to add reaction: code={}, msg={}", response.code, response.msg,
+                    "Failed to add reaction: code={}, msg={}",
+                    response.code,
+                    response.msg,
                 )
             else:
                 logger.debug("Added {} reaction to message {}", emoji_type, message_id)
         except Exception as e:
             logger.warning("Error adding reaction: {}", e)
 
-    async def _add_reaction(self, message_id: str, emoji_type: str = "THUMBSUP") -> None:
+    async def _add_reaction(
+        self, message_id: str, emoji_type: str = "THUMBSUP"
+    ) -> None:
         """
         Add a reaction emoji to a message (non-blocking).
 
@@ -396,7 +410,9 @@ class FeishuChannel(BaseChannel):
             return
 
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._add_reaction_sync, message_id, emoji_type)
+        await loop.run_in_executor(
+            None, self._add_reaction_sync, message_id, emoji_type
+        )
 
     # Regex to match markdown tables (header + separator + data rows)
     _TABLE_RE = re.compile(
@@ -411,7 +427,9 @@ class FeishuChannel(BaseChannel):
     @staticmethod
     def _parse_md_table(table_text: str) -> dict | None:
         """Parse a markdown table into a Feishu table element."""
-        lines = [_line.strip() for _line in table_text.strip().split("\n") if _line.strip()]
+        lines = [
+            _line.strip() for _line in table_text.strip().split("\n") if _line.strip()
+        ]
         if len(lines) < 3:
             return None
 
@@ -429,7 +447,8 @@ class FeishuChannel(BaseChannel):
             "page_size": len(rows) + 1,
             "columns": columns,
             "rows": [
-                {f"c{i}": r[i] if i < len(r) else "" for i in range(len(headers))} for r in rows
+                {f"c{i}": r[i] if i < len(r) else "" for i in range(len(headers))}
+                for r in rows
             ],
         }
 
@@ -441,7 +460,8 @@ class FeishuChannel(BaseChannel):
             if before.strip():
                 elements.extend(self._split_headings(before))
             elements.append(
-                self._parse_md_table(m.group(1)) or {"tag": "markdown", "content": m.group(1)},
+                self._parse_md_table(m.group(1))
+                or {"tag": "markdown", "content": m.group(1)},
             )
             last_end = m.end()
         remaining = content[last_end:]
@@ -451,7 +471,8 @@ class FeishuChannel(BaseChannel):
 
     @staticmethod
     def _split_elements_by_table_limit(
-        elements: list[dict], max_tables: int = 1,
+        elements: list[dict],
+        max_tables: int = 1,
     ) -> list[list[dict]]:
         """Split card elements into groups with at most *max_tables* table elements each.
 
@@ -485,7 +506,9 @@ class FeishuChannel(BaseChannel):
         code_blocks = []
         for m in self._CODE_BLOCK_RE.finditer(content):
             code_blocks.append(m.group(1))
-            protected = protected.replace(m.group(1), f"\x00CODE{len(code_blocks) - 1}\x00", 1)
+            protected = protected.replace(
+                m.group(1), f"\x00CODE{len(code_blocks) - 1}\x00", 1
+            )
 
         elements = []
         last_end = 0
@@ -632,7 +655,17 @@ class FeishuChannel(BaseChannel):
         }
         return json.dumps(post_body, ensure_ascii=False)
 
-    _IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".ico", ".tiff", ".tif"}
+    _IMAGE_EXTS = {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp",
+        ".webp",
+        ".ico",
+        ".tiff",
+        ".tif",
+    }
     _AUDIO_EXTS = {".opus"}
     _VIDEO_EXTS = {".mp4", ".mov", ".avi"}
     _FILE_TYPE_MAP = {
@@ -656,17 +689,24 @@ class FeishuChannel(BaseChannel):
                 request = (
                     CreateImageRequest.builder()
                     .request_body(
-                        CreateImageRequestBody.builder().image_type("message").image(f).build(),
+                        CreateImageRequestBody.builder()
+                        .image_type("message")
+                        .image(f)
+                        .build(),
                     )
                     .build()
                 )
                 response = self._client.im.v1.image.create(request)
                 if response.success():
                     image_key = response.data.image_key
-                    logger.debug("Uploaded image {}: {}", os.path.basename(file_path), image_key)
+                    logger.debug(
+                        "Uploaded image {}: {}", os.path.basename(file_path), image_key
+                    )
                     return image_key
                 logger.error(
-                    "Failed to upload image: code={}, msg={}", response.code, response.msg,
+                    "Failed to upload image: code={}, msg={}",
+                    response.code,
+                    response.msg,
                 )
                 return None
         except Exception as e:
@@ -699,7 +739,9 @@ class FeishuChannel(BaseChannel):
                     logger.debug("Uploaded file {}: {}", file_name, file_key)
                     return file_key
                 logger.error(
-                    "Failed to upload file: code={}, msg={}", response.code, response.msg,
+                    "Failed to upload file: code={}, msg={}",
+                    response.code,
+                    response.msg,
                 )
                 return None
         except Exception as e:
@@ -707,7 +749,9 @@ class FeishuChannel(BaseChannel):
             return None
 
     def _download_image_sync(
-        self, message_id: str, image_key: str,
+        self,
+        message_id: str,
+        image_key: str,
     ) -> tuple[bytes | None, str | None]:
         """Download an image from Feishu message by message_id and image_key."""
         from lark_oapi.api.im.v1 import GetMessageResourceRequest
@@ -728,7 +772,9 @@ class FeishuChannel(BaseChannel):
                     file_data = file_data.read()
                 return file_data, response.file_name
             logger.error(
-                "Failed to download image: code={}, msg={}", response.code, response.msg,
+                "Failed to download image: code={}, msg={}",
+                response.code,
+                response.msg,
             )
             return None, None
         except Exception as e:
@@ -736,7 +782,10 @@ class FeishuChannel(BaseChannel):
             return None, None
 
     def _download_file_sync(
-        self, message_id: str, file_key: str, resource_type: str = "file",
+        self,
+        message_id: str,
+        file_key: str,
+        resource_type: str = "file",
     ) -> tuple[bytes | None, str | None]:
         """Download a file/audio/media from a Feishu message by message_id and file_key."""
         from lark_oapi.api.im.v1 import GetMessageResourceRequest
@@ -772,7 +821,10 @@ class FeishuChannel(BaseChannel):
             return None, None
 
     async def _download_and_save_media(
-        self, msg_type: str, content_json: dict, message_id: str | None = None,
+        self,
+        msg_type: str,
+        content_json: dict,
+        message_id: str | None = None,
     ) -> tuple[str | None, str]:
         """
         Download media from Feishu and save to local disk.
@@ -789,7 +841,10 @@ class FeishuChannel(BaseChannel):
             image_key = content_json.get("image_key")
             if image_key and message_id:
                 data, filename = await loop.run_in_executor(
-                    None, self._download_image_sync, message_id, image_key,
+                    None,
+                    self._download_image_sync,
+                    message_id,
+                    image_key,
                 )
                 if not filename:
                     filename = f"{image_key[:16]}.jpg"
@@ -798,7 +853,11 @@ class FeishuChannel(BaseChannel):
             file_key = content_json.get("file_key")
             if file_key and message_id:
                 data, filename = await loop.run_in_executor(
-                    None, self._download_file_sync, message_id, file_key, msg_type,
+                    None,
+                    self._download_file_sync,
+                    message_id,
+                    file_key,
+                    msg_type,
                 )
                 if not filename:
                     filename = file_key[:16]
@@ -814,7 +873,11 @@ class FeishuChannel(BaseChannel):
         return None, f"[{msg_type}: download failed]"
 
     def _send_message_sync(
-        self, receive_id_type: str, receive_id: str, msg_type: str, content: str,
+        self,
+        receive_id_type: str,
+        receive_id: str,
+        msg_type: str,
+        content: str,
     ) -> bool:
         """Send a single message (text/image/file/interactive) synchronously."""
         from lark_oapi.api.im.v1 import CreateMessageRequest, CreateMessageRequestBody
@@ -864,7 +927,9 @@ class FeishuChannel(BaseChannel):
                     continue
                 ext = os.path.splitext(file_path)[1].lower()
                 if ext in self._IMAGE_EXTS:
-                    key = await loop.run_in_executor(None, self._upload_image_sync, file_path)
+                    key = await loop.run_in_executor(
+                        None, self._upload_image_sync, file_path
+                    )
                     if key:
                         await loop.run_in_executor(
                             None,
@@ -875,7 +940,9 @@ class FeishuChannel(BaseChannel):
                             json.dumps({"image_key": key}, ensure_ascii=False),
                         )
                 else:
-                    key = await loop.run_in_executor(None, self._upload_file_sync, file_path)
+                    key = await loop.run_in_executor(
+                        None, self._upload_file_sync, file_path
+                    )
                     if key:
                         # Use msg_type "media" for audio/video so users can play inline;
                         # "file" for everything else (documents, archives, etc.)
@@ -897,7 +964,9 @@ class FeishuChannel(BaseChannel):
 
                 if fmt == "text":
                     # Short plain text – send as simple text message
-                    text_body = json.dumps({"text": msg.content.strip()}, ensure_ascii=False)
+                    text_body = json.dumps(
+                        {"text": msg.content.strip()}, ensure_ascii=False
+                    )
                     await loop.run_in_executor(
                         None,
                         self._send_message_sync,
@@ -994,7 +1063,9 @@ class FeishuChannel(BaseChannel):
                 # Download images embedded in post
                 for img_key in image_keys:
                     file_path, content_text = await self._download_and_save_media(
-                        "image", {"image_key": img_key}, message_id,
+                        "image",
+                        {"image_key": img_key},
+                        message_id,
                     )
                     if file_path:
                         media_paths.append(file_path)
@@ -1002,7 +1073,9 @@ class FeishuChannel(BaseChannel):
 
             elif msg_type in ("image", "audio", "file", "media"):
                 file_path, content_text = await self._download_and_save_media(
-                    msg_type, content_json, message_id,
+                    msg_type,
+                    content_json,
+                    message_id,
                 )
                 if file_path:
                     media_paths.append(file_path)
@@ -1014,7 +1087,9 @@ class FeishuChannel(BaseChannel):
                             GroqTranscriptionProvider,
                         )
 
-                        transcriber = GroqTranscriptionProvider(api_key=self.groq_api_key)
+                        transcriber = GroqTranscriptionProvider(
+                            api_key=self.groq_api_key
+                        )
                         transcription = await transcriber.transcribe(file_path)
                         if transcription:
                             content_text = f"[transcription: {transcription}]"

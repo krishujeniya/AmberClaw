@@ -1,9 +1,12 @@
 import json
 import os
-import pytest
 from pathlib import Path
-from amberclaw.security.vault import SecretVault, resolved_secrets_context, vault as global_vault
+
+import pytest
+
 from amberclaw.config.loader import load_config
+from amberclaw.security.vault import SecretVault, resolved_secrets_context
+from amberclaw.security.vault import vault as global_vault
 
 
 def test_vault_flow(tmp_path: Path) -> None:
@@ -13,7 +16,7 @@ def test_vault_flow(tmp_path: Path) -> None:
     # Key generation check
     key_file = tmp_path / ".vault_key"
     assert not key_file.exists()
-    
+
     # Store a secret
     vault.store_secret("my_key", "secret_value_123")
     assert key_file.exists()
@@ -30,7 +33,9 @@ def test_vault_flow(tmp_path: Path) -> None:
     assert vault.resolve_secret(None) is None
 
 
-def test_resolved_secrets_context_env_cleanup(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolved_secrets_context_env_cleanup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test that resolved_secrets_context cleans up environment variables correctly."""
     # Point global vault to temp path for isolation
     monkeypatch.setattr(global_vault, "base_dir", tmp_path)
@@ -61,10 +66,12 @@ def test_resolved_secrets_context_env_cleanup(tmp_path: Path, monkeypatch: pytes
     assert env_var not in os.environ
 
 
-def test_config_secrets_migration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_config_secrets_migration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test that loading a config with plain text keys migrates them to the vault."""
     config_file = tmp_path / "config.json"
-    
+
     # Point global vault to temp path for isolation
     monkeypatch.setattr(global_vault, "base_dir", tmp_path)
     monkeypatch.setattr(global_vault, "key_file", tmp_path / ".vault_key")
@@ -75,15 +82,15 @@ def test_config_secrets_migration(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         "providers": {
             "openai": {
                 "api_key": "sk-proj-super-secret",
-                "api_base": "https://api.openai.com/v1"
+                "api_base": "https://api.openai.com/v1",
             },
             "anthropic": {
                 "api_key": "vault://providers/anthropic/api_key",
-                "api_base": "https://api.anthropic.com/v1"
-            }
+                "api_base": "https://api.anthropic.com/v1",
+            },
         }
     }
-    
+
     config_file.write_text(json.dumps(raw_config))
 
     # Load configuration; this should trigger auto-migration for openai
@@ -98,4 +105,6 @@ def test_config_secrets_migration(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 
     # Verify the file on disk was rewritten with the vault URI
     disk_data = json.loads(config_file.read_text())
-    assert disk_data["providers"]["openai"]["apiKey"] == "vault://providers/openai/api_key"
+    assert (
+        disk_data["providers"]["openai"]["apiKey"] == "vault://providers/openai/api_key"
+    )

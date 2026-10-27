@@ -27,7 +27,9 @@ class _FakeClient:
 
 @pytest.mark.asyncio
 async def test_on_group_message_routes_to_group_chat_id() -> None:
-    channel = QQChannel(QQConfig(app_id="app", secret="secret", allow_from=["user1"]), MessageBus())
+    channel = QQChannel(
+        QQConfig(app_id="app", secret="secret", allow_from=["user1"]), MessageBus()
+    )
 
     data = SimpleNamespace(
         id="msg1",
@@ -45,7 +47,9 @@ async def test_on_group_message_routes_to_group_chat_id() -> None:
 
 @pytest.mark.asyncio
 async def test_send_group_message_uses_group_api_with_msg_seq() -> None:
-    channel = QQChannel(QQConfig(app_id="app", secret="secret", allow_from=["*"]), MessageBus())
+    channel = QQChannel(
+        QQConfig(app_id="app", secret="secret", allow_from=["*"]), MessageBus()
+    )
     channel._client = _FakeClient()
     channel._chat_type_cache["group123"] = "group"
 

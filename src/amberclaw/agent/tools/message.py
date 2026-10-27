@@ -14,12 +14,16 @@ class MessageArgs(BaseModel):
 
     content: str = Field(..., description="The message content to send")
     channel: str | None = Field(
-        None, description="Optional: target channel (telegram, discord, etc.)",
+        None,
+        description="Optional: target channel (telegram, discord, etc.)",
     )
     chat_id: str | None = Field(None, description="Optional: target chat/user ID")
-    media: list[str] | None = Field(None, description="Optional: list of file paths to attach")
+    media: list[str] | None = Field(
+        None, description="Optional: list of file paths to attach"
+    )
     importance: Literal["low", "medium", "high"] = Field(
-        "medium", description="Optional: message importance level",
+        "medium",
+        description="Optional: message importance level",
     )
 
 
@@ -52,13 +56,17 @@ class MessageTool(PydanticTool):
         self._default_message_id = default_message_id
         self._sent_in_turn: bool = False
 
-    def set_context(self, channel: str, chat_id: str, message_id: str | None = None) -> None:
+    def set_context(
+        self, channel: str, chat_id: str, message_id: str | None = None
+    ) -> None:
         """Set the current message context."""
         self._default_channel = channel
         self._default_chat_id = chat_id
         self._default_message_id = message_id
 
-    def set_send_callback(self, callback: Callable[[OutboundMessage], Awaitable[None]]) -> None:
+    def set_send_callback(
+        self, callback: Callable[[OutboundMessage], Awaitable[None]]
+    ) -> None:
         """Set the callback for sending messages."""
         self._send_callback = callback
 

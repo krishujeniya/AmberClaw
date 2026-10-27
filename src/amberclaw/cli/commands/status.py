@@ -1,9 +1,10 @@
-import typer
 from rich.console import Console
+
 from amberclaw import __logo__
 from amberclaw.config import loader
 
 console = Console()
+
 
 def status() -> None:
     """Show amberclaw status."""

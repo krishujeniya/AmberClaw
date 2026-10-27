@@ -46,7 +46,13 @@ class VLLMLocalRunner:
         if use_binary:
             args = ["vllm", "serve", self.model]
         else:
-            args = ["python", "-m", "vllm.entrypoints.openai.api_server", "--model", self.model]
+            args = [
+                "python",
+                "-m",
+                "vllm.entrypoints.openai.api_server",
+                "--model",
+                self.model,
+            ]
 
         args.extend(["--host", self.host])
         args.extend(["--port", str(self.port)])
@@ -75,7 +81,9 @@ class VLLMLocalRunner:
                 stderr=asyncio.subprocess.PIPE,
             )
         except (FileNotFoundError, ProcessLookupError):
-            logger.warning("vLLM module not found or failed to start via python, trying 'vllm serve'...")
+            logger.warning(
+                "vLLM module not found or failed to start via python, trying 'vllm serve'..."
+            )
             binary_args = self.build_command_args(use_binary=True)
             try:
                 self.process = await asyncio.create_subprocess_exec(

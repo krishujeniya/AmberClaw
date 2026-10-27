@@ -15,14 +15,19 @@ class SpawnArgs(BaseModel):
 
     task: str = Field(..., description="The task for the subagent to complete")
     label: str | None = Field(
-        None, description="Optional short label for the task (for display)",
+        None,
+        description="Optional short label for the task (for display)",
     )
-    model: str | None = Field(None, description="Optional: specific model for the subagent")
+    model: str | None = Field(
+        None, description="Optional: specific model for the subagent"
+    )
     reasoning_effort: str | None = Field(
-        None, description="Optional: reasoning effort (low, medium, high)",
+        None,
+        description="Optional: reasoning effort (low, medium, high)",
     )
     worker_role: str | None = Field(
-        None, description="Optional: specialized worker role ('coder', 'researcher', 'reader', 'general')",
+        None,
+        description="Optional: specialized worker role ('coder', 'researcher', 'reader', 'general')",
     )
 
 

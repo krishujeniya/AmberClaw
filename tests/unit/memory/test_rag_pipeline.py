@@ -10,7 +10,6 @@ for m in list(sys.modules.keys()):
         sys.modules.pop(m, None)
 
 
-
 # Define a Document stub class
 class DocumentStub:
     def __init__(self, page_content: str, metadata: dict | None = None):
@@ -40,10 +39,14 @@ sys.modules["langchain_core.documents"].Document = DocumentStub
 
 # Stub out load classes
 mock_unstructured_loader = MagicMock()
-sys.modules["langchain_community.document_loaders"].UnstructuredFileLoader = mock_unstructured_loader
+sys.modules[
+    "langchain_community.document_loaders"
+].UnstructuredFileLoader = mock_unstructured_loader
 
 mock_recursive_splitter = MagicMock()
-sys.modules["langchain_text_splitters"].RecursiveCharacterTextSplitter = mock_recursive_splitter
+sys.modules[
+    "langchain_text_splitters"
+].RecursiveCharacterTextSplitter = mock_recursive_splitter
 
 
 # Picklable fake class to replace BM25Retriever
@@ -56,6 +59,7 @@ class FakeBM25Retriever:
     def from_documents(cls, docs):
         return cls(docs)
 
+
 sys.modules["langchain_community.retrievers"].BM25Retriever = FakeBM25Retriever
 
 
@@ -65,21 +69,23 @@ from amberclaw.memory.rag_pipeline import DocumentIngestor, HybridRetriever
 
 def test_document_ingestor_split(tmp_path):
     ingestor = DocumentIngestor(chunk_size=100, chunk_overlap=10)
-    
+
     loader_instance = MagicMock()
-    loader_instance.load.return_value = [DocumentStub(page_content="Hello world this is a test document to split.")]
+    loader_instance.load.return_value = [
+        DocumentStub(page_content="Hello world this is a test document to split.")
+    ]
     mock_unstructured_loader.return_value = loader_instance
-    
+
     splitter_instance = MagicMock()
     splitter_instance.split_documents.return_value = [
         DocumentStub(page_content="Hello world"),
         DocumentStub(page_content="this is a test"),
     ]
     mock_recursive_splitter.return_value = splitter_instance
-    
+
     test_file = tmp_path / "test_file.txt"
     test_file.write_text("Hello world")
-    
+
     docs = ingestor.load_and_split(test_file)
     assert len(docs) == 2
     assert docs[0].page_content == "Hello world"
@@ -88,36 +94,46 @@ def test_document_ingestor_split(tmp_path):
 def test_hybrid_retriever_persistence(tmp_path):
     # Scenario 1: Initial ingest
     retriever = HybridRetriever(db_dir=tmp_path, collection_name="test_collection")
-    
-    doc1 = DocumentStub(page_content="AmberClaw is an AI OS kernel.", metadata={"source": "doc1"})
-    doc2 = DocumentStub(page_content="It supports zero-trust security.", metadata={"source": "doc2"})
-    
+
+    doc1 = DocumentStub(
+        page_content="AmberClaw is an AI OS kernel.", metadata={"source": "doc1"}
+    )
+    doc2 = DocumentStub(
+        page_content="It supports zero-trust security.", metadata={"source": "doc2"}
+    )
+
     retriever.ingest([doc1, doc2])
-    
+
     # Check that documents are written to disk
     assert retriever.docs_path.exists()
     assert retriever.bm25_path.exists()
 
     # Scenario 2: Load from disk on new instance
     retriever_new = HybridRetriever(db_dir=tmp_path, collection_name="test_collection")
-    
+
     assert len(retriever_new.bm25_docs) == 2
     assert retriever_new.bm25_docs[0].page_content == "AmberClaw is an AI OS kernel."
     assert retriever_new.bm25_retriever is not None
-    
+
     # Scenario 3: Ingesting more documents merges correctly
-    doc3 = DocumentStub(page_content="It also supports hybrid RAG pipelines.", metadata={"source": "doc3"})
+    doc3 = DocumentStub(
+        page_content="It also supports hybrid RAG pipelines.",
+        metadata={"source": "doc3"},
+    )
     retriever_new.ingest([doc3])
-    
+
     assert len(retriever_new.bm25_docs) == 3
-    assert retriever_new.bm25_docs[2].page_content == "It also supports hybrid RAG pipelines."
+    assert (
+        retriever_new.bm25_docs[2].page_content
+        == "It also supports hybrid RAG pipelines."
+    )
 
 
 def test_hybrid_retriever_get_retriever(tmp_path):
     retriever = HybridRetriever(db_dir=tmp_path, collection_name="test_collection")
     doc = DocumentStub(page_content="Sample text.")
     retriever.ingest([doc])
-    
+
     r = retriever.get_retriever(top_k=3)
     assert r is not None
 
@@ -201,8 +217,9 @@ def test_document_ingestor_unified_ingest(tmp_path):
     ingestor.retriever.ingest.reset_mock()
 
     # Test ingesting message string
-    count = ingestor.ingest("Direct message text content", metadata={"session_id": "test_sess"})
+    count = ingestor.ingest(
+        "Direct message text content", metadata={"session_id": "test_sess"}
+    )
     assert count == 1
     assert ingestor.retriever.ingest.call_count == 1
     ingestor.retriever.ingest.reset_mock()
-

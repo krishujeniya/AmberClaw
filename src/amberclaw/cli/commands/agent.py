@@ -1,10 +1,12 @@
 import asyncio
 import signal
 import sys
-import typer
-from typing import Any, Iterator
-from rich.console import Console
+from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Any
+
+import typer
+from rich.console import Console
 
 from amberclaw import __logo__
 from amberclaw.cli.commands import utils
@@ -14,10 +16,15 @@ from amberclaw.utils import helpers
 
 console = Console()
 
+
 def agent(
-    message: str = typer.Option(None, "--message", "-m", help="Message to send to the agent"),
+    message: str = typer.Option(
+        None, "--message", "-m", help="Message to send to the agent"
+    ),
     session_id: str = typer.Option("cli:direct", "--session", "-s", help="Session ID"),
-    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
+    workspace: str | None = typer.Option(
+        None, "--workspace", "-w", help="Workspace directory"
+    ),
     config: str | None = typer.Option(None, "--config", "-c", help="Config file path"),
     markdown: bool = typer.Option(
         True, "--markdown/--no-markdown", help="Render assistant output as Markdown"
@@ -28,6 +35,7 @@ def agent(
 ) -> None:
     """Interact with the agent directly."""
     from loguru import logger
+
     from amberclaw.agent.loop import AgentLoop
     from amberclaw.bus.queue import MessageBus
     from amberclaw.cron.service import CronService
@@ -93,11 +101,15 @@ def agent(
         console.print(f"  [dim]↳ {content}[/dim]")
 
     if message:
+
         async def run_once() -> None:
             streamer = utils.TokenStreamer(console, render_markdown=markdown)
             with _thinking_ctx():
                 response = await agent_loop.process_direct(
-                    message, session_id, on_progress=_cli_progress, on_token=streamer.on_token
+                    message,
+                    session_id,
+                    on_progress=_cli_progress,
+                    on_token=streamer.on_token,
                 )
             streamer.stop()
             if not streamer.content:
@@ -107,6 +119,7 @@ def agent(
         asyncio.run(run_once())
     else:
         from amberclaw.bus.events import InboundMessage
+
         utils._init_prompt_session()
         console.print(
             f"{__logo__} Interactive mode (type [bold]exit[/bold] or [bold]Ctrl+C[/bold] to quit)\n"
@@ -144,7 +157,9 @@ def agent(
             async def _consume_outbound() -> None:
                 while True:
                     try:
-                        msg = await asyncio.wait_for(bus.consume_outbound(), timeout=1.0)
+                        msg = await asyncio.wait_for(
+                            bus.consume_outbound(), timeout=1.0
+                        )
                         if msg.metadata.get("_token"):
                             if state["active_status"]:
                                 state["active_status"].stop()
@@ -164,14 +179,18 @@ def agent(
                         elif not turn_done.is_set():
                             if state["streamer"].header_printed:
                                 state["streamer"].stop()
-                                state["streamer"] = utils.TokenStreamer(console, render_markdown=markdown)
+                                state["streamer"] = utils.TokenStreamer(
+                                    console, render_markdown=markdown
+                                )
                             elif msg.content:
                                 turn_response.append(msg.content)
                             turn_done.set()
                         elif msg.content:
                             console.print()
-                            utils._print_agent_response(msg.content, render_markdown=markdown)
-                    except asyncio.TimeoutError:
+                            utils._print_agent_response(
+                                msg.content, render_markdown=markdown
+                            )
+                    except TimeoutError:
                         continue
                     except asyncio.CancelledError:
                         break
@@ -209,7 +228,9 @@ def agent(
                             await turn_done.wait()
 
                         if turn_response:
-                            utils._print_agent_response(turn_response[0], render_markdown=markdown)
+                            utils._print_agent_response(
+                                turn_response[0], render_markdown=markdown
+                            )
                     except KeyboardInterrupt:
                         utils._restore_terminal()
                         console.print("\nGoodbye!")

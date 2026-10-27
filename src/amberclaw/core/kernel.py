@@ -4,19 +4,25 @@ Orchestrates background processes (AgentLoop, CronService), monitors system heal
 and handles auto-recovery and event bus propagation of system events.
 """
 
+from __future__ import annotations
+
 import asyncio
 import contextlib
 import os
 import time
 from collections.abc import Callable, Coroutine
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import psutil
 from loguru import logger
 
 from amberclaw.bus.events import InboundMessage, SystemEvent
-from amberclaw.bus.queue import MessageBus
+from amberclaw.core.events import DomainEventBus
+from amberclaw.core.metrics import set_service_state
+
+if TYPE_CHECKING:
+    from amberclaw.bus.queue import MessageBus
 
 
 class ClawOSSupervisor:
@@ -33,6 +39,7 @@ class ClawOSSupervisor:
         self.workspace = workspace
         self.config = config
         self.check_interval_s = check_interval_s
+        self.event_bus = DomainEventBus()
         self._services: dict[str, dict[str, Any]] = {}
         self._running = False
         self._supervisor_task: asyncio.Task | None = None
@@ -56,6 +63,7 @@ class ClawOSSupervisor:
             "restarts": 0,
             "last_restart_time": 0.0,
         }
+        set_service_state(name, is_running=False)
         logger.info("Supervisor: Registered service '{}'", name)
 
     async def start(self) -> None:
@@ -118,6 +126,7 @@ class ClawOSSupervisor:
                     tasks_to_wait.append(task)
                 svc["status"] = "stopped"
                 svc["task"] = None
+                set_service_state(name, is_running=False)
 
             # Wait for all service tasks to complete/terminate
             if tasks_to_wait:
@@ -142,6 +151,7 @@ class ClawOSSupervisor:
 
         logger.info("Supervisor: Starting service '{}'...", name)
         svc["status"] = "running"
+        set_service_state(name, is_running=True)
 
         async def _run_wrapper():
             try:
@@ -175,6 +185,7 @@ class ClawOSSupervisor:
                 await task
         svc["status"] = "stopped"
         svc["task"] = None
+        set_service_state(name, is_running=False)
 
     async def _supervisor_loop(self) -> None:
         """Periodic loop to monitor and restart failed services."""
@@ -184,10 +195,7 @@ class ClawOSSupervisor:
                 async with self._lock:
                     for name, svc in self._services.items():
                         task = svc["task"]
-                        if (
-                            svc["status"] == "running"
-                            and (task is None or task.done())
-                        ):
+                        if svc["status"] == "running" and (task is None or task.done()):
                             # Service crashed or exited unexpectedly
                             exc = (
                                 task.exception()
@@ -202,6 +210,7 @@ class ClawOSSupervisor:
                             logger.error("Supervisor: {}", err_msg)
 
                             svc["status"] = "failed"
+                            set_service_state(name, is_running=False, is_failed=True)
 
                             # Publish failure event
                             await self.bus.publish_system_event(
@@ -221,10 +230,7 @@ class ClawOSSupervisor:
                             max_restarts = 5
                             cooldown_period_s = 60.0
                             # Prevent fast crash-loops
-                            if (
-                                now - svc["last_restart_time"]
-                                > cooldown_period_s
-                            ):
+                            if now - svc["last_restart_time"] > cooldown_period_s:
                                 svc["restarts"] = 0
 
                             if svc["restarts"] < max_restarts:
@@ -383,8 +389,7 @@ class ClawOSSupervisor:
                         "available_mb": mem.available / (1024 * 1024),
                     }
                     message_text = (
-                        "System memory usage is extremely high "
-                        f"({mem.percent}%)."
+                        f"System memory usage is extremely high ({mem.percent}%)."
                     )
                     await self.bus.publish_system_event(
                         SystemEvent(

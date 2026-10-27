@@ -61,7 +61,8 @@ def build_bwrap_args(
         "--unshare-pid",
         "--unshare-uts",
         "--die-with-parent",
-        "--cap-drop", "ALL",
+        "--cap-drop",
+        "ALL",
     ]
 
     # Bind system paths required for node execution and TLS validation
@@ -74,7 +75,10 @@ def build_bwrap_args(
     node_bin_resolved = Path(node_bin).resolve()
     # If node is installed in a user home folder or custom path, mount its directory
     node_prefix = node_bin_resolved.parent.parent
-    if node_prefix not in [Path("/usr"), Path("/"), Path("/usr/local")] and node_prefix.exists():
+    if (
+        node_prefix not in [Path("/usr"), Path("/"), Path("/usr/local")]
+        and node_prefix.exists()
+    ):
         args.extend(["--ro-bind", str(node_prefix), str(node_prefix)])
 
     # Setup proc, dev, and writable tmpfs
@@ -143,7 +147,9 @@ async def spawn_isolated_whatsapp_bridge(
         )
         node_bin = shutil.which("node")
         if not node_bin:
-            raise FileNotFoundError("Node.js is not installed. Cannot start WhatsApp bridge.")
+            raise FileNotFoundError(
+                "Node.js is not installed. Cannot start WhatsApp bridge."
+            )
 
         proc = await asyncio.create_subprocess_exec(
             node_bin,

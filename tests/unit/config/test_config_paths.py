@@ -32,7 +32,9 @@ def test_media_dir_supports_channel_namespace(monkeypatch, tmp_path: Path) -> No
 
 
 def test_shared_and_legacy_paths_remain_global() -> None:
-    assert get_cli_history_path() == Path.home() / ".amberclaw" / "history" / "cli_history"
+    assert (
+        get_cli_history_path() == Path.home() / ".amberclaw" / "history" / "cli_history"
+    )
     assert get_bridge_install_dir() == Path.home() / ".amberclaw" / "bridge"
     assert get_legacy_sessions_dir() == Path.home() / ".amberclaw" / "sessions"
 

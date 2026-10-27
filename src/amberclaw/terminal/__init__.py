@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from amberclaw.terminal.base import BaseTerminalBackend
 from amberclaw.terminal.daytona import DaytonaTerminalBackend
 from amberclaw.terminal.docker import DockerTerminalBackend
+from amberclaw.terminal.e2b import E2BTerminalBackend
 from amberclaw.terminal.factory import BackendFactory
 from amberclaw.terminal.local import LocalTerminalBackend
 from amberclaw.terminal.modal import ModalTerminalBackend
@@ -18,6 +19,7 @@ from amberclaw.terminal.wasm import WasmTerminalBackend
 
 class TerminalModuleConfig(BaseModel):
     """Configuration for the amberclaw.terminal module."""
+
     enabled: bool = Field(default=True, description="Whether the module is enabled")
     version: str = Field(default="2026.0.1", description="Module version")
 
@@ -27,6 +29,7 @@ __all__ = [
     "BaseTerminalBackend",
     "DaytonaTerminalBackend",
     "DockerTerminalBackend",
+    "E2BTerminalBackend",
     "LocalTerminalBackend",
     "ModalTerminalBackend",
     "SSHTerminalBackend",

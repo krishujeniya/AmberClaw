@@ -72,7 +72,9 @@ async def delegate_to_remote(target_url: str, task: str) -> str:
 
         if "error" in data:
             err = data["error"]
-            raise RuntimeError(f"Remote agent returned error {err.get('code')}: {err.get('message')}")
+            raise RuntimeError(
+                f"Remote agent returned error {err.get('code')}: {err.get('message')}"
+            )
 
         result = data.get("result", {})
         if isinstance(result, dict) and "output" in result:

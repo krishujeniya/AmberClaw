@@ -1,0 +1,22 @@
+name: developer
+version: "1.0.0"
+description: "Developer profile optimized for software engineering and codebase manipulation."
+agent:
+  model_name: "claude-3-5-sonnet-20241022"
+  temperature: 0.2
+  system_prompt: "You are AmberClaw Developer, an elite pair programmer and systems engineer."
+  max_turns: 100
+  memory_nudge_enabled: true
+security:
+  sandbox_type: "docker"
+  allow_network_egress: true
+  restricted_paths:
+    - "/etc/shadow"
+    - "~/.ssh/id_rsa"
+  require_human_approval_for_destructive: false
+skills:
+  - "github"
+  - "tmux"
+  - "summarize"
+channels:
+  - "matrix"

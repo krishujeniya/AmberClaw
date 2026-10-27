@@ -128,6 +128,13 @@ class DataLossPreventionEngine:
             "severity": DLPSensitivity.HIGH,
             "pattern": re.compile(r"\b(vault_[a-zA-Z0-9]{20,}|s\.[a-zA-Z0-9]{24,})\b"),
         },
+        {
+            "type": "ssn",
+            "severity": DLPSensitivity.HIGH,
+            "pattern": re.compile(
+                r"\b(?!000|666|9\d{2})\d{3}-(?!00)\d{2}-(?!0000)\d{4}\b"
+            ),
+        },
     ]
 
     # Credit card pattern candidate: 13 to 16 digits, with optional hyphens or spaces
@@ -255,3 +262,97 @@ class DataLossPreventionEngine:
             )
         )
         return scan_res.clean_text
+
+
+class ExternalTransmissionConfirmationError(DLPViolationError):
+    """Raised when outbound private data transmission requires explicit human confirmation."""
+
+    def __init__(
+        self,
+        message: str,
+        destination: str,
+        detected_patterns: list[str],
+        confirmation_challenge: str,
+    ) -> None:
+        super().__init__(message)
+        self.destination = destination
+        self.detected_patterns = detected_patterns
+        self.confirmation_challenge = confirmation_challenge
+
+
+class ExternalTransmissionGuard:
+    """Guards external transmission of private or confidential data by enforcing human confirmation."""
+
+    _valid_tokens: dict[str, float] = {}  # token -> expiry_timestamp
+
+    @classmethod
+    def issue_confirmation_token(
+        cls, _challenge: str = "", ttl_seconds: float = 300.0
+    ) -> str:
+        """Issues an approval confirmation token for transmitting detected sensitive data."""
+        import secrets  # noqa: PLC0415
+        import time  # noqa: PLC0415
+
+        token = f"dlp_conf_{secrets.token_hex(16)}"
+        cls._valid_tokens[token] = time.time() + ttl_seconds
+        return token
+
+    @classmethod
+    def check_transmission(
+        cls,
+        content: str,
+        destination: str,
+        requires_confirmation: bool = True,
+        confirmation_token: str | None = None,
+    ) -> str:
+        """Verifies outbound content and requires explicit confirmation if sensitive data is detected."""
+        import time  # noqa: PLC0415
+
+        scan_res = DataLossPreventionEngine.scan(content)
+        if not scan_res.has_violations:
+            return content
+
+        patterns = [v.pattern_type for v in scan_res.violations]
+
+        if requires_confirmation:
+            now = time.time()
+            if not confirmation_token or confirmation_token not in cls._valid_tokens:
+                challenge = f"confirm_send_{destination}_{len(patterns)}"
+                raise ExternalTransmissionConfirmationError(
+                    f"External transmission to '{destination}' contains private/sensitive data ({patterns}). "
+                    "Explicit operator confirmation is required.",
+                    destination=destination,
+                    detected_patterns=patterns,
+                    confirmation_challenge=challenge,
+                )
+
+            # Check token expiration
+            if cls._valid_tokens[confirmation_token] < now:
+                del cls._valid_tokens[confirmation_token]
+                raise ExternalTransmissionConfirmationError(
+                    "Confirmation token has expired",
+                    destination=destination,
+                    detected_patterns=patterns,
+                    confirmation_challenge="",
+                )
+
+            # Consume token
+            del cls._valid_tokens[confirmation_token]
+
+            # Audit confirmation
+            audit_logger = SecurityAuditLogger.get_logger()
+            audit_logger.log_event(
+                AuditEvent(
+                    actor="operator",
+                    action="security.dlp.outbound_transmission_confirmed",
+                    resource_type="external_dispatch",
+                    resource_id=destination,
+                    outcome="confirmed",
+                    metadata={
+                        "destination": destination,
+                        "patterns": patterns,
+                    },
+                )
+            )
+
+        return content

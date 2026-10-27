@@ -1,10 +1,12 @@
 import typer
 from rich.console import Console
+
 from amberclaw import __logo__
 from amberclaw.config import loader, paths, schema
 from amberclaw.utils import helpers
 
 console = Console()
+
 
 def onboard() -> None:
     """Initialize AmberClaw configuration and workspace."""
@@ -12,7 +14,9 @@ def onboard() -> None:
 
     if config_path.exists():
         console.print(f"[yellow]Config already exists at {config_path}[/yellow]")
-        console.print("  [bold]y[/bold] = overwrite with defaults (existing values will be lost)")
+        console.print(
+            "  [bold]y[/bold] = overwrite with defaults (existing values will be lost)"
+        )
         console.print(
             "  [bold]N[/bold] = refresh config, keeping existing values and adding new fields"
         )

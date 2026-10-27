@@ -34,7 +34,7 @@ async def test_generate_rag_dataset():
         {
             "question": "What is AmberClaw?",
             "ground_truth": "AmberClaw is an AI OS kernel.",
-            "contexts_fallback": ["Fallback context"]
+            "contexts_fallback": ["Fallback context"],
         }
     ]
 
@@ -53,7 +53,9 @@ async def test_generate_rag_dataset():
         mock_retriever, mock_provider, eval_data, live=False
     )
     assert data_dict_fallback["contexts"] == [["Fallback context"]]
-    assert data_dict_fallback["answer"] == ["Mock answer matching ground truth: AmberClaw is an AI OS kernel."]
+    assert data_dict_fallback["answer"] == [
+        "Mock answer matching ground truth: AmberClaw is an AI OS kernel."
+    ]
 
 
 def test_run_ragas_evaluation_mock():
@@ -61,7 +63,7 @@ def test_run_ragas_evaluation_mock():
         "question": ["What is AmberClaw?"],
         "contexts": [["This is a test context about AmberClaw."]],
         "answer": ["AmberClaw has memory layers."],
-        "ground_truth": ["AmberClaw is an AI OS kernel."]
+        "ground_truth": ["AmberClaw is an AI OS kernel."],
     }
 
     results = eval_rag.run_ragas_evaluation(data_dict, mock_eval=True)
@@ -73,31 +75,37 @@ def test_run_ragas_evaluation_mock():
 
 def test_main_execution(tmp_path):
     output_file = tmp_path / "report.json"
-    
+
     # Test script main with args
     test_args = [
         "eval_rag.py",
-        "--workspace", str(tmp_path),
+        "--workspace",
+        str(tmp_path),
         "--mock-eval",
-        "--output", str(output_file)
+        "--output",
+        str(output_file),
     ]
-    
-    with patch("eval_rag.HybridRetriever"), \
-         patch("eval_rag.make_provider"), \
-         patch("eval_rag.load_config"), \
-         patch("eval_rag.generate_rag_dataset") as mock_gen_dataset, \
-         patch("eval_rag.run_ragas_evaluation") as mock_run_eval, \
-         patch("sys.argv", test_args):
-         
+
+    with (
+        patch("eval_rag.HybridRetriever"),
+        patch("eval_rag.make_provider"),
+        patch("eval_rag.load_config"),
+        patch("eval_rag.generate_rag_dataset") as mock_gen_dataset,
+        patch("eval_rag.run_ragas_evaluation") as mock_run_eval,
+        patch("sys.argv", test_args),
+    ):
         mock_run_eval.return_value = {
             "faithfulness": 0.9,
             "answer_relevancy": 0.85,
-            "context_precision": 0.8
+            "context_precision": 0.8,
         }
         mock_gen_dataset.return_value = {
-            "question": ["q"], "contexts": [["c"]], "answer": ["a"], "ground_truth": ["g"]
+            "question": ["q"],
+            "contexts": [["c"]],
+            "answer": ["a"],
+            "ground_truth": ["g"],
         }
-        
+
         eval_rag.main()
 
     assert output_file.exists()

@@ -1,13 +1,15 @@
 """Async message queue for decoupled channel-agent communication with Redis Pub/Sub support."""
 
 import asyncio
+import contextlib
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from loguru import logger
 
 from amberclaw.bus.events import InboundMessage, OutboundMessage, SystemEvent
+from amberclaw.core.metrics import record_dlq_message, record_queue_depth
 from amberclaw.database.redis_client import get_redis
 
 
@@ -57,14 +59,36 @@ class MessageBus:
 
     Channels push messages to the inbound queue, and the agent processes
     them and pushes responses to the outbound queue. Supports multi-node
-    scaling with Redis Pub/Sub.
+    scaling with Redis Pub/Sub, bounded capacity, and Dead Letter Queue (DLQ).
     """
 
-    def __init__(self) -> None:
-        self.inbound: asyncio.Queue[InboundMessage] = asyncio.Queue()
-        self.outbound: asyncio.Queue[OutboundMessage] = asyncio.Queue()
-        self.system_events: asyncio.Queue[SystemEvent] = asyncio.Queue()
+    def __init__(self, maxsize: int = 1000) -> None:
+        self.maxsize = maxsize
+        self.inbound: asyncio.Queue[InboundMessage] = asyncio.Queue(maxsize=maxsize)
+        self.outbound: asyncio.Queue[OutboundMessage] = asyncio.Queue(maxsize=maxsize)
+        self.system_events: asyncio.Queue[SystemEvent] = asyncio.Queue(maxsize=maxsize)
+        self.dead_letter_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(
+            maxsize=maxsize
+        )
         self._listener_task: asyncio.Task | None = None
+
+    def _push_to_dlq(self, item: Any, reason: str) -> None:
+        """Route overflow or failed message to the Dead Letter Queue."""
+        dlq_entry = {
+            "item": item,
+            "reason": reason,
+            "enqueued_at": datetime.now(UTC).isoformat(),
+        }
+        try:
+            self.dead_letter_queue.put_nowait(dlq_entry)
+            record_dlq_message(reason)
+            record_queue_depth("dead_letter_queue", self.dead_letter_queue.qsize())
+            logger.warning(
+                "Message routed to Dead Letter Queue due to reason: {}", reason
+            )
+        except asyncio.QueueFull:
+            record_dlq_message("dlq_full_dropped")
+            logger.error("Dead Letter Queue is FULL! Dropping overflow message.")
 
     def _ensure_redis_listener(self) -> None:
         """Starts the Redis Pub/Sub subscription loop if Redis is available."""
@@ -97,22 +121,22 @@ class MessageBus:
 
                 if channel == "amberclaw_inbound":
                     msg = _deserialize_inbound(data)
-                    await self.inbound.put(msg)
+                    await self.publish_inbound(msg)
                 elif channel == "amberclaw_outbound":
                     msg = _deserialize_outbound(data)
-                    await self.outbound.put(msg)
+                    await self.publish_outbound(msg)
                 elif channel == "amberclaw_system_events":
                     event = _deserialize_system_event(data)
-                    await self.system_events.put(event)
+                    await self.publish_system_event(event)
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            logger.error("Redis Pub/Sub message bus listener encountered an error: {}", e)
+            logger.error(
+                "Redis Pub/Sub message bus listener encountered an error: {}", e
+            )
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 await pubsub.unsubscribe()
-            except Exception:
-                pass
 
     async def publish_inbound(self, msg: InboundMessage) -> None:
         """Publish a message from a channel to the agent."""
@@ -126,14 +150,22 @@ class MessageBus:
                     await pub_res
                 return
             except Exception as e:
-                logger.warning("Failed to publish inbound event to Redis: {}. Retrying locally.", e)
+                logger.warning(
+                    "Failed to publish inbound event to Redis: {}. Retrying locally.", e
+                )
 
-        await self.inbound.put(msg)
+        if self.inbound.full():
+            self._push_to_dlq(msg, reason="inbound_queue_full")
+        else:
+            await self.inbound.put(msg)
+            record_queue_depth("inbound", self.inbound.qsize())
 
     async def consume_inbound(self) -> InboundMessage:
         """Consume the next inbound message (blocks until available)."""
         self._ensure_redis_listener()
-        return await self.inbound.get()
+        item = await self.inbound.get()
+        record_queue_depth("inbound", self.inbound.qsize())
+        return item
 
     async def publish_outbound(self, msg: OutboundMessage) -> None:
         """Publish a response from the agent to channels."""
@@ -147,14 +179,23 @@ class MessageBus:
                     await pub_res
                 return
             except Exception as e:
-                logger.warning("Failed to publish outbound event to Redis: {}. Retrying locally.", e)
+                logger.warning(
+                    "Failed to publish outbound event to Redis: {}. Retrying locally.",
+                    e,
+                )
 
-        await self.outbound.put(msg)
+        if self.outbound.full():
+            self._push_to_dlq(msg, reason="outbound_queue_full")
+        else:
+            await self.outbound.put(msg)
+            record_queue_depth("outbound", self.outbound.qsize())
 
     async def consume_outbound(self) -> OutboundMessage:
         """Consume the next outbound message (blocks until available)."""
         self._ensure_redis_listener()
-        return await self.outbound.get()
+        item = await self.outbound.get()
+        record_queue_depth("outbound", self.outbound.qsize())
+        return item
 
     async def publish_system_event(self, event: SystemEvent) -> None:
         """Publish a system event."""
@@ -168,14 +209,28 @@ class MessageBus:
                     await pub_res
                 return
             except Exception as e:
-                logger.warning("Failed to publish system event to Redis: {}. Retrying locally.", e)
+                logger.warning(
+                    "Failed to publish system event to Redis: {}. Retrying locally.", e
+                )
 
-        await self.system_events.put(event)
+        if self.system_events.full():
+            self._push_to_dlq(event, reason="system_events_queue_full")
+        else:
+            await self.system_events.put(event)
+            record_queue_depth("system_events", self.system_events.qsize())
 
     async def consume_system_event(self) -> SystemEvent:
         """Consume the next system event (blocks until available)."""
         self._ensure_redis_listener()
-        return await self.system_events.get()
+        item = await self.system_events.get()
+        record_queue_depth("system_events", self.system_events.qsize())
+        return item
+
+    async def consume_dead_letter_queue(self) -> dict[str, Any]:
+        """Consume the next item in the Dead Letter Queue."""
+        item = await self.dead_letter_queue.get()
+        record_queue_depth("dead_letter_queue", self.dead_letter_queue.qsize())
+        return item
 
     @property
     def inbound_size(self) -> int:
@@ -191,3 +246,8 @@ class MessageBus:
     def system_events_size(self) -> int:
         """Number of pending system events."""
         return self.system_events.qsize()
+
+    @property
+    def dead_letter_queue_size(self) -> int:
+        """Number of pending items in Dead Letter Queue."""
+        return self.dead_letter_queue.qsize()

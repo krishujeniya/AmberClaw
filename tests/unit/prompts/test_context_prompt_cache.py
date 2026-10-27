@@ -28,7 +28,9 @@ def test_bootstrap_files_are_backed_by_templates() -> None:
     template_dir = pkg_files("amberclaw") / "templates"
 
     for filename in ContextBuilder.BOOTSTRAP_FILES:
-        assert (template_dir / filename).is_file(), f"missing bootstrap template: {filename}"
+        assert (template_dir / filename).is_file(), (
+            f"missing bootstrap template: {filename}"
+        )
 
 
 def test_system_prompt_stays_stable_when_clock_changes(tmp_path, monkeypatch) -> None:

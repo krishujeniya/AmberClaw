@@ -89,7 +89,10 @@ def test_egress_sandbox_tls_only_enforcement() -> None:
         enforce_tls_only=True,
     )
 
-    with egress_sandbox(policy), pytest.raises(NetworkAccessDenied, match="TLS-only is enforced"):
+    with (
+        egress_sandbox(policy),
+        pytest.raises(NetworkAccessDenied, match="TLS-only is enforced"),
+    ):
         socket.getaddrinfo("api.openai.com", 80)
 
 
@@ -102,7 +105,7 @@ def test_egress_sandbox_per_binary_restriction() -> None:
                 "allowed_hosts": ["github.com"],
                 "allowed_ports": [443],
             }
-        }
+        },
     )
 
     with egress_sandbox(policy):
@@ -119,3 +122,38 @@ def test_egress_sandbox_per_binary_restriction() -> None:
             # which is fine as long as it bypasses the firewall check.
             with contextlib.suppress(socket.gaierror):
                 socket.getaddrinfo("github.com", 443)
+
+
+@pytest.mark.asyncio
+async def test_egress_sandbox_concurrent_task_isolation() -> None:
+    """Verify that egress sandboxes run in separate asyncio tasks are strictly isolated."""
+    import asyncio
+
+    policy_a = NetworkPolicy(allowed_hosts=["api.openai.com"], allowed_ports=[443])
+    policy_b = NetworkPolicy(allowed_hosts=["github.com"], allowed_ports=[443])
+
+    async def run_task_a() -> bool:
+        with egress_sandbox(policy_a):
+            # Must block github.com in task A
+            with pytest.raises(NetworkAccessDenied):
+                socket.getaddrinfo("github.com", 443)
+            # Allow api.openai.com
+            with contextlib.suppress(socket.gaierror):
+                socket.getaddrinfo("api.openai.com", 443)
+            await asyncio.sleep(0.01)
+            return True
+
+    async def run_task_b() -> bool:
+        with egress_sandbox(policy_b):
+            # Must block api.openai.com in task B
+            with pytest.raises(NetworkAccessDenied):
+                socket.getaddrinfo("api.openai.com", 443)
+            # Allow github.com
+            with contextlib.suppress(socket.gaierror):
+                socket.getaddrinfo("github.com", 443)
+            await asyncio.sleep(0.01)
+            return True
+
+    results = await asyncio.gather(run_task_a(), run_task_b())
+    assert results == [True, True]
+

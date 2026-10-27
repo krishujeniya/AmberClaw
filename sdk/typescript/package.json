@@ -1,0 +1,18 @@
+{
+  "name": "@amberclaw/sdk",
+  "version": "1.0.0",
+  "description": "Official TypeScript & JavaScript Client SDK for AmberClaw Autonomous AI OS",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test dist/**/*.test.js"
+  },
+  "keywords": ["amberclaw", "ai", "agents", "zero-trust", "sdk"],
+  "author": "AmberClaw Team",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  }
+}

@@ -1,9 +1,9 @@
 """Plugin manager orchestrating dynamic subprocess execution and RPC proxying."""
 
+import asyncio
+import json
 import os
 import sys
-import json
-import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -37,16 +37,23 @@ class PluginConnection:
                 if not line:
                     break
                 try:
-                    res = json.loads(line.decode("utf-8"))
+                    line_str = line.decode("utf-8").strip()
+                    if not line_str:
+                        continue
+                    res = json.loads(line_str)
                     req_id = res.get("id")
                     if req_id in self._pending:
                         self._pending[req_id].set_result(res)
                 except Exception as e:
-                    logger.error("RPC parse error in plugin '{}': {}", self.plugin_name, e)
+                    logger.error(
+                        "RPC parse error in plugin '{}': {}", self.plugin_name, e
+                    )
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            logger.error("RPC read loop terminated for plugin '{}': {}", self.plugin_name, e)
+            logger.error(
+                "RPC read loop terminated for plugin '{}': {}", self.plugin_name, e
+            )
 
     async def _stderr_loop(self) -> None:
         """Forwards plugin process stderr streams to the system log."""
@@ -55,18 +62,24 @@ class PluginConnection:
                 line = await self.process.stderr.readline()
                 if not line:
                     break
-                logger.info("[Plugin {}]: {}", self.plugin_name, line.decode("utf-8").strip())
+                logger.info(
+                    "[Plugin {}]: {}", self.plugin_name, line.decode("utf-8").strip()
+                )
         except asyncio.CancelledError:
             pass
         except Exception as e:
-            logger.error("Stderr reader loop terminated for plugin '{}': {}", self.plugin_name, e)
+            logger.error(
+                "Stderr reader loop terminated for plugin '{}': {}", self.plugin_name, e
+            )
 
     async def call(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
         """Sends a JSON-RPC 2.0 request and awaits the corresponding response."""
         req_id = self._next_id
         self._next_id += 1
 
-        future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
+        future: asyncio.Future[dict[str, Any]] = (
+            asyncio.get_running_loop().create_future()
+        )
         self._pending[req_id] = future
 
         req = {
@@ -82,14 +95,18 @@ class PluginConnection:
             # Wait for response with a timeout
             return await asyncio.wait_for(future, timeout=30.0)
         except TimeoutError:
-            logger.error("Timeout waiting for plugin '{}' RPC response.", self.plugin_name)
+            logger.error(
+                "Timeout waiting for plugin '{}' RPC response.", self.plugin_name
+            )
             return {
                 "jsonrpc": "2.0",
                 "error": {"code": -32001, "message": "Request timed out"},
                 "id": req_id,
             }
         except Exception as e:
-            logger.exception("Error executing RPC call on '{}': {}", self.plugin_name, e)
+            logger.exception(
+                "Error executing RPC call on '{}': {}", self.plugin_name, e
+            )
             return {
                 "jsonrpc": "2.0",
                 "error": {"code": -32002, "message": f"Execution failed: {e}"},
@@ -125,7 +142,9 @@ class PluginConnection:
 class PluginProxyTool(Tool):
     """Dynamic wrapper tool routing invocation parameters to the isolated plugin host."""
 
-    def __init__(self, plugin_name: str, tool_metadata: dict[str, Any], manager: "PluginManager") -> None:
+    def __init__(
+        self, plugin_name: str, tool_metadata: dict[str, Any], manager: "PluginManager"
+    ) -> None:
         super().__init__()
         self._plugin_name = plugin_name
         self._tool_metadata = tool_metadata
@@ -167,15 +186,16 @@ class PluginManager:
             try:
                 plugin_dir, _ = self.registry.plugins[name]
 
-                # Ensure PYTHONPATH is forwarded to find core codebase imports
                 env = os.environ.copy()
-                src_root = str(Path(__file__).resolve().parents[3])  # root src path
+                env["PYTHONUNBUFFERED"] = "1"
+                src_root = str(Path(__file__).resolve().parents[2])  # root src path (src/)
                 env["PYTHONPATH"] = src_root + (
                     os.pathsep + env["PYTHONPATH"] if "PYTHONPATH" in env else ""
                 )
 
                 args = [
                     sys.executable,
+                    "-u",
                     "-m",
                     "amberclaw.plugins.host",
                     "--entrypoint",
@@ -216,12 +236,18 @@ class PluginManager:
                     proxy = PluginProxyTool(name, tool_meta, self)
                     self.proxy_tools[name].append(proxy)
 
-                logger.info("Successfully loaded plugin '{}' with {} tools.", name, len(tools_metadata))
+                logger.info(
+                    "Successfully loaded plugin '{}' with {} tools.",
+                    name,
+                    len(tools_metadata),
+                )
 
             except Exception as e:
                 logger.error("Failed to start plugin '{}': {}", name, e)
 
-    async def execute_tool(self, plugin_name: str, tool_name: str, args: dict[str, Any]) -> str:
+    async def execute_tool(
+        self, plugin_name: str, tool_name: str, args: dict[str, Any]
+    ) -> str:
         """Forwards call execution request to the appropriate connection."""
         conn = self.connections.get(plugin_name)
         if not conn:

@@ -13,13 +13,20 @@ from amberclaw.api.v1.a2a import JsonRpcResponse, handle_a2a_request
 async def test_a2a_delegate_tool():
     tool = A2ADelegateTool()
 
-    with patch("amberclaw.agent.tools.a2a.delegate_to_remote", return_value="Remote task completed successfully") as mock_delegate:
-        res = await tool.run(A2ADelegateArgs(
-            target_url="http://localhost:8000/api/v1/a2a",
-            task="Check system resource usage",
-        ))
+    with patch(
+        "amberclaw.agent.tools.a2a.delegate_to_remote",
+        return_value="Remote task completed successfully",
+    ) as mock_delegate:
+        res = await tool.run(
+            A2ADelegateArgs(
+                target_url="http://localhost:8000/api/v1/a2a",
+                task="Check system resource usage",
+            )
+        )
 
-        mock_delegate.assert_called_once_with("http://localhost:8000/api/v1/a2a", "Check system resource usage")
+        mock_delegate.assert_called_once_with(
+            "http://localhost:8000/api/v1/a2a", "Check system resource usage"
+        )
         assert res == "Remote task completed successfully"
 
 
@@ -34,7 +41,9 @@ async def test_a2a_router_execute_task():
         "id": "test-id-1",
     }
 
-    with patch("amberclaw.api.v1.a2a.execute_local_task", return_value="Checksum match") as mock_execute:
+    with patch(
+        "amberclaw.api.v1.a2a.execute_local_task", return_value="Checksum match"
+    ) as mock_execute:
         res = await handle_a2a_request(mock_request)
 
         mock_execute.assert_called_once_with("Verify file checksum")

@@ -15,11 +15,11 @@ async def test_docker_backend_lifecycle_and_execution() -> None:
 
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
         backend = DockerTerminalBackend(workspace_dir="/dummy/workspace")
-        
+
         # Test start
         await backend.start()
         assert backend.container_running is True
-        
+
         # Verify container was started with right args
         # The third mock call should be the docker run
         docker_run_args = mock_exec.call_args_list[2][0]
@@ -29,7 +29,10 @@ async def test_docker_backend_lifecycle_and_execution() -> None:
         assert "none" in docker_run_args
         assert "--read-only" in docker_run_args
         assert "--security-opt=no-new-privileges" in docker_run_args
-        assert "/dummy/workspace:/workspace" in docker_run_args[docker_run_args.index("-v") + 1]
+        assert (
+            "/dummy/workspace:/workspace"
+            in docker_run_args[docker_run_args.index("-v") + 1]
+        )
 
         # Test execute_bash
         mock_proc.communicate.return_value = (b"output from bash", b"")
@@ -60,12 +63,12 @@ async def test_docker_backend_validation_failure() -> None:
 
         # Mock execute_python to return an exit code indicating failure (e.g. 1 for write failure)
         original_execute_python = backend.execute_python
-        
+
         async def mock_execute_python(*args, **kwargs):
             res = await original_execute_python(*args, **kwargs)
             res["exit_code"] = 1
             return res
-            
+
         backend.execute_python = mock_execute_python
 
         with pytest.raises(RuntimeError, match="Sandbox Validation Failed"):
@@ -74,22 +77,79 @@ async def test_docker_backend_validation_failure() -> None:
         # The container should have been stopped and removed, so running state is false
         assert backend.container_running is False
 
+
 @pytest.mark.asyncio
 async def test_codesandbox_fallback_when_docker_fails() -> None:
     # Test that CodeSandbox correctly falls back to local execution when Docker fails
     sandbox = CodeSandbox(use_docker=True, workspace="/dummy/workspace")
-    
+
     # We trigger local execution path in CodeSandbox by raising exception in Docker backend
     sandbox._docker_backend = MagicMock()
-    sandbox._docker_backend.execute_python = AsyncMock(side_effect=Exception("Docker failed"))
-    
+    sandbox._docker_backend.execute_python = AsyncMock(
+        side_effect=Exception("Docker failed")
+    )
+
     # Since execute_python catches the exception and falls back to local code,
     # it should run the local code block. We mock create_subprocess_exec to simulate local python run.
     mock_proc = AsyncMock()
     mock_proc.returncode = 0
     mock_proc.communicate.return_value = (b"fallback success", b"")
-    
+
     with patch("asyncio.create_subprocess_exec", return_value=mock_proc):
         result = await sandbox.execute_python("print('test')")
         assert result.stdout == "fallback success"
         assert result.exit_code == 0
+
+
+@pytest.mark.asyncio
+async def test_docker_backend_gpu() -> None:
+    # 1. Test Nvidia GPU configuration
+    mock_proc = AsyncMock()
+    mock_proc.returncode = 0
+    mock_proc.communicate.return_value = (b"container-id-gpu-nv", b"")
+
+    with patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
+        backend = DockerTerminalBackend(
+            workspace_dir="/dummy/workspace",
+            gpu=True,
+            gpu_type="nvidia",
+        )
+        await backend.start()
+        assert backend.container_running is True
+
+        # Verify container was started with --gpus=all
+        docker_run_args = mock_exec.call_args_list[2][0]
+        assert "--gpus=all" in docker_run_args
+        await backend.stop()
+
+    # 2. Test ROCm GPU configuration
+    mock_proc_rocm = AsyncMock()
+    mock_proc_rocm.returncode = 0
+    mock_proc_rocm.communicate.return_value = (b"container-id-gpu-rocm", b"")
+
+    with patch(
+        "asyncio.create_subprocess_exec", return_value=mock_proc_rocm
+    ) as mock_exec_rocm:
+        backend_rocm = DockerTerminalBackend(
+            workspace_dir="/dummy/workspace",
+            gpu=True,
+            gpu_type="rocm",
+        )
+        await backend_rocm.start()
+        assert backend_rocm.container_running is True
+
+        # Verify container was started with ROCm parameters
+        docker_run_args = mock_exec_rocm.call_args_list[2][0]
+        assert "--device=/dev/kfd" in docker_run_args
+        assert "--device=/dev/dri" in docker_run_args
+        assert "--group-add=video" in docker_run_args
+        assert "--ipc=host" in docker_run_args
+        await backend_rocm.stop()
+
+    # 3. Test Invalid GPU type
+    with pytest.raises(ValueError, match="Unsupported gpu_type"):
+        DockerTerminalBackend(
+            workspace_dir="/dummy/workspace",
+            gpu=True,
+            gpu_type="invalid_gpu_type",
+        )

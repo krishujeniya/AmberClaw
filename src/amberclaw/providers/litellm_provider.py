@@ -5,6 +5,7 @@ import os
 import secrets
 import string
 import time
+import contextlib
 from collections.abc import Awaitable, Callable, Generator
 from contextlib import contextmanager
 from typing import Any
@@ -15,6 +16,9 @@ from litellm import acompletion, completion_cost
 from loguru import logger
 
 from amberclaw.providers.base import LLMProvider, LLMResponse, ToolCallRequest
+from amberclaw.providers.capabilities import ProviderCapability, detect_capabilities
+from amberclaw.providers.catalog import validate_model_name
+from amberclaw.providers.deprecations import log_deprecation_warning
 from amberclaw.providers.registry import find_by_model, find_gateway
 from amberclaw.utils.cost_tracker import log_usage
 
@@ -151,14 +155,18 @@ class LiteLLMProvider(LLMProvider):
         # Standard mode: auto-prefix for known providers
         spec = find_by_model(model)
         if spec and spec.litellm_prefix:
-            model = self._canonicalize_explicit_prefix(model, spec.name, spec.litellm_prefix)
+            model = self._canonicalize_explicit_prefix(
+                model, spec.name, spec.litellm_prefix
+            )
             if not any(model.startswith(s) for s in spec.skip_prefixes):
                 model = f"{spec.litellm_prefix}/{model}"
 
         return model
 
     @staticmethod
-    def _canonicalize_explicit_prefix(model: str, spec_name: str, canonical_prefix: str) -> str:
+    def _canonicalize_explicit_prefix(
+        model: str, spec_name: str, canonical_prefix: str
+    ) -> str:
         """Normalize explicit provider prefixes like `github-copilot/...`."""
         if "/" not in model:
             return model
@@ -189,12 +197,19 @@ class LiteLLMProvider(LLMProvider):
                 content = msg["content"]
                 if isinstance(content, str):
                     new_content = [
-                        {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}},
+                        {
+                            "type": "text",
+                            "text": content,
+                            "cache_control": {"type": "ephemeral"},
+                        },
                     ]
                 else:
                     new_content = list(content)
                     if new_content:
-                        new_content[-1] = {**new_content[-1], "cache_control": {"type": "ephemeral"}}
+                        new_content[-1] = {
+                            **new_content[-1],
+                            "cache_control": {"type": "ephemeral"},
+                        }
                 new_messages.append({**msg, "content": new_content})
             else:
                 new_messages.append(msg)
@@ -205,7 +220,8 @@ class LiteLLMProvider(LLMProvider):
             new_tools[-1] = {**new_tools[-1], "cache_control": {"type": "ephemeral"}}
 
         msg_indices = [
-            i for i, msg in enumerate(new_messages)
+            i
+            for i, msg in enumerate(new_messages)
             if msg.get("role") in ("user", "assistant")
         ]
 
@@ -224,65 +240,30 @@ class LiteLLMProvider(LLMProvider):
             content = msg.get("content")
             if isinstance(content, str):
                 new_content = [
-                    {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}},
+                    {
+                        "type": "text",
+                        "text": content,
+                        "cache_control": {"type": "ephemeral"},
+                    },
                 ]
                 new_messages[idx] = {**msg, "content": new_content}
             elif isinstance(content, list) and content:
                 new_content = list(content)
-                new_content[-1] = {**new_content[-1], "cache_control": {"type": "ephemeral"}}
+                new_content[-1] = {
+                    **new_content[-1],
+                    "cache_control": {"type": "ephemeral"},
+                }
                 new_messages[idx] = {**msg, "content": new_content}
 
         return new_messages, new_tools
 
-    def get_capabilities(self, model: str) -> dict[str, Any]:
+    def get_capabilities(self, model: str) -> ProviderCapability:
         """Detect model capabilities (vision, tools, JSON, etc.) via LiteLLM."""
-        if model in _CAPABILITY_CACHE:
-            return _CAPABILITY_CACHE[model]
-
-        lookup_model = model
-        if "/" in model:
-            lookup_model = model.split("/")[-1]
-
-        try:
-            info = litellm.get_model_info(lookup_model)
-            caps = {
-                "vision": info.get("supports_vision", False),
-                "tools": info.get("supports_function_calling", True),
-                "json": info.get("supports_response_schema", False),
-                "context_size": info.get("max_input_tokens", 4096) or 4096,
-                "prompt_caching": info.get("supports_prompt_caching", False),
-                "reasoning": info.get("supports_reasoning", False) or any(
-                    x in lookup_model.lower() for x in ["o1-", "o3-", "deepseek-r1", "reasoner"]
-                ),
-            }
-        except Exception:
-            # Fallback for unknown models
-            model_lower = model.lower()
-            caps = {
-                "vision": any(x in model_lower for x in ["vision", "claude-3", "gpt-4o", "gemini-1.5", "gemini-2.0", "pixtral"]),
-                "tools": True,
-                "json": True,
-                "context_size": 128000 if any(x in model_lower for x in ["gpt-4", "claude-3", "gemini"]) else 4096,
-                "prompt_caching": any(x in model_lower for x in ["claude-3-5", "gpt-4o"]),
-                "reasoning": any(x in model_lower for x in ["o1-", "o3-", "deepseek-r1", "reasoner"]),
-            }
-
-        # Override/augment for known high-capacity models
-        model_lower = model.lower()
-        if "claude-3-5" in model_lower:
-            caps["context_size"] = 200000
-            caps["vision"] = True
-            caps["prompt_caching"] = True
-        elif "gpt-4o" in model_lower:
-            caps["context_size"] = 128000
-            caps["vision"] = True
-            caps["prompt_caching"] = True
-        elif "gemini-1.5" in model_lower or "gemini-2.0" in model_lower:
-            caps["context_size"] = 1000000
-            caps["vision"] = True
-
-        _CAPABILITY_CACHE[model] = caps
-        return caps
+        return detect_capabilities(
+            model,
+            provider=self.get_provider_name(model),
+            litellm_module=litellm,
+        )
 
     def _analyze_requirements(
         self,
@@ -300,11 +281,19 @@ class LiteLLMProvider(LLMProvider):
             if isinstance(content, list):
                 for block in content:
                     if isinstance(block, dict):
-                        if block.get("type") in ("image_url", "image") or "image_url" in block or "image" in block:
+                        if (
+                            block.get("type") in ("image_url", "image")
+                            or "image_url" in block
+                            or "image" in block
+                        ):
                             requires_vision = True
                             break
             elif isinstance(content, dict):
-                if content.get("type") in ("image_url", "image") or "image_url" in content or "image" in content:
+                if (
+                    content.get("type") in ("image_url", "image")
+                    or "image_url" in content
+                    or "image" in content
+                ):
                     requires_vision = True
             if requires_vision:
                 break
@@ -314,14 +303,23 @@ class LiteLLMProvider(LLMProvider):
             for msg in messages:
                 if msg.get("role") in ("user", "system"):
                     content_str = str(msg.get("content") or "")
-                    if any(kw in content_str.lower() for kw in ["reason deep", "deep thinking", "step-by-step reasoning"]):
+                    if any(
+                        kw in content_str.lower()
+                        for kw in [
+                            "reason deep",
+                            "deep thinking",
+                            "step-by-step reasoning",
+                        ]
+                    ):
                         requires_reasoning = True
                         break
 
         # 3. Estimate token consumption for context size
         estimated_tokens = 0
         try:
-            estimated_tokens = litellm.token_counter(model="gpt-3.5-turbo", messages=messages)
+            estimated_tokens = litellm.token_counter(
+                model="gpt-3.5-turbo", messages=messages
+            )
             estimated_tokens += len(str(tools or "")) // 4
         except Exception:
             estimated_tokens += len(str(tools or "")) // 4
@@ -345,7 +343,9 @@ class LiteLLMProvider(LLMProvider):
             "context_size": required_context,
         }
 
-    def _select_optimal_model(self, original_model: str, requirements: dict[str, Any]) -> str:
+    def _select_optimal_model(
+        self, original_model: str, requirements: dict[str, Any]
+    ) -> str:
         """Find the first candidate model satisfying all requirements."""
         candidates = [original_model] + self.fallback_models
         for candidate in candidates:
@@ -356,7 +356,7 @@ class LiteLLMProvider(LLMProvider):
                 continue
             if requirements["context_size"] > caps.get("context_size", 4096):
                 continue
-            
+
             if candidate != original_model:
                 logger.info(
                     "🔄 Dynamic Routing: switched from '{}' to '{}' based on requirements {}",
@@ -372,7 +372,6 @@ class LiteLLMProvider(LLMProvider):
             original_model,
         )
         return original_model
-
 
     def _apply_model_overrides(self, model: str, kwargs: dict[str, Any]) -> None:
         """Apply model-specific parameter overrides from the registry."""
@@ -407,7 +406,8 @@ class LiteLLMProvider(LLMProvider):
 
     @staticmethod
     def _sanitize_messages(
-        messages: list[dict[str, Any]], extra_keys: frozenset[str] = frozenset(),
+        messages: list[dict[str, Any]],
+        extra_keys: frozenset[str] = frozenset(),
     ) -> list[dict[str, Any]]:
         """Strip non-standard keys and ensure assistant messages have a content key."""
         allowed = _ALLOWED_MSG_KEYS | extra_keys
@@ -417,7 +417,9 @@ class LiteLLMProvider(LLMProvider):
         def map_id(value: Any) -> Any:
             if not isinstance(value, str):
                 return value
-            return id_map.setdefault(value, LiteLLMProvider._normalize_tool_call_id(value))
+            return id_map.setdefault(
+                value, LiteLLMProvider._normalize_tool_call_id(value)
+            )
 
         for clean in sanitized:
             # Keep assistant tool_calls[].id and tool tool_call_id in sync after
@@ -450,6 +452,13 @@ class LiteLLMProvider(LLMProvider):
     ) -> LLMResponse:
         """Send a chat completion request via LiteLLM (supports streaming)."""
         original_model = model or self.default_model
+        log_deprecation_warning(original_model)
+        val_res = validate_model_name(
+            original_model, provider=self.get_provider_name(original_model)
+        )
+        if not val_res.is_valid and val_res.warning:
+            logger.warning(val_res.warning)
+
         requirements = self._analyze_requirements(messages, tools, reasoning_effort)
         optimal_model = self._select_optimal_model(original_model, requirements)
 
@@ -466,7 +475,13 @@ class LiteLLMProvider(LLMProvider):
         if response_format is not None:
             expects_json = True
         else:
-            json_keywords = ["json format", "json object", "respond in json", "output json", "valid json"]
+            json_keywords = [
+                "json format",
+                "json object",
+                "respond in json",
+                "output json",
+                "valid json",
+            ]
             for msg in messages:
                 content = msg.get("content", "")
                 if isinstance(content, str):
@@ -506,7 +521,9 @@ class LiteLLMProvider(LLMProvider):
             ttft_time = 0.0
 
             # AC-084: Fallback Routing
-            models_to_try = [optimal_model] + [m for m in getattr(self, "fallback_models", []) if m != optimal_model]
+            models_to_try = [optimal_model] + [
+                m for m in getattr(self, "fallback_models", []) if m != optimal_model
+            ]
             last_error = None
 
             for current_model_id in models_to_try:
@@ -516,7 +533,8 @@ class LiteLLMProvider(LLMProvider):
                 # Clean messages specifically for this model
                 extra_msg_keys = self._extra_msg_keys(current_model_id, model)
                 kwargs["messages"] = self._sanitize_messages(
-                    sanitized_messages, extra_keys=extra_msg_keys,
+                    sanitized_messages,
+                    extra_keys=extra_msg_keys,
                 )
 
                 # Re-apply overrides for the fallback model
@@ -524,11 +542,11 @@ class LiteLLMProvider(LLMProvider):
 
                 # AC-087: OpenAI Caching Hints
                 if "openai/" in model or model.startswith("gpt-"):
-                     kwargs["prompt_cache_key"] = "amberclaw-default-cache"
-                     kwargs["prompt_cache_retention"] = "24h"
+                    kwargs["prompt_cache_key"] = "amberclaw-default-cache"
+                    kwargs["prompt_cache_retention"] = "24h"
                 else:
-                     kwargs.pop("prompt_cache_key", None)
-                     kwargs.pop("prompt_cache_retention", None)
+                    kwargs.pop("prompt_cache_key", None)
+                    kwargs.pop("prompt_cache_retention", None)
 
                 if reasoning_effort:
                     # Anthropic handles thinking differently
@@ -588,25 +606,151 @@ class LiteLLMProvider(LLMProvider):
 
                         if kwargs.get("stream"):
                             full_content = []
+                            full_reasoning = []
+                            tool_calls_dict: dict[int, dict[str, Any]] = {}
+                            finish_reason = "stop"
+                            usage: dict[str, int] = {}
+
                             async for chunk in response:  # type: ignore
-                                content = (
-                                    chunk.choices[0].delta.content or ""
-                                )
-                                if content:
-                                    if not full_content:
-                                        ttft_time = (
-                                            time.perf_counter() - start_time
+                                if not hasattr(chunk, "choices") or not chunk.choices:
+                                    if hasattr(chunk, "usage") and chunk.usage:
+                                        usage = {
+                                            "prompt_tokens": getattr(
+                                                chunk.usage, "prompt_tokens", 0
+                                            ),
+                                            "completion_tokens": getattr(
+                                                chunk.usage, "completion_tokens", 0
+                                            ),
+                                            "total_tokens": getattr(
+                                                chunk.usage, "total_tokens", 0
+                                            ),
+                                        }
+                                    continue
+
+                                choice = chunk.choices[0]
+                                delta = getattr(choice, "delta", None)
+                                fin_reason = getattr(choice, "finish_reason", None)
+                                if isinstance(fin_reason, str) and fin_reason:
+                                    finish_reason = fin_reason
+
+                                if delta:
+                                    content = getattr(delta, "content", None)
+                                    if isinstance(content, str) and content:
+                                        if not full_content:
+                                            ttft_time = time.perf_counter() - start_time
+                                        full_content.append(content)
+                                        if on_token and callable(on_token):
+                                            await on_token(content)
+
+                                    reasoning_val = getattr(
+                                        delta, "reasoning_content", None
+                                    )
+                                    if not isinstance(reasoning_val, str):
+                                        thought_val = getattr(delta, "thought", None)
+                                        reasoning_val = (
+                                            thought_val
+                                            if isinstance(thought_val, str)
+                                            else ""
                                         )
-                                    full_content.append(content)
-                                    if on_token and callable(on_token):
-                                        await on_token(content)
+                                    if reasoning_val:
+                                        full_reasoning.append(reasoning_val)
+
+                                    delta_tool_calls = getattr(
+                                        delta, "tool_calls", None
+                                    )
+                                    if delta_tool_calls and isinstance(
+                                        delta_tool_calls, (list, tuple)
+                                    ):
+                                        for tc_delta in delta_tool_calls:
+                                            idx = getattr(tc_delta, "index", 0)
+                                            if not isinstance(idx, int):
+                                                idx = 0
+                                            tc_id = getattr(tc_delta, "id", None)
+                                            if not isinstance(tc_id, str):
+                                                tc_id = None
+                                            if idx not in tool_calls_dict:
+                                                tool_calls_dict[idx] = {
+                                                    "id": tc_id or _short_tool_id(),
+                                                    "name": "",
+                                                    "arguments": "",
+                                                }
+                                            elif (
+                                                tc_id and not tool_calls_dict[idx]["id"]
+                                            ):
+                                                tool_calls_dict[idx]["id"] = tc_id
+
+                                            fn = getattr(tc_delta, "function", None)
+                                            if fn:
+                                                fn_name = getattr(fn, "name", None)
+                                                if isinstance(fn_name, str):
+                                                    tool_calls_dict[idx]["name"] += (
+                                                        fn_name
+                                                    )
+                                                fn_args = getattr(fn, "arguments", None)
+                                                if isinstance(fn_args, str):
+                                                    tool_calls_dict[idx][
+                                                        "arguments"
+                                                    ] += fn_args
+
+                                chunk_usage = getattr(chunk, "usage", None)
+                                if chunk_usage and hasattr(
+                                    chunk_usage, "prompt_tokens"
+                                ):
+                                    pt = getattr(chunk_usage, "prompt_tokens", None)
+                                    if isinstance(pt, (int, float)):
+                                        ct = getattr(
+                                            chunk_usage, "completion_tokens", 0
+                                        )
+                                        tt = getattr(chunk_usage, "total_tokens", 0)
+                                        usage = {
+                                            "prompt_tokens": int(pt),
+                                            "completion_tokens": int(ct)
+                                            if isinstance(ct, (int, float))
+                                            else 0,
+                                            "total_tokens": int(tt)
+                                            if isinstance(tt, (int, float))
+                                            else 0,
+                                        }
 
                             latency = (time.perf_counter() - start_time) * 1000
+
+                            parsed_tool_calls = []
+                            for tc_info in tool_calls_dict.values():
+                                raw_args = tc_info["arguments"]
+                                args = json_repair.loads(raw_args) if raw_args else {}
+                                parsed_tool_calls.append(
+                                    ToolCallRequest(
+                                        id=tc_info["id"],
+                                        name=tc_info["name"],
+                                        arguments=args
+                                        if isinstance(args, dict)
+                                        else {"raw": str(args)},
+                                    )
+                                )
+
+                            if parsed_tool_calls and finish_reason in ("stop", None):
+                                finish_reason = "tool_calls"
+
+                            cost = 0.0
+                            if usage:
+                                with contextlib.suppress(Exception):
+                                    cost = completion_cost(
+                                        model=model,
+                                        prompt_tokens=usage.get("prompt_tokens", 0),
+                                        completion_tokens=usage.get(
+                                            "completion_tokens", 0
+                                        ),
+                                    )
+
                             res = LLMResponse(
-                                content="".join(full_content),
-                                finish_reason="stop",
+                                content="".join(full_content) if full_content else None,
+                                tool_calls=parsed_tool_calls,
+                                finish_reason=finish_reason,
+                                usage=usage,
+                                cost=cost,
                                 latency_ms=latency,
                                 ttft_ms=ttft_time * 1000 if ttft_time else 0,
+                                reasoning_content="".join(full_reasoning) or None,
                             )
                             log_usage(model, res)
                             return res
@@ -746,10 +890,9 @@ class LiteLLMProvider(LLMProvider):
                     else:
                         new_props[prop_name] = prop_val
                 new_schema["properties"] = new_props
-            else:
-                # If it's an object type but has no properties, still set required if needed
-                if "required" not in new_schema:
-                    new_schema["required"] = []
+            # If it's an object type but has no properties, still set required if needed
+            elif "required" not in new_schema:
+                new_schema["required"] = []
 
         # Recursively update any sub-schemas (e.g. in items, anyOf, oneOf, allOf)
         for key in ["items", "anyOf", "oneOf", "allOf"]:
@@ -770,6 +913,7 @@ class LiteLLMProvider(LLMProvider):
         """Convert this provider to a LangChain ChatLiteLLM model."""
         from langchain_community.chat_models import ChatLiteLLM
         from pydantic import SecretStr
+
         from amberclaw.security.vault import vault
 
         target_model = model or self.default_model
@@ -792,4 +936,3 @@ class LiteLLMProvider(LLMProvider):
             return self._gateway.name
         spec = find_by_model(model)
         return spec.name if spec else "openai"
-

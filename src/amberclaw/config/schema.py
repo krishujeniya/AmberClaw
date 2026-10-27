@@ -82,10 +82,10 @@ class MatrixConfig(Base):
     access_token: str = ""
     user_id: str = ""  # @bot:matrix.org
     device_id: str = ""
-    e2ee_enabled: bool = True  # Enable Matrix E2EE support (encryption + encrypted room handling).
-    sync_stop_grace_seconds: int = (
-        2  # Max seconds to wait for sync_forever to stop gracefully before cancellation fallback.
+    e2ee_enabled: bool = (
+        True  # Enable Matrix E2EE support (encryption + encrypted room handling).
     )
+    sync_stop_grace_seconds: int = 2  # Max seconds to wait for sync_forever to stop gracefully before cancellation fallback.
     max_media_bytes: int = (
         20 * 1024 * 1024
     )  # Max attachment size accepted for Matrix media handling (inbound + outbound).
@@ -126,7 +126,9 @@ class EmailConfig(Base):
     mark_seen: bool = True
     max_body_chars: int = 12000
     subject_prefix: str = "Re: "
-    allow_from: list[str] = Field(default_factory=list)  # Allowed sender email addresses
+    allow_from: list[str] = Field(
+        default_factory=list
+    )  # Allowed sender email addresses
 
 
 class MochatMentionConfig(Base):
@@ -187,9 +189,13 @@ class SlackConfig(Base):
     user_token_read_only: bool = True
     reply_in_thread: bool = True
     react_emoji: str = "eyes"
-    allow_from: list[str] = Field(default_factory=list)  # Allowed Slack user IDs (sender-level)
+    allow_from: list[str] = Field(
+        default_factory=list
+    )  # Allowed Slack user IDs (sender-level)
     group_policy: str = "mention"  # "mention", "open", "allowlist"
-    group_allow_from: list[str] = Field(default_factory=list)  # Allowed channel IDs if allowlist
+    group_allow_from: list[str] = Field(
+        default_factory=list
+    )  # Allowed channel IDs if allowlist
     dm: SlackDMConfig = Field(default_factory=SlackDMConfig)
 
 
@@ -226,17 +232,21 @@ class AgentDefaults(Base):
 
     workspace: str = "~/.amberclaw/workspace"
     model: str = "anthropic/claude-4-opus"
-    provider: str = (
-        "auto"  # Provider name (e.g. "anthropic", "openrouter") or "auto" for auto-detection
-    )
+    provider: str = "auto"  # Provider name (e.g. "anthropic", "openrouter") or "auto" for auto-detection
     max_tokens: int = 8192
     temperature: float = 0.1
     max_tool_iterations: int = 40
     memory_window: int = 100
-    reasoning_effort: str | None = None  # low / medium / high — enables LLM thinking mode
-    fallback_models: list[str] = Field(default_factory=list)  # Models to try if primary fails
+    reasoning_effort: str | None = (
+        None  # low / medium / high — enables LLM thinking mode
+    )
+    fallback_models: list[str] = Field(
+        default_factory=list
+    )  # Models to try if primary fails
     enable_prompt_caching: bool = True  # Enable Anthropic/OpenAI prompt caching
-    enforce_strict_tools: bool = True  # Enforce strict structured tool calls if supported
+    enforce_strict_tools: bool = (
+        True  # Enforce strict structured tool calls if supported
+    )
     embedding_model: str = "openai/text-embedding-3-small"
     reranker_model: str | None = None  # e.g. "cohere/rerank-v3-english"
 
@@ -252,16 +262,24 @@ class ProviderConfig(Base):
 
     api_key: str = ""
     api_base: str | None = None
-    extra_headers: dict[str, str] | None = None  # Custom headers (e.g. APP-Code for AiHubMix)
-    quantization: str | None = None  # Model quantization type (e.g. awq, gptq, fp8, squeezellm)
-    speculative_model: str | None = None  # Draft model path/name for speculative decoding
+    extra_headers: dict[str, str] | None = (
+        None  # Custom headers (e.g. APP-Code for AiHubMix)
+    )
+    quantization: str | None = (
+        None  # Model quantization type (e.g. awq, gptq, fp8, squeezellm)
+    )
+    speculative_model: str | None = (
+        None  # Draft model path/name for speculative decoding
+    )
     num_speculative_tokens: int | None = None  # Number of speculative tokens to sample
 
 
 class ProvidersConfig(Base):
     """Configuration for LLM providers."""
 
-    custom: ProviderConfig = Field(default_factory=ProviderConfig)  # Any OpenAI-compatible endpoint
+    custom: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # Any OpenAI-compatible endpoint
     azure_openai: ProviderConfig = Field(
         default_factory=ProviderConfig,
     )  # Azure OpenAI (model = deployment name)
@@ -277,11 +295,21 @@ class ProvidersConfig(Base):
     gemini: ProviderConfig = Field(default_factory=ProviderConfig)
     moonshot: ProviderConfig = Field(default_factory=ProviderConfig)
     minimax: ProviderConfig = Field(default_factory=ProviderConfig)
-    aihubmix: ProviderConfig = Field(default_factory=ProviderConfig)  # AiHubMix API gateway
-    siliconflow: ProviderConfig = Field(default_factory=ProviderConfig)  # SiliconFlow (硅基流动)
-    volcengine: ProviderConfig = Field(default_factory=ProviderConfig)  # VolcEngine (火山引擎)
-    openai_codex: ProviderConfig = Field(default_factory=ProviderConfig)  # OpenAI Codex (OAuth)
-    github_copilot: ProviderConfig = Field(default_factory=ProviderConfig)  # Github Copilot (OAuth)
+    aihubmix: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # AiHubMix API gateway
+    siliconflow: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # SiliconFlow (硅基流动)
+    volcengine: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # VolcEngine (火山引擎)
+    openai_codex: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # OpenAI Codex (OAuth)
+    github_copilot: ProviderConfig = Field(
+        default_factory=ProviderConfig
+    )  # Github Copilot (OAuth)
     xai: ProviderConfig = Field(default_factory=ProviderConfig)
     cohere: ProviderConfig = Field(default_factory=ProviderConfig)
     mistral: ProviderConfig = Field(default_factory=ProviderConfig)
@@ -301,6 +329,10 @@ class GatewayConfig(Base):
 
     host: str = "0.0.0.0"
     port: int = 18790
+    environment: str = "development"
+    cors_origins: list[str] = Field(
+        default_factory=lambda: ["http://localhost:3000", "http://localhost:8000"]
+    )
     heartbeat: HeartbeatConfig = Field(default_factory=HeartbeatConfig)
 
 
@@ -345,7 +377,9 @@ class ExecToolConfig(Base):
 class MCPServerConfig(Base):
     """MCP server connection configuration (stdio or HTTP)."""
 
-    type: Literal["stdio", "sse", "streamableHttp"] | None = None  # auto-detected if omitted
+    type: Literal["stdio", "sse", "streamableHttp"] | None = (
+        None  # auto-detected if omitted
+    )
     command: str = ""  # Stdio: command to run (e.g. "npx")
     args: list[str] = Field(default_factory=list)  # Stdio: command arguments
     env: dict[str, str] = Field(default_factory=dict)  # Stdio: extra env vars
@@ -396,14 +430,19 @@ class ToolsConfig(Base):
     exec: ExecToolConfig = Field(default_factory=ExecToolConfig)
     drive: GoogleDriveConfig = Field(default_factory=GoogleDriveConfig)
     knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
-    restrict_to_workspace: bool = True  # If true, restrict all tool access to workspace directory
+    restrict_to_workspace: bool = (
+        True  # If true, restrict all tool access to workspace directory
+    )
     mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
 
 
 class DatabaseConfig(Base):
     """PostgreSQL database configuration."""
 
-    url: str | None = Field(default=None, description="Connection URL for PostgreSQL (e.g. postgresql+asyncpg://user:pass@host/db)")
+    url: str | None = Field(
+        default=None,
+        description="Connection URL for PostgreSQL (e.g. postgresql+asyncpg://user:pass@host/db)",
+    )
     pool_size: int = Field(default=5, description="Connection pool size")
     max_overflow: int = Field(default=10, description="Max overflow connections")
 
@@ -411,7 +450,9 @@ class DatabaseConfig(Base):
 class RedisConfig(Base):
     """Redis configuration."""
 
-    url: str | None = Field(default=None, description="Connection URL for Redis (e.g. redis://host:port/db)")
+    url: str | None = Field(
+        default=None, description="Connection URL for Redis (e.g. redis://host:port/db)"
+    )
 
 
 class PluginsModuleConfig(Base):
@@ -419,6 +460,27 @@ class PluginsModuleConfig(Base):
 
     enabled: bool = Field(default=True, description="Whether the module is enabled")
     version: str = Field(default="2026.0.1", description="Module version")
+
+
+class ControlPlaneConfig(Base):
+    """Control plane configuration (admin, networking, authentication, databases, policies)."""
+
+    gateway: GatewayConfig = Field(default_factory=GatewayConfig)
+    security: SecurityConfig = Field(default_factory=SecurityConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
+    plugins: PluginsModuleConfig = Field(default_factory=PluginsModuleConfig)
+    channels: ChannelsConfig = Field(default_factory=ChannelsConfig)
+
+
+class DataPlaneConfig(Base):
+    """Data plane configuration (agent runtime, providers, tools, workspace, execution)."""
+
+    agents: AgentsConfig = Field(default_factory=AgentsConfig)
+    providers: ProvidersConfig = Field(default_factory=ProvidersConfig)
+    tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    assistant: AssistantConfig = Field(default_factory=AssistantConfig)
+    data: DataAgentConfig = Field(default_factory=DataAgentConfig)
 
 
 class Config(BaseSettings):
@@ -436,6 +498,28 @@ class Config(BaseSettings):
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
 
+    @property
+    def control_plane(self) -> ControlPlaneConfig:
+        """Control plane view of system configuration."""
+        return ControlPlaneConfig(
+            gateway=self.gateway,
+            security=self.security,
+            database=self.database,
+            redis=self.redis,
+            plugins=self.plugins,
+            channels=self.channels,
+        )
+
+    @property
+    def data_plane(self) -> DataPlaneConfig:
+        """Data plane view of runtime agent configuration."""
+        return DataPlaneConfig(
+            agents=self.agents,
+            providers=self.providers,
+            tools=self.tools,
+            assistant=self.assistant,
+            data=self.data,
+        )
 
     @property
     def workspace_path(self) -> Path:
@@ -443,7 +527,8 @@ class Config(BaseSettings):
         return Path(self.agents.defaults.workspace).expanduser()
 
     def _match_provider(
-        self, model: str | None = None,
+        self,
+        model: str | None = None,
     ) -> tuple["ProviderConfig | None", str | None]:
         """Match provider config and its registry name. Returns (config, spec_name)."""
         from amberclaw.providers.registry import PROVIDERS
@@ -541,15 +626,19 @@ class Config(BaseSettings):
                 return spec.default_api_base
         return None
 
-    model_config = SettingsConfigDict(env_prefix="AMBERCLAW_", env_nested_delimiter="__")
+    model_config = SettingsConfigDict(
+        env_prefix="AMBERCLAW_", env_nested_delimiter="__"
+    )
 
 
 # Global configuration singleton
 def _get_settings() -> Config:
     try:
         from amberclaw.config.loader import load_config
+
         return load_config()
     except Exception:
         return Config()
+
 
 settings = _get_settings()

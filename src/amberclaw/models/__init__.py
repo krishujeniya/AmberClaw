@@ -1,14 +1,30 @@
-"""
-AmberClaw amberclaw.models module.
-"""
+"""AmberClaw core domain models."""
 
-from pydantic import BaseModel, Field
+from amberclaw.models.agent import AgentModel
+from amberclaw.models.company import CompanyModel
+from amberclaw.models.goal import GoalModel, GoalStatus
+from amberclaw.models.message import (
+    Conversation,
+    Message,
+    MessageRole,
+    ToolCall,
+    ToolResult,
+)
+from amberclaw.models.ticket import TicketModel, TicketPriority, TicketStatus
+from amberclaw.models.workspace import WorkspaceModel
 
-
-class ModelsModuleConfig(BaseModel):
-    """Configuration for the amberclaw.models module."""
-    enabled: bool = Field(default=True, description="Whether the module is enabled")
-    version: str = Field(default="2026.0.1", description="Module version")
-
-
-__all__ = ["ModelsModuleConfig"]
+__all__ = [
+    "AgentModel",
+    "CompanyModel",
+    "Conversation",
+    "GoalModel",
+    "GoalStatus",
+    "Message",
+    "MessageRole",
+    "TicketModel",
+    "TicketPriority",
+    "TicketStatus",
+    "ToolCall",
+    "ToolResult",
+    "WorkspaceModel",
+]

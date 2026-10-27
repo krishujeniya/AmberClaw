@@ -26,17 +26,17 @@ def mock_sandbox() -> MagicMock:
     """Mock for the Daytona Sandbox object."""
     sandbox = MagicMock()
     sandbox.id = "test-sandbox-123"
-    
+
     # Setup mock exec response
     sandbox.process.exec.return_value = MockExecuteResponse(
         result="hello from bash", exit_code=0
     )
-    
+
     # Setup mock code_run response
     sandbox.process.code_run.return_value = MockExecuteResponse(
         result="hello from python", exit_code=0
     )
-    
+
     return sandbox
 
 
@@ -49,17 +49,20 @@ def mock_daytona_client(mock_sandbox: MagicMock) -> MagicMock:
 
 
 @pytest.mark.asyncio
-async def test_daytona_connection_lifecycle(mock_daytona_client: MagicMock, mock_sandbox: MagicMock) -> None:
+async def test_daytona_connection_lifecycle(
+    mock_daytona_client: MagicMock, mock_sandbox: MagicMock
+) -> None:
     """Test connect and close lifecycle of Daytona backend."""
-    with patch("amberclaw.terminal.daytona.Daytona", return_value=mock_daytona_client), \
-         patch("amberclaw.terminal.daytona.DaytonaConfig") as mock_config_cls:
-         
+    with (
+        patch("amberclaw.terminal.daytona.Daytona", return_value=mock_daytona_client),
+        patch("amberclaw.terminal.daytona.DaytonaConfig") as mock_config_cls,
+    ):
         backend = DaytonaTerminalBackend(
             workspace_dir="/workspace",
             api_key="test-key",
             api_url="https://api.test.daytona.io",
             target="us",
-            create_kwargs={"image": "custom-image"}
+            create_kwargs={"image": "custom-image"},
         )
 
         # Assert no connection initially
@@ -68,12 +71,10 @@ async def test_daytona_connection_lifecycle(mock_daytona_client: MagicMock, mock
 
         # Connect
         await backend.connect()
-        
+
         # Verify Config & Client instantiation
         mock_config_cls.assert_called_once_with(
-            api_key="test-key",
-            api_url="https://api.test.daytona.io",
-            target="us"
+            api_key="test-key", api_url="https://api.test.daytona.io", target="us"
         )
         mock_daytona_client.create.assert_called_once_with(image="custom-image")
         assert backend.client == mock_daytona_client
@@ -87,7 +88,9 @@ async def test_daytona_connection_lifecycle(mock_daytona_client: MagicMock, mock
 
 
 @pytest.mark.asyncio
-async def test_daytona_execute_bash(mock_daytona_client: MagicMock, mock_sandbox: MagicMock) -> None:
+async def test_daytona_execute_bash(
+    mock_daytona_client: MagicMock, mock_sandbox: MagicMock
+) -> None:
     """Test bash execution in Daytona sandbox."""
     with patch("amberclaw.terminal.daytona.Daytona", return_value=mock_daytona_client):
         backend = DaytonaTerminalBackend(workspace_dir="/workspace")
@@ -108,7 +111,9 @@ async def test_daytona_execute_bash(mock_daytona_client: MagicMock, mock_sandbox
 
 
 @pytest.mark.asyncio
-async def test_daytona_execute_python(mock_daytona_client: MagicMock, mock_sandbox: MagicMock) -> None:
+async def test_daytona_execute_python(
+    mock_daytona_client: MagicMock, mock_sandbox: MagicMock
+) -> None:
     """Test python code execution in Daytona sandbox."""
     with patch("amberclaw.terminal.daytona.Daytona", return_value=mock_daytona_client):
         backend = DaytonaTerminalBackend(workspace_dir="/workspace")
@@ -133,7 +138,9 @@ async def test_daytona_execute_python(mock_daytona_client: MagicMock, mock_sandb
 
 
 @pytest.mark.asyncio
-async def test_daytona_execution_exception_mapping(mock_daytona_client: MagicMock, mock_sandbox: MagicMock) -> None:
+async def test_daytona_execution_exception_mapping(
+    mock_daytona_client: MagicMock, mock_sandbox: MagicMock
+) -> None:
     """Test exception and timeout mapping in execution."""
     with patch("amberclaw.terminal.daytona.Daytona", return_value=mock_daytona_client):
         backend = DaytonaTerminalBackend(workspace_dir="/workspace")
@@ -161,7 +168,7 @@ async def test_factory_daytona_instantiation(mock_daytona_client: MagicMock) -> 
             api_key="api-key",
             api_url="api-url",
             target="target",
-            create_kwargs={"image": "img"}
+            create_kwargs={"image": "img"},
         )
 
         assert isinstance(backend, DaytonaTerminalBackend)

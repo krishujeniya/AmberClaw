@@ -127,10 +127,12 @@ class VercelTerminalBackend(BaseTerminalBackend):
                         with local_file_path.open("rb") as f:
                             content = f.read()
 
-                        files_to_upload.append({
-                            "path": rel_path_str,
-                            "content": content,
-                        })
+                        files_to_upload.append(
+                            {
+                                "path": rel_path_str,
+                                "content": content,
+                            }
+                        )
                         new_synced_files[rel_path_str] = file_hash
                 except Exception as e:
                     logger.warning(
@@ -148,8 +150,8 @@ class VercelTerminalBackend(BaseTerminalBackend):
             raise RuntimeError("Vercel Sandbox is not connected.")
 
         # Prepare payload off of the main event loop
-        dirs_to_create, files_to_upload, new_synced_files = (
-            await asyncio.to_thread(self._prepare_sync_payload_sync)
+        dirs_to_create, files_to_upload, new_synced_files = await asyncio.to_thread(
+            self._prepare_sync_payload_sync
         )
 
         # Create missing directories in the sandbox
@@ -171,14 +173,15 @@ class VercelTerminalBackend(BaseTerminalBackend):
             try:
                 await self.sandbox.write_files(files_to_upload)
                 self._synced_files.update(new_synced_files)
-                logger.info("Successfully synced %d files to Vercel Sandbox.", len(files_to_upload))
+                logger.info(
+                    "Successfully synced %d files to Vercel Sandbox.",
+                    len(files_to_upload),
+                )
             except Exception as e:
                 logger.error("Failed to upload synced files to Vercel Sandbox: %s", e)
                 raise
 
-    async def execute_bash(
-        self, command: str, timeout: int = 30
-    ) -> dict[str, Any]:
+    async def execute_bash(self, command: str, timeout: int = 30) -> dict[str, Any]:
         """Execute a bash command in the remote Vercel Sandbox environment."""
         start_time = time.perf_counter()
         exit_code = -1
@@ -235,12 +238,14 @@ class VercelTerminalBackend(BaseTerminalBackend):
 
             # To execute arbitrary code block, write it to a unique temp file on the sandbox
             temp_script_name = f"_amberclaw_{uuid.uuid4().hex}.py"
-            await self.sandbox.write_files([
-                {
-                    "path": temp_script_name,
-                    "content": code.encode("utf-8"),
-                }
-            ])
+            await self.sandbox.write_files(
+                [
+                    {
+                        "path": temp_script_name,
+                        "content": code.encode("utf-8"),
+                    }
+                ]
+            )
 
             # Run Python script
             cmd = await self.sandbox.run_command_detached(

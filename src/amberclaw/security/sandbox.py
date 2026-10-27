@@ -1,13 +1,23 @@
+from __future__ import annotations
+
 import asyncio
 import contextlib
 import ctypes
+import io
+import ipaddress
 import logging
 import os
 import platform
 import resource
+import shutil
+import socket
+import stat
 import sys
+import tarfile
 import tempfile
+import urllib.parse
 import uuid
+import zipfile
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -32,7 +42,7 @@ BPF_JMP = 0x05
 BPF_JEQ = 0x15
 BPF_K = 0x00
 BPF_RET = 0x06
-SECCOMP_RET_ALLOW = 0x7fff0000
+SECCOMP_RET_ALLOW = 0x7FFF0000
 SECCOMP_RET_ERRNO = 0x00050000
 EACCES = 13
 AUDIT_ARCH_X86_64 = 0xC000003E
@@ -102,10 +112,7 @@ def apply_seccomp_filters() -> bool:
         return False
 
     return (
-        not libc.prctl(
-            PR_SET_SECCOMP, SECCOMP_MODE_FILTER, ctypes.byref(program)
-        )
-        < 0
+        not libc.prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, ctypes.byref(program)) < 0
     )
 
 
@@ -127,17 +134,13 @@ def apply_sandbox_to_current_process(
     # 2. Resource Limits (setrlimit)
     with contextlib.suppress(Exception):
         # Limit memory (512MB)
-        resource.setrlimit(
-            resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024)
-        )
+        resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
         # Limit CPU time (30s)
         resource.setrlimit(resource.RLIMIT_CPU, (30, 30))
         # Limit process count (max 10 threads/processes)
         resource.setrlimit(resource.RLIMIT_NPROC, (10, 10))
         # Limit file size created (10MB)
-        resource.setrlimit(
-            resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024)
-        )
+        resource.setrlimit(resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024))
 
     # 3. Drop capabilities
     with contextlib.suppress(Exception):
@@ -265,9 +268,7 @@ exec(user_code, globals_dict)
 
             env = dict(env_vars or os.environ)
             env["PYTHONPATH"] = str(parent_dir) + (
-                os.pathsep + env.get("PYTHONPATH", "")
-                if env.get("PYTHONPATH")
-                else ""
+                os.pathsep + env.get("PYTHONPATH", "") if env.get("PYTHONPATH") else ""
             )
 
             start_time = asyncio.get_event_loop().time()
@@ -289,9 +290,7 @@ exec(user_code, globals_dict)
                         stdout=stdout.decode("utf-8", errors="replace"),
                         stderr=stderr.decode("utf-8", errors="replace"),
                         exit_code=(
-                            process.returncode
-                            if process.returncode is not None
-                            else 0
+                            process.returncode if process.returncode is not None else 0
                         ),
                         execution_time_ms=(end_time - start_time) * 1000,
                     )
@@ -357,9 +356,7 @@ exec(user_code, globals_dict)
                     stdout=stdout.decode("utf-8", errors="replace"),
                     stderr=stderr.decode("utf-8", errors="replace"),
                     exit_code=(
-                        process.returncode
-                        if process.returncode is not None
-                        else 0
+                        process.returncode if process.returncode is not None else 0
                     ),
                     execution_time_ms=(end_time - start_time) * 1000,
                 )
@@ -394,3 +391,326 @@ exec(user_code, globals_dict)
                         )
                     else:
                         loop.run_until_complete(self._docker_backend.stop())
+
+
+class DecompressionSecurityError(PermissionError):
+    """Raised when an archive violates decompression limits or attempts path traversal."""
+
+
+class DecompressionGuard:
+    """Guards against archive bombs (zip/tar bombs), zip-slip attacks, and malicious symlinks."""
+
+    DEFAULT_MAX_UNCOMPRESSED_BYTES = 50 * 1024 * 1024  # 50 MB
+    DEFAULT_MAX_FILES = 1000
+    DEFAULT_MAX_RATIO = 100.0  # 100:1 compression ratio limit
+
+    @classmethod
+    def extract_zip(
+        cls,
+        source: str | Path | bytes | io.BytesIO,
+        target_dir: str | Path,
+        max_bytes: int = DEFAULT_MAX_UNCOMPRESSED_BYTES,
+        max_files: int = DEFAULT_MAX_FILES,
+        max_ratio: float = DEFAULT_MAX_RATIO,
+    ) -> list[Path]:
+        """Safely extracts a ZIP archive preventing zip-slip, symlink attacks, and zip bombs."""
+        dest = Path(target_dir).resolve()
+        dest.mkdir(parents=True, exist_ok=True)
+
+        if isinstance(source, (str, Path)):
+            archive_stream: io.BytesIO | Path = Path(source).resolve()
+        elif isinstance(source, bytes):
+            archive_stream = io.BytesIO(source)
+        else:
+            archive_stream = source
+
+        extracted_paths: list[Path] = []
+        total_uncompressed = 0
+        total_compressed = 0
+
+        with zipfile.ZipFile(archive_stream, "r") as zf:
+            infolist = zf.infolist()
+            if len(infolist) > max_files:
+                raise DecompressionSecurityError(
+                    f"ZIP archive contains {len(infolist)} files, exceeding limit of {max_files}"
+                )
+
+            for info in infolist:
+                # 1. Zip bomb ratio and size checks
+                total_uncompressed += info.file_size
+                total_compressed += max(info.compress_size, 1)
+
+                if total_uncompressed > max_bytes:
+                    raise DecompressionSecurityError(
+                        f"Decompressed size exceeds limit of {max_bytes} bytes"
+                    )
+
+                ratio = total_uncompressed / total_compressed
+                if total_uncompressed > 1024 * 1024 and ratio > max_ratio:
+                    raise DecompressionSecurityError(
+                        f"Compression ratio {ratio:.1f}:1 exceeds maximum permitted ratio {max_ratio}:1 (Zip bomb detected)"
+                    )
+
+                # 2. Zip-Slip Directory Traversal Check
+                target_path = (dest / info.filename).resolve()
+                if dest not in target_path.parents and target_path != dest:
+                    raise DecompressionSecurityError(
+                        f"Zip-slip directory traversal attempt detected: {info.filename}"
+                    )
+
+                # 3. Check for symlink attacks
+                # Unix permissions are in high 16 bits of external_attr
+                is_symlink = stat.S_ISLNK(info.external_attr >> 16)
+                if is_symlink:
+                    raise DecompressionSecurityError(
+                        f"Symlinks inside archives are prohibited for safety: {info.filename}"
+                    )
+
+                if info.is_dir():
+                    target_path.mkdir(parents=True, exist_ok=True)
+                else:
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    with zf.open(info) as src_file, target_path.open("wb") as out_file:
+                        shutil.copyfileobj(src_file, out_file)
+                    extracted_paths.append(target_path)
+
+        return extracted_paths
+
+    @classmethod
+    @contextlib.contextmanager
+    def _open_tar(cls, source: str | Path | bytes | io.BytesIO):
+        if isinstance(source, (str, Path)):
+            with tarfile.open(str(source), "r:*") as tf:
+                yield tf
+        elif isinstance(source, bytes):
+            with tarfile.open(fileobj=io.BytesIO(source), mode="r:*") as tf:
+                yield tf
+        else:
+            with tarfile.open(fileobj=source, mode="r:*") as tf:
+                yield tf
+
+    @classmethod
+    def extract_tar(
+        cls,
+        source: str | Path | bytes | io.BytesIO,
+        target_dir: str | Path,
+        max_bytes: int = DEFAULT_MAX_UNCOMPRESSED_BYTES,
+        max_files: int = DEFAULT_MAX_FILES,
+    ) -> list[Path]:
+        """Safely extracts a TAR archive preventing directory traversal and symlink escapes."""
+        dest = Path(target_dir).resolve()
+        dest.mkdir(parents=True, exist_ok=True)
+
+        extracted_paths: list[Path] = []
+        total_uncompressed = 0
+        file_count = 0
+
+        with cls._open_tar(source) as tf:
+            for member in tf.getmembers():
+                file_count += 1
+                if file_count > max_files:
+                    raise DecompressionSecurityError(
+                        f"TAR archive contains > {max_files} files"
+                    )
+
+                total_uncompressed += member.size
+                if total_uncompressed > max_bytes:
+                    raise DecompressionSecurityError(
+                        f"Decompressed TAR size exceeds limit of {max_bytes} bytes"
+                    )
+
+                # Path traversal check
+                target_path = (dest / member.name).resolve()
+                if dest not in target_path.parents and target_path != dest:
+                    raise DecompressionSecurityError(
+                        f"Tar-slip directory traversal attempt detected: {member.name}"
+                    )
+
+                # Symlink / Hardlink check
+                if member.issym() or member.islnk():
+                    raise DecompressionSecurityError(
+                        f"Symlinks and hardlinks inside archives are prohibited: {member.name}"
+                    )
+
+                if member.isdir():
+                    target_path.mkdir(parents=True, exist_ok=True)
+                else:
+                    target_path.parent.mkdir(parents=True, exist_ok=True)
+                    extracted_file = tf.extractfile(member)
+                    if extracted_file is not None:
+                        with extracted_file, target_path.open("wb") as out_f:
+                            shutil.copyfileobj(extracted_file, out_f)
+                    extracted_paths.append(target_path)
+
+        return extracted_paths
+
+
+class HostSocketAndMetadataFilter:
+    """Filters host sockets, loopback/private IP ranges, and cloud metadata endpoints."""
+
+    FORBIDDEN_CIDRS = (
+        ipaddress.ip_network("0.0.0.0/8"),
+        ipaddress.ip_network("10.0.0.0/8"),
+        ipaddress.ip_network("100.64.0.0/10"),
+        ipaddress.ip_network("127.0.0.0/8"),
+        ipaddress.ip_network("169.254.0.0/16"),  # Link-local & cloud metadata
+        ipaddress.ip_network("172.16.0.0/12"),
+        ipaddress.ip_network("192.168.0.0/16"),
+        ipaddress.ip_network("224.0.0.0/4"),  # Multicast
+        ipaddress.ip_network("240.0.0.0/4"),  # Reserved
+        ipaddress.ip_network("::1/128"),
+        ipaddress.ip_network("fe80::/10"),  # IPv6 Link-local
+        ipaddress.ip_network("fc00::/7"),  # IPv6 Unique Local
+    )
+
+    FORBIDDEN_HOSTNAMES = frozenset(
+        {
+            "instance-data",
+            "metadata.google.internal",
+            "metadata",
+            "169.254.169.254",
+            "169.254.170.2",
+        }
+    )
+
+    FORBIDDEN_SOCKET_NAMES = (
+        "docker.sock",
+        "containerd.sock",
+        "dockershim.sock",
+        "crio.sock",
+        "podman.sock",
+    )
+
+    @classmethod
+    def is_forbidden_ip(cls, ip_str: str) -> bool:
+        """Returns True if the given IP belongs to private, loopback, or metadata CIDRs."""
+        try:
+            ip_obj = ipaddress.ip_address(ip_str)
+            return any(ip_obj in cidr for cidr in cls.FORBIDDEN_CIDRS)
+        except ValueError:
+            return True
+
+    @classmethod
+    def verify_destination_host(cls, hostname_or_ip: str) -> bool:
+        """Resolves DNS and verifies all resolved IP addresses are public and safe."""
+        cleaned = hostname_or_ip.strip().lower()
+        if cleaned in cls.FORBIDDEN_HOSTNAMES:
+            return False
+
+        try:
+            addr_info = socket.getaddrinfo(cleaned, None)
+            if not addr_info:
+                return False
+            for entry in addr_info:
+                sockaddr = entry[4]
+                ip_cand = sockaddr[0]
+                if cls.is_forbidden_ip(ip_cand):
+                    logger.warning(
+                        "Blocked host [%s] resolved to forbidden address [%s]",
+                        cleaned,
+                        ip_cand,
+                    )
+                    return False
+            return True
+        except socket.gaierror:
+            return False
+
+    @classmethod
+    def verify_redirect_url(cls, url: str) -> str:
+        """Validates redirect URL scheme and verifies destination IP is safe from SSRF."""
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            raise PermissionError(f"Prohibited redirect scheme: {parsed.scheme}")
+
+        host = parsed.hostname
+        if not host:
+            raise PermissionError("Redirect URL missing hostname")
+
+        if not cls.verify_destination_host(host):
+            raise PermissionError(
+                f"Prohibited SSRF destination: host '{host}' resolves to private/metadata IP"
+            )
+
+        return url
+
+    @classmethod
+    def is_host_socket_path(cls, path: str | Path) -> bool:
+        """Detects whether a path references a host container/orchestrator socket."""
+        p_str = str(path).lower()
+        return any(sock_name in p_str for sock_name in cls.FORBIDDEN_SOCKET_NAMES)
+
+
+class EphemeralFilesystemSandbox:
+    """Isolated, ephemeral filesystem workspace with strict access containment."""
+
+    def __init__(self, prefix: str = "amberclaw_ephemeral_") -> None:
+        self.prefix = prefix
+        self._temp_dir: tempfile.TemporaryDirectory[str] | None = None
+        self.path: Path | None = None
+
+    def __enter__(self) -> EphemeralFilesystemSandbox:
+        self._temp_dir = tempfile.TemporaryDirectory(prefix=self.prefix)
+        self.path = Path(self._temp_dir.name).resolve()
+        # Set directory permissions to owner only (0o700)
+        with contextlib.suppress(Exception):
+            self.path.chmod(0o700)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        if self._temp_dir is not None:
+            with contextlib.suppress(Exception):
+                self._temp_dir.cleanup()
+            self._temp_dir = None
+            self.path = None
+
+    def resolve_safe_path(self, relative_path: str | Path) -> Path:
+        """Resolves a relative path strictly within the ephemeral sandbox boundary."""
+        if self.path is None:
+            raise RuntimeError("Ephemeral sandbox is not initialized")
+
+        resolved = (self.path / relative_path).resolve()
+        if self.path not in resolved.parents and resolved != self.path:
+            raise PermissionError(
+                f"Path traversal detected: {relative_path} attempts to escape ephemeral sandbox"
+            )
+        return resolved
+
+
+class SandboxEscapeTestRunner:
+    """Automated continuous suite verifying sandbox containment and escape resilience."""
+
+    def __init__(self, sandbox: CodeSandbox | None = None) -> None:
+        self.sandbox = sandbox or CodeSandbox(use_docker=False)
+
+    async def run_all_checks(self) -> dict[str, bool]:
+        """Runs security escape probes and returns test pass/fail results."""
+        results: dict[str, bool] = {}
+
+        # 1. Test filesystem containment (attempt to read /etc/shadow)
+        res_fs = await self.sandbox.execute_python(
+            "import os\n"
+            "try:\n"
+            "    with open('/etc/shadow', 'r') as f:\n"
+            "        data = f.read()\n"
+            "    print('FAIL: Read /etc/shadow')\n"
+            "except Exception:\n"
+            "    print('PASS: Shadow read blocked')\n"
+        )
+        results["filesystem_containment"] = "PASS" in res_fs.stdout
+
+        # 2. Test host socket access
+        results["host_socket_blocked"] = (
+            HostSocketAndMetadataFilter.is_host_socket_path("/var/run/docker.sock")
+        )
+
+        # 3. Test cloud metadata blocking
+        results[
+            "cloud_metadata_blocked"
+        ] = not HostSocketAndMetadataFilter.verify_destination_host("169.254.169.254")
+
+        # 4. Test private loopback blocking
+        results[
+            "private_ip_blocked"
+        ] = not HostSocketAndMetadataFilter.verify_destination_host("127.0.0.1")
+
+        return results

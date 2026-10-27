@@ -26,7 +26,9 @@ class _FakeHttp:
 
 @pytest.mark.asyncio
 async def test_group_message_keeps_sender_id_and_routes_chat_id() -> None:
-    config = DingTalkConfig(client_id="app", client_secret="secret", allow_from=["user1"])
+    config = DingTalkConfig(
+        client_id="app", client_secret="secret", allow_from=["user1"]
+    )
     bus = MessageBus()
     channel = DingTalkChannel(config, bus)
 

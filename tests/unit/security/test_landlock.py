@@ -70,4 +70,6 @@ sys.exit(0)
 
             # Exit code 10 means Landlock is not supported by the kernel on this host,
             # which is a valid graceful degradation. Exit code 0 means sandboxing worked.
-            assert res.returncode in (0, 10), f"Sandbox failed with code {res.returncode}. Stderr: {res.stderr}"
+            assert res.returncode in (0, 10), (
+                f"Sandbox failed with code {res.returncode}. Stderr: {res.stderr}"
+            )

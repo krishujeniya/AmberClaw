@@ -123,7 +123,9 @@ class EmailChannel(BaseChannel):
 
         # autoReplyEnabled only controls automatic replies, not proactive sends
         if is_reply and not self.config.auto_reply_enabled and not force_send:
-            logger.info("Skip automatic email reply to {}: auto_reply_enabled is false", to_addr)
+            logger.info(
+                "Skip automatic email reply to {}: auto_reply_enabled is false", to_addr
+            )
             return
 
         base_subject = self._last_subject_by_chat.get(to_addr, "amberclaw reply")
@@ -135,7 +137,9 @@ class EmailChannel(BaseChannel):
 
         email_msg = EmailMessage()
         email_msg["From"] = (
-            self.config.from_address or self.config.smtp_username or self.config.imap_username
+            self.config.from_address
+            or self.config.smtp_username
+            or self.config.imap_username
         )
         email_msg["To"] = to_addr
         email_msg["Subject"] = subject
@@ -168,7 +172,9 @@ class EmailChannel(BaseChannel):
             missing.append("smtp_password")
 
         if missing:
-            logger.error("Email channel not configured, missing: {}", ", ".join(missing))
+            logger.error(
+                "Email channel not configured, missing: {}", ", ".join(missing)
+            )
             return False
         return True
 
@@ -184,7 +190,9 @@ class EmailChannel(BaseChannel):
                 smtp.send_message(msg)
             return
 
-        with smtplib.SMTP(self.config.smtp_host, self.config.smtp_port, timeout=timeout) as smtp:
+        with smtplib.SMTP(
+            self.config.smtp_host, self.config.smtp_port, timeout=timeout
+        ) as smtp:
             if self.config.smtp_use_tls:
                 smtp.starttls(context=ssl.create_default_context())
             smtp.login(self.config.smtp_username, self.config.smtp_password)
@@ -312,7 +320,9 @@ class EmailChannel(BaseChannel):
                     if len(self._processed_uids) > self._MAX_PROCESSED_UIDS:
                         # Evict a random half to cap memory; mark_seen is the primary dedup
                         self._processed_uids = set(
-                            list(self._processed_uids)[len(self._processed_uids) // 2 :],
+                            list(self._processed_uids)[
+                                len(self._processed_uids) // 2 :
+                            ],
                         )
 
                 if mark_seen:
@@ -345,7 +355,11 @@ class EmailChannel(BaseChannel):
     @staticmethod
     def _extract_uid(fetched: list[Any]) -> str:
         for item in fetched:
-            if isinstance(item, tuple) and item and isinstance(item[0], (bytes, bytearray)):
+            if (
+                isinstance(item, tuple)
+                and item
+                and isinstance(item[0], (bytes, bytearray))
+            ):
                 head = bytes(item[0]).decode("utf-8", errors="ignore")
                 m = re.search(r"UID\s+(\d+)", head)
                 if m:

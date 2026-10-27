@@ -1,4 +1,4 @@
-# ruff: noqa: E501, PLC0415, S110
+# ruff: noqa: PLC0415, S110
 """Memory Agent Tools for AmberClaw.
 
 Implements remember, recall, forget, session_search, and summarize_session tools.
@@ -14,21 +14,33 @@ from amberclaw.tools.registry import BaseTool
 
 class RememberArgs(BaseModel):
     fact: str = Field(..., description="The fact, preference, or concept to remember")
-    entity: str | None = Field(default=None, description="Optional entity name related to this fact")
-    entity_type: str | None = Field(default=None, description="Optional type of the entity (e.g. Person, Place)")
+    entity: str | None = Field(
+        default=None, description="Optional entity name related to this fact"
+    )
+    entity_type: str | None = Field(
+        default=None, description="Optional type of the entity (e.g. Person, Place)"
+    )
 
 
 class RememberTool(BaseTool):
     name = "remember"
-    description = "Store a fact, preference, or concept in the agent's persistent memory."
+    description = (
+        "Store a fact, preference, or concept in the agent's persistent memory."
+    )
     args_schema = RememberArgs
 
-    async def run(self, fact: str, entity: str | None = None, entity_type: str | None = None) -> str:
+    async def run(
+        self, fact: str, entity: str | None = None, entity_type: str | None = None
+    ) -> str:
         # Ingest to vector retriever if available
         if memory.hybrid_retriever:
             try:
                 from langchain_core.documents import Document
-                doc = Document(page_content=fact, metadata={"entity": entity, "entity_type": entity_type})
+
+                doc = Document(
+                    page_content=fact,
+                    metadata={"entity": entity, "entity_type": entity_type},
+                )
                 memory.hybrid_retriever.ingest([doc])
             except Exception:
                 # If langchain is missing, ingest as mock/log
@@ -38,26 +50,35 @@ class RememberTool(BaseTool):
         if entity:
             try:
                 from amberclaw.memory.graph_memory import TemporalGraphMemory
+
                 tgm = TemporalGraphMemory()
                 tgm.add_entity(entity, entity_type or "Concept", {"fact": fact})
             except Exception:
                 pass
 
-        return f"Successfully remembered fact: '{fact}'" + (f" for entity '{entity}'" if entity else "")
+        return f"Successfully remembered fact: '{fact}'" + (
+            f" for entity '{entity}'" if entity else ""
+        )
 
 
 class RecallArgs(BaseModel):
     query: str = Field(..., description="The search query or topic to recall")
-    session_id: str | None = Field(default=None, description="Optional session ID to narrow recall context")
+    session_id: str | None = Field(
+        default=None, description="Optional session ID to narrow recall context"
+    )
 
 
 class RecallTool(BaseTool):
     name = "recall"
-    description = "Recall relevant context, facts, or document chunks using hybrid search."
+    description = (
+        "Recall relevant context, facts, or document chunks using hybrid search."
+    )
     args_schema = RecallArgs
 
     async def run(self, query: str, session_id: str | None = None) -> str:
-        results = await memory.recall(query=query, session_id=session_id or "default_session")
+        results = await memory.recall(
+            query=query, session_id=session_id or "default_session"
+        )
         if not results:
             return "No matching memories found."
 
@@ -70,7 +91,9 @@ class RecallTool(BaseTool):
 
 
 class ForgetArgs(BaseModel):
-    query: str = Field(..., description="The exact phrase, fact, or query pattern to forget")
+    query: str = Field(
+        ..., description="The exact phrase, fact, or query pattern to forget"
+    )
 
 
 class ForgetTool(BaseTool):
@@ -85,7 +108,9 @@ class ForgetTool(BaseTool):
 
 
 class SessionSearchArgs(BaseModel):
-    session_id: str = Field(..., description="The session ID to search conversational history for")
+    session_id: str = Field(
+        ..., description="The session ID to search conversational history for"
+    )
     query: str = Field(..., description="The keyword or search query")
 
 

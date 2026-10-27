@@ -1,4 +1,4 @@
-name: Security Scan
+name: Security Scan & Supply Chain
 
 on:
   schedule:
@@ -9,26 +9,51 @@ on:
       - 'src/**'
       - 'pyproject.toml'
       - 'uv.lock'
+      - 'scripts/**'
+
+permissions:
+  contents: read
 
 jobs:
   security-audit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318edeed2796c01d3ab981718e0 # v5.3.0
         with:
           python-version: '3.11'
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@1edb512832cc572a6b147611031914328fb043ae # v5.1.0
 
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --frozen --all-extras --dev
 
       - name: Run Bandit (Code Scanning)
-        run: uv run bandit -r src/ -c pyproject.toml || true
-        
+        run: uv run bandit -r src/ -c pyproject.toml
+
+      - name: Verify No Unsafe Deserialization (Bandit B301, B302)
+        run: uv run bandit -r src/ -t B301,B302
+
       - name: Check Dependencies (Safety)
-        run: uv run safety check --full-report || true
+        run: uv run safety check --full-report
+
+      - name: License Policy Compliance Check
+        run: uv run python scripts/check_licenses.py
+
+      - name: Entropy & Git History Secret Scan
+        run: uv run amberclaw scan-secrets --entropy --git-history
+
+      - name: Generate CycloneDX and SPDX SBOMs
+        run: uv run python scripts/generate_sbom.py --out-dir dist
+
+      - name: Upload SBOM Artifacts
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        with:
+          name: amberclaw-sboms
+          path: dist/amberclaw.*.json

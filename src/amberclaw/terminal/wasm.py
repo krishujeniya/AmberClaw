@@ -368,7 +368,9 @@ class WasmTerminalBackend(BaseTerminalBackend):
                 stderr_parts.append(b"\nTimeout Error: Exceeded limits.")
             elif "fuel" in exc_str:
                 exit_code = -9
-                stderr_parts.append(b"\nOut of fuel: WebAssembly sandbox execution exceeded resource limits.")
+                stderr_parts.append(
+                    b"\nOut of fuel: WebAssembly sandbox execution exceeded resource limits."
+                )
             else:
                 exit_code = -1
                 stderr_parts.append(f"\nTrap: {exc}".encode(errors="replace"))
@@ -399,9 +401,11 @@ class WasmTerminalBackend(BaseTerminalBackend):
         full_code = OS_SYS_PROXY_PREAMBLE + "\n" + code
         return await asyncio.to_thread(self._execute_sync, full_code, timeout, env)
 
-    async def execute_bash(
-        self, command: str, timeout: int = 30
-    ) -> dict[str, Any]:
+    async def execute_bash(self, command: str, timeout: int = 30) -> dict[str, Any]:
         """Execute a bash command emulated inside the WASM sandbox."""
-        code = OS_SYS_PROXY_PREAMBLE + "\n" + BASH_EMULATOR_TEMPLATE.format(command_str=command)
+        code = (
+            OS_SYS_PROXY_PREAMBLE
+            + "\n"
+            + BASH_EMULATOR_TEMPLATE.format(command_str=command)
+        )
         return await asyncio.to_thread(self._execute_sync, code, timeout, None)

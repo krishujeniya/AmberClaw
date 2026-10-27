@@ -1,0 +1,28 @@
+[Unit]
+Description=AmberClaw AI OS API Gateway Service
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=amberclaw
+Group=amberclaw
+WorkingDirectory=/opt/amberclaw
+ExecStart=/opt/amberclaw/.venv/bin/amberclaw start --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5s
+
+# Security Hardening Directives
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/opt/amberclaw/data /opt/amberclaw/logs
+
+[Install]
+WantedBy=multi-user.target

@@ -1,11 +1,10 @@
 """Unit tests for local vLLM runner and configuration options."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from urllib.parse import urlparse
 
-from amberclaw.providers.vllm import VLLMLocalRunner, VLLMProvider
-from amberclaw.config.schema import Config, ProviderConfig
+import pytest
+
+from amberclaw.providers.vllm import VLLMLocalRunner
 
 
 def test_vllm_runner_argument_builder():
@@ -47,7 +46,10 @@ def test_vllm_runner_argument_builder():
     assert "--quantization" in args_adv
     assert args_adv[args_adv.index("--quantization") + 1] == "awq"
     assert "--speculative-model" in args_adv
-    assert args_adv[args_adv.index("--speculative-model") + 1] == "Qwen/Qwen2.5-1.5B-Instruct"
+    assert (
+        args_adv[args_adv.index("--speculative-model") + 1]
+        == "Qwen/Qwen2.5-1.5B-Instruct"
+    )
     assert "--num-speculative-tokens" in args_adv
     assert args_adv[args_adv.index("--num-speculative-tokens") + 1] == "5"
 
@@ -68,10 +70,12 @@ async def test_vllm_runner_lifecycle():
 
     mock_process = AsyncMock()
     mock_process.terminate = MagicMock()
-    
-    with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
+
+    with patch(
+        "asyncio.create_subprocess_exec", return_value=mock_process
+    ) as mock_exec:
         await runner.start()
-        
+
         mock_exec.assert_called_once()
         called_args = mock_exec.call_args[0]
         assert called_args[0] == "python"

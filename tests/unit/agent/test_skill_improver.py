@@ -49,7 +49,7 @@ async def test_refinement_triggered(skill_improver: SkillImprover, fake_home: Pa
         "description: initial description\n"
         "---\n"
         "# Skill: Test Skill\n",
-        encoding="utf-8"
+        encoding="utf-8",
     )
 
     # Set up initial skill in workspace as well
@@ -84,20 +84,24 @@ async def test_skill_manage_tool(tmp_path: Path, fake_home: Path):
     with patch("pathlib.Path.home", return_value=fake_home):
         # 1. Edit / Create
         content = "---\nname: skill-a\ndescription: skill a\n---\n# Skill A"
-        res = await tool.run(SkillManageArgs(action="edit", skill_name="skill-a", content=content))
+        res = await tool.run(
+            SkillManageArgs(action="edit", skill_name="skill-a", content=content)
+        )
         assert "Successfully updated/created" in res
         assert (tool.global_skills_dir / "skill-a.md").exists()
         assert (tool.workspace_skills_dir / "skill-a" / "SKILL.md").exists()
 
         # 2. Merge
         content_b = "---\nname: skill-b\ndescription: skill b\n---\n# Skill B"
-        await tool.run(SkillManageArgs(action="edit", skill_name="skill-b", content=content_b))
+        await tool.run(
+            SkillManageArgs(action="edit", skill_name="skill-b", content=content_b)
+        )
 
-        res_merge = await tool.run(SkillManageArgs(
-            action="merge",
-            skill_name="skill-a",
-            target_skill_name="skill-b"
-        ))
+        res_merge = await tool.run(
+            SkillManageArgs(
+                action="merge", skill_name="skill-a", target_skill_name="skill-b"
+            )
+        )
         assert "Successfully merged" in res_merge
         assert (tool.global_skills_dir / "merged-skill-a-and-skill-b.md").exists()
 
@@ -106,6 +110,8 @@ async def test_skill_manage_tool(tmp_path: Path, fake_home: Path):
         assert not (tool.global_skills_dir / "skill-b.md").exists()
 
         # 3. Delete
-        res_del = await tool.run(SkillManageArgs(action="delete", skill_name="merged-skill-a-and-skill-b"))
+        res_del = await tool.run(
+            SkillManageArgs(action="delete", skill_name="merged-skill-a-and-skill-b")
+        )
         assert "Successfully deleted" in res_del
         assert not (tool.global_skills_dir / "merged-skill-a-and-skill-b.md").exists()

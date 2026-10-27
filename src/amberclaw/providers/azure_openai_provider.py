@@ -55,7 +55,9 @@ class AzureOpenAIProvider(LLMProvider):
         if not base_url.endswith("/"):
             base_url += "/"
 
-        url = urljoin(base_url, f"openai/deployments/{deployment_name}/chat/completions")
+        url = urljoin(
+            base_url, f"openai/deployments/{deployment_name}/chat/completions"
+        )
         return f"{url}?api-version={self.api_version}"
 
     def _build_headers(self, resolved_key: str | None = None) -> dict[str, str]:
@@ -95,7 +97,8 @@ class AzureOpenAIProvider(LLMProvider):
                 _AZURE_MSG_KEYS,
             ),
             "max_completion_tokens": max(
-                1, max_tokens,
+                1,
+                max_tokens,
             ),  # Azure API 2024-10-21 uses max_completion_tokens
         }
 
@@ -190,7 +193,9 @@ class AzureOpenAIProvider(LLMProvider):
                         ToolCallRequest(
                             id=tc["id"],
                             name=tc["function"]["name"],
-                            arguments=args if isinstance(args, dict) else {"raw": str(args)},
+                            arguments=args
+                            if isinstance(args, dict)
+                            else {"raw": str(args)},
                         ),
                     )
 
@@ -227,6 +232,7 @@ class AzureOpenAIProvider(LLMProvider):
         """Convert this provider to a LangChain AzureChatOpenAI model."""
         from langchain_openai import AzureChatOpenAI
         from pydantic import SecretStr
+
         from amberclaw.security.vault import vault
 
         resolved_key = vault.resolve_secret(self.api_key)

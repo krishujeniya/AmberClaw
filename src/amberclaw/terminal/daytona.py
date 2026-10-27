@@ -53,7 +53,10 @@ class DaytonaTerminalBackend(BaseTerminalBackend):
 
         logger.info("Creating Daytona sandbox...")
         self.sandbox = self.client.create(**self.create_kwargs)
-        logger.info("Daytona sandbox created successfully with ID: %s", getattr(self.sandbox, "id", "unknown"))
+        logger.info(
+            "Daytona sandbox created successfully with ID: %s",
+            getattr(self.sandbox, "id", "unknown"),
+        )
 
     def _close_sync(self) -> None:
         """Close and delete the Daytona sandbox. Must run in an executor."""
@@ -99,7 +102,7 @@ class DaytonaTerminalBackend(BaseTerminalBackend):
                 exit_code = getattr(response, "exit_code", 0)
                 if exit_code is None:
                     exit_code = 0
-                
+
                 # Check for standard errors if returned separately
                 if hasattr(response, "artifacts") and response.artifacts:
                     stderr = getattr(response.artifacts, "stderr", "") or ""
@@ -199,7 +202,9 @@ class DaytonaTerminalBackend(BaseTerminalBackend):
     ) -> dict[str, Any]:
         """Asynchronously execute Python code inside the Daytona sandbox."""
         try:
-            return await asyncio.to_thread(self._execute_python_sync, code, timeout, env)
+            return await asyncio.to_thread(
+                self._execute_python_sync, code, timeout, env
+            )
         except Exception as e:
             logger.error("Daytona Python execution failed: %s", e)
             return {

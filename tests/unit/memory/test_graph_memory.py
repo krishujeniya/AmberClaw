@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """Unit tests for the TemporalGraphMemory system."""
 
 from amberclaw.memory.graph_memory import TemporalGraphMemory
@@ -9,7 +8,9 @@ def test_add_entity_and_history(tmp_path):
     tgm = TemporalGraphMemory(db_path=db_file)
 
     # Add entity
-    node_id = tgm.add_entity("Alice", "Person", {"location": "New York", "role": "Engineer"})
+    node_id = tgm.add_entity(
+        "Alice", "Person", {"location": "New York", "role": "Engineer"}
+    )
     assert node_id == "alice"
 
     entity = tgm.get_entity("Alice")
@@ -23,7 +24,9 @@ def test_add_entity_and_history(tmp_path):
 
     entity_updated = tgm.get_entity("Alice")
     assert entity_updated["properties"]["location"] == "London"
-    assert entity_updated["properties"]["role"] == "Engineer"  # Role should be preserved (merged)
+    assert (
+        entity_updated["properties"]["role"] == "Engineer"
+    )  # Role should be preserved (merged)
     assert len(entity_updated["history"]) == 1
     assert "location" in entity_updated["history"][0]["changes"]
     assert entity_updated["history"][0]["changes"]["location"]["old"] == "New York"

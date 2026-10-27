@@ -1,7 +1,9 @@
 import os
-import pytest
 from pathlib import Path
 from unittest.mock import AsyncMock
+
+import pytest
+
 from amberclaw.providers.litellm_provider import LiteLLMProvider
 from amberclaw.security.vault import vault as global_vault
 
@@ -43,6 +45,7 @@ async def test_dynamic_credential_proxy_resolution(
         class DummyMessage:
             content = "Hello response"
             tool_calls = None
+
         message = DummyMessage()
         finish_reason = "stop"
 
@@ -50,7 +53,9 @@ async def test_dynamic_credential_proxy_resolution(
         choices = [DummyChoice()]
 
     mock_acompletion.return_value = DummyResponse()
-    monkeypatch.setattr("amberclaw.providers.litellm_provider.acompletion", mock_acompletion)
+    monkeypatch.setattr(
+        "amberclaw.providers.litellm_provider.acompletion", mock_acompletion
+    )
 
     # Perform the chat execution
     messages = [{"role": "user", "content": "hello"}]

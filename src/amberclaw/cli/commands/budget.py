@@ -1,12 +1,16 @@
 import typer
 from rich.console import Console
 from rich.table import Table
+
 from amberclaw import __logo__
 
 console = Console()
 
+
 def usage(
-    days: int = typer.Option(7, "--days", "-d", help="Number of days to show usage for"),
+    days: int = typer.Option(
+        7, "--days", "-d", help="Number of days to show usage for"
+    ),
     all_time: bool = typer.Option(False, "--all", "-a", help="Show all-time usage"),
 ) -> None:
     """Show token usage and cost monitoring dashboard."""
@@ -35,7 +39,9 @@ def usage(
     total_tokens = 0
     total_cost = 0.0
 
-    sorted_models = sorted(costs.items(), key=lambda x: x[1]["total_cost"], reverse=True)
+    sorted_models = sorted(
+        costs.items(), key=lambda x: x[1]["total_cost"], reverse=True
+    )
 
     for model, data in sorted_models:
         table.add_row(

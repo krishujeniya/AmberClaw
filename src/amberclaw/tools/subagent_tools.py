@@ -11,8 +11,12 @@ from amberclaw.tools.registry import BaseTool
 class SpawnArgs(BaseModel):
     task: str = Field(..., description="The task for the subagent to complete")
     label: str | None = Field(None, description="Optional short label for the task")
-    model: str | None = Field(None, description="Optional specific model for the subagent")
-    worker_role: str | None = Field(None, description="Optional specialized worker role")
+    model: str | None = Field(
+        None, description="Optional specific model for the subagent"
+    )
+    worker_role: str | None = Field(
+        None, description="Optional specialized worker role"
+    )
 
 
 class SpawnTool(BaseTool):
@@ -27,4 +31,6 @@ class SpawnTool(BaseTool):
         model: str | None = None,
         worker_role: str | None = None,
     ) -> str:
-        return await subagent_manager.spawn(task=task, label=label, model=model, worker_role=worker_role)
+        return await subagent_manager.spawn(
+            task=task, label=label, model=model, worker_role=worker_role
+        )

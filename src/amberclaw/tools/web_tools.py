@@ -1,6 +1,7 @@
 """
 AmberClaw Web & Search Tools
 """
+
 import html
 import re
 
@@ -26,7 +27,9 @@ class WebSearchTool(BaseTool):
         # Here we simulate or use a mock for now if no keys are found
         api_key = settings.providers.extra.get("tavily_api_key")
         if not api_key:
-            return f"Error: TAVILY_API_KEY not configured. Simulated search for: {query}"
+            return (
+                f"Error: TAVILY_API_KEY not configured. Simulated search for: {query}"
+            )
 
         try:
             async with httpx.AsyncClient() as client:
@@ -37,13 +40,15 @@ class WebSearchTool(BaseTool):
                 )
                 r.raise_for_status()
                 results = r.json().get("results", [])
-                
+
                 if not results:
                     return f"No results found for: {query}"
-                
+
                 output = [f"Search results for: {query}\n"]
                 for i, res in enumerate(results, 1):
-                    output.append(f"{i}. {res['title']}\n   URL: {res['url']}\n   {res['content']}\n")
+                    output.append(
+                        f"{i}. {res['title']}\n   URL: {res['url']}\n   {res['content']}\n"
+                    )
                 return "\n".join(output)
         except Exception as e:
             return f"Search error: {e!s}"
@@ -63,7 +68,7 @@ class WebFetchTool(BaseTool):
             async with httpx.AsyncClient(follow_redirects=True, timeout=20.0) as client:
                 r = await client.get(url, headers={"User-Agent": "AmberClaw/2026"})
                 r.raise_for_status()
-                
+
                 # Simple HTML to text extraction (can be improved with readability)
                 text = r.text
                 text = re.sub(r"<script[\s\S]*?</script>", "", text, flags=re.I)
@@ -71,10 +76,10 @@ class WebFetchTool(BaseTool):
                 text = re.sub(r"<[^>]+>", "", text)
                 text = html.unescape(text).strip()
                 text = re.sub(r"\n{3,}", "\n\n", text)
-                
+
                 if len(text) > 10000:
                     text = text[:10000] + "\n\n... (content truncated)"
-                
+
                 return f"Fetched content from {url}:\n\n{text}"
         except Exception as e:
             return f"Fetch error: {e!s}"

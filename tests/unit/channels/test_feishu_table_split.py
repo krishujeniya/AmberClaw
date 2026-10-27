@@ -16,7 +16,9 @@ def _md(text: str) -> dict:
 def _table() -> dict:
     return {
         "tag": "table",
-        "columns": [{"tag": "column", "name": "c0", "display_name": "A", "width": "auto"}],
+        "columns": [
+            {"tag": "column", "name": "c0", "display_name": "A", "width": "auto"}
+        ],
         "rows": [{"c0": "v"}],
         "page_size": 2,
     }
@@ -46,13 +48,17 @@ def test_two_tables_split_into_two_groups() -> None:
     # Use different row values so the two tables are not equal
     t1 = {
         "tag": "table",
-        "columns": [{"tag": "column", "name": "c0", "display_name": "A", "width": "auto"}],
+        "columns": [
+            {"tag": "column", "name": "c0", "display_name": "A", "width": "auto"}
+        ],
         "rows": [{"c0": "table-one"}],
         "page_size": 2,
     }
     t2 = {
         "tag": "table",
-        "columns": [{"tag": "column", "name": "c0", "display_name": "B", "width": "auto"}],
+        "columns": [
+            {"tag": "column", "name": "c0", "display_name": "B", "width": "auto"}
+        ],
         "rows": [{"c0": "table-two"}],
         "page_size": 2,
     }
@@ -69,7 +75,8 @@ def test_two_tables_split_into_two_groups() -> None:
 
 def test_three_tables_split_into_three_groups() -> None:
     tables = [
-        {"tag": "table", "columns": [], "rows": [{"c0": f"t{i}"}], "page_size": 1} for i in range(3)
+        {"tag": "table", "columns": [], "rows": [{"c0": f"t{i}"}], "page_size": 1}
+        for i in range(3)
     ]
     els = tables[:]
     result = split(els)

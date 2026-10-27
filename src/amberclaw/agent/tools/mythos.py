@@ -18,7 +18,9 @@ from amberclaw.agent.tools.base import PydanticTool
 class MythosArgs(BaseModel):
     """Arguments for the mythos_think tool."""
 
-    query: str = Field(..., description="The question or problem to reason through deeply.")
+    query: str = Field(
+        ..., description="The question or problem to reason through deeply."
+    )
     depth: int = Field(
         default=3,
         ge=1,
@@ -47,7 +49,13 @@ class MythosTool(PydanticTool):
     def args_schema(self) -> type[MythosArgs]:
         return MythosArgs
 
-    def __init__(self, provider: Any, model: str, temperature: float = 0.1, max_tokens: int = 2048):
+    def __init__(
+        self,
+        provider: Any,
+        model: str,
+        temperature: float = 0.1,
+        max_tokens: int = 2048,
+    ):
         super().__init__()
         self._provider = provider
         self._model = model

@@ -1,8 +1,9 @@
+import json
 import os
-import pickle
 from pathlib import Path
 
 from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -30,11 +31,15 @@ class DriveManager:
             return self.service
 
         creds = None
-        token_path = Path(self.config.token_json or "~/.amberclaw/drive_token.pickle").expanduser()
+        token_path = Path(
+            self.config.token_json or "~/.amberclaw/drive_token.json"
+        ).expanduser()
 
         if token_path.exists():
-            with open(token_path, "rb") as token:
-                creds = pickle.load(token)
+            try:
+                creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+            except Exception:
+                creds = None
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
@@ -56,15 +61,16 @@ class DriveManager:
                 creds = flow.run_local_server(port=0)
 
             token_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(token_path, "wb") as token:
-                pickle.dump(creds, token)
+            token_path.write_text(creds.to_json(), encoding="utf-8")
 
         self.service = build("drive", "v3", credentials=creds)
         return self.service
 
 
 class DriveSearchInput(BaseModel):
-    query: str = Field(..., description="The search string to find files in Google Drive.")
+    query: str = Field(
+        ..., description="The search string to find files in Google Drive."
+    )
 
 
 class DriveSearchTool(PydanticTool):
@@ -108,7 +114,8 @@ class DriveSearchTool(PydanticTool):
 class DriveUploadInput(BaseModel):
     file_path: str = Field(..., description="Local path to the file to upload.")
     folder_id: str = Field(
-        "root", description="ID of the destination folder in Google Drive (defaults to 'root').",
+        "root",
+        description="ID of the destination folder in Google Drive (defaults to 'root').",
     )
 
 
@@ -141,7 +148,9 @@ class DriveUploadTool(PydanticTool):
         media = MediaFileUpload(str(path), resumable=True)
         file = (
             service.files()
-            .create(body=file_metadata, media_body=media, fields="id, name, webViewLink")
+            .create(
+                body=file_metadata, media_body=media, fields="id, name, webViewLink"
+            )
             .execute()
         )
 

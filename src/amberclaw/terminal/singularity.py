@@ -17,9 +17,17 @@ class SingularityTerminalBackend(BaseTerminalBackend):
         self,
         workspace_dir: str,
         image: str = "docker://python:3.11-slim",
+        gpu: bool = False,
+        gpu_type: str = "nvidia",
     ):
         self.workspace_dir = str(Path(workspace_dir).resolve())
         self.image = image
+        self.gpu = gpu
+        self.gpu_type = gpu_type
+        if self.gpu_type not in ("nvidia", "rocm"):
+            raise ValueError(
+                f"Unsupported gpu_type: {self.gpu_type}. Must be 'nvidia' or 'rocm'."
+            )
         self._binary = self._resolve_binary()
 
     def _resolve_binary(self) -> str:
@@ -28,7 +36,7 @@ class SingularityTerminalBackend(BaseTerminalBackend):
             return "apptainer"
         if shutil.which("singularity"):
             return "singularity"
-        
+
         logger.warning(
             "Neither 'apptainer' nor 'singularity' was found in PATH. Defaulting to 'singularity'."
         )
@@ -36,18 +44,28 @@ class SingularityTerminalBackend(BaseTerminalBackend):
 
     def _build_exec_command(self) -> list[str]:
         """Build the common singularity/apptainer exec command prefix."""
-        return [
+        cmd = [
             self._binary,
             "exec",
             "--containall",
             "--no-home",
             "--cleanenv",
-            "-B",
-            f"{self.workspace_dir}:/workspace",
-            "--pwd",
-            "/workspace",
-            self.image,
         ]
+        if self.gpu:
+            if self.gpu_type == "nvidia":
+                cmd.append("--nv")
+            elif self.gpu_type == "rocm":
+                cmd.append("--rocm")
+        cmd.extend(
+            [
+                "-B",
+                f"{self.workspace_dir}:/workspace",
+                "--pwd",
+                "/workspace",
+                self.image,
+            ]
+        )
+        return cmd
 
     def _build_env(self, custom_env: dict[str, str] | None) -> dict[str, str]:
         """Format environment variables for Singularity/Apptainer propagation."""
@@ -61,12 +79,10 @@ class SingularityTerminalBackend(BaseTerminalBackend):
             env[f"APPTAINERENV_{k}"] = v
         return env
 
-    async def execute_bash(
-        self, command: str, timeout: int = 30
-    ) -> dict[str, Any]:
+    async def execute_bash(self, command: str, timeout: int = 30) -> dict[str, Any]:
         """Execute a bash command transiently inside the container."""
         start_time = time.perf_counter()
-        
+
         exec_cmd = [*self._build_exec_command(), "bash", "-s"]
 
         try:
@@ -82,9 +98,7 @@ class SingularityTerminalBackend(BaseTerminalBackend):
                     proc.communicate(input=command.encode()),
                     timeout=timeout,
                 )
-                exit_code = (
-                    proc.returncode if proc.returncode is not None else -1
-                )
+                exit_code = proc.returncode if proc.returncode is not None else -1
             except TimeoutError:
                 try:
                     proc.terminate()
@@ -133,9 +147,7 @@ class SingularityTerminalBackend(BaseTerminalBackend):
                     proc.communicate(input=code.encode()),
                     timeout=timeout,
                 )
-                exit_code = (
-                    proc.returncode if proc.returncode is not None else -1
-                )
+                exit_code = proc.returncode if proc.returncode is not None else -1
             except TimeoutError:
                 try:
                     proc.terminate()

@@ -1,32 +1,34 @@
+# ruff: noqa: PLR0911, PLR0912, PLR0915, S108, PTH110
 """Capability-based sandboxing and process isolation for AmberClaw plugins."""
 
+import contextlib
+import ctypes
 import os
 import sys
-import platform
-import ctypes
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
+
 from loguru import logger
 
-from amberclaw.security.network_policy import NetworkPolicy
-from amberclaw.security.egress_controller import apply_egress_patches, _egress_active, _egress_policy
+from amberclaw.security.egress_controller import (
+    _egress_active,
+    _egress_policy,
+    apply_egress_patches,
+)
 from amberclaw.security.landlock import (
-    IS_LINUX,
-    LandlockRulesetAttr,
-    LandlockPathBeneathAttr,
-    SYS_LANDLOCK_CREATE_RULESET,
-    SYS_LANDLOCK_ADD_RULE,
-    SYS_LANDLOCK_RESTRICT_SELF,
-    PR_SET_NO_NEW_PRIVS,
-    LANDLOCK_RULE_PATH_BENEATH,
-    ACCESS_FS_READ,
-    ACCESS_FS_WRITE,
     ACCESS_FS_ALL,
+    ACCESS_FS_READ,
+    IS_LINUX,
+    PR_SET_NO_NEW_PRIVS,
+    SYS_LANDLOCK_CREATE_RULESET,
+    SYS_LANDLOCK_RESTRICT_SELF,
+    LandlockRulesetAttr,
     _add_path_rule,
 )
+from amberclaw.security.network_policy import NetworkPolicy
 
 
-class PluginCapability(str, Enum):
+class PluginCapability(StrEnum):
     """Supported sandbox capabilities for third-party plugins."""
 
     FILESYSTEM_READ = "filesystem_read"
@@ -100,6 +102,13 @@ def apply_sandbox_with_capabilities(
         paths_read_only.append(sys.prefix)
         if hasattr(sys, "base_prefix"):
             paths_read_only.append(sys.base_prefix)
+        if hasattr(sys, "exec_prefix"):
+            paths_read_only.append(sys.exec_prefix)
+
+        # Allow reading all sys.path modules and virtualenv packages
+        for sp in sys.path:
+            if sp and os.path.exists(sp):
+                paths_read_only.append(str(Path(sp).resolve()))
 
         # Allow reading the plugin directory itself so it can import packages
         plugin_dir_str = str(Path(plugin_dir).resolve())
@@ -139,8 +148,6 @@ def apply_sandbox_with_capabilities(
         return True
     except Exception as e:
         logger.exception("Error applying Landlock restrictions: {}", e)
-        try:
+        with contextlib.suppress(Exception):
             os.close(ruleset_fd)
-        except Exception:
-            pass
         return False

@@ -19,6 +19,7 @@ try:
 except ImportError:
     Memory = None
 
+
 class MemoryManager:
     """Manages long-term conversational memory and facts using Mem0."""
 
@@ -30,6 +31,7 @@ class MemoryManager:
         self._memory = self._init_mem0()
 
         from amberclaw.memory.graph_memory import TemporalKnowledgeGraph
+
         self._graph = TemporalKnowledgeGraph(self.db_path)
 
     def _init_mem0(self) -> Any:
@@ -45,7 +47,7 @@ class MemoryManager:
                         "path": str(self.db_path),
                     },
                 },
-                "version": "v1.1", # Using v1+ features
+                "version": "v1.1",  # Using v1+ features
             }
             logger.info(f"Initializing Mem0 with {self.provider} at {self.db_path}")
             return Memory.from_config(config)

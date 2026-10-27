@@ -1,24 +1,41 @@
-site_name: AmberClaw Documentation
+site_name: AmberClaw AI OS Documentation
+site_description: Zero-Trust Open Agent Runtime for Private, Auditable AI Automation
+site_url: https://amberclaw.ai
+repo_url: https://github.com/krishujeniya/AmberClaw
+repo_name: krishujeniya/AmberClaw
+
 theme:
   name: material
+  palette:
+    scheme: slate
+    primary: deep orange
+    accent: amber
   features:
     - navigation.sections
     - navigation.top
     - search.suggest
     - search.highlight
     - navigation.indexes
+    - content.code.copy
+
 plugins:
   - search
   - mkdocstrings:
       default_handler: python
+
 nav:
   - Home: index.md
+  - Feature Matrix: ../FEATURE_MATRIX.md
   - Getting Started:
-    - Setup: setup.md
+    - Quickstart & Setup: setup.md
     - Windows Setup: windows-setup.md
-  - Architecture: architecture.md
+    - Local Deployment: LOCAL.md
+  - Architecture & Security:
+    - Zero-Trust Architecture: architecture.md
+    - Product Vision: ../.planning/PRODUCT_VISION.md
+    - Security Roadmap: ../.planning/SECURITY_ROADMAP.md
   - Guides:
+    - Building Agent Skills: skills.md
     - Troubleshooting: troubleshooting.md
-    - Building Skills: skills.md
-    - Comparisons: comparisons.md
+    - Ecosystem Comparisons: comparisons.md
   - API Reference: api.md

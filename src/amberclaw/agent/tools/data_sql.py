@@ -14,10 +14,12 @@ class SQLArgs(BaseModel):
     """Arguments for the data_sql_query tool."""
 
     connection_string: str = Field(
-        ..., description="SQLAlchemy connection string (e.g. 'sqlite:///data.db').",
+        ...,
+        description="SQLAlchemy connection string (e.g. 'sqlite:///data.db').",
     )
     instructions: str = Field(
-        ..., description="What to query (e.g. 'List all customers with >100 orders').",
+        ...,
+        description="What to query (e.g. 'List all customers with >100 orders').",
     )
 
 
@@ -60,7 +62,9 @@ class DataSQLTool(PydanticTool):
             )
             try:
                 await asyncio.to_thread(
-                    agent.invoke_agent, user_instructions=args.instructions, max_retries=2,
+                    agent.invoke_agent,
+                    user_instructions=args.instructions,
+                    max_retries=2,
                 )
 
                 data = agent.get_data_sql()
@@ -68,13 +72,16 @@ class DataSQLTool(PydanticTool):
 
                 if data is not None:
                     import pandas as pd
+
                     df = pd.DataFrame(data)
                     result = f"SQL Query:\n```sql\n{query}\n```\n\nResults ({len(df)} rows):\n{df.head(20).to_markdown(index=False)}"
                     if len(df) > 20:
                         result += f"\n\n... and {len(df) - 20} more rows."
                     return result
 
-                error = (agent.response or {}).get("sql_database_error", "Unknown error")
+                error = (agent.response or {}).get(
+                    "sql_database_error", "Unknown error"
+                )
                 return f"SQL query failed: {error}"
             finally:
                 conn.close()

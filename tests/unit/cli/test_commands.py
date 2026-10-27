@@ -143,14 +143,20 @@ def mock_agent_runtime(tmp_path):
     cron_dir = tmp_path / "data" / "cron"
 
     with (
-        patch("amberclaw.config.loader.load_config", return_value=config) as mock_load_config,
+        patch(
+            "amberclaw.config.loader.load_config", return_value=config
+        ) as mock_load_config,
         patch("amberclaw.providers.factory.make_provider", return_value=object()),
-        patch("amberclaw.utils.helpers.sync_workspace_templates") as mock_sync_templates,
+        patch(
+            "amberclaw.utils.helpers.sync_workspace_templates"
+        ) as mock_sync_templates,
         patch("amberclaw.config.paths.get_cron_dir", return_value=cron_dir),
         patch("amberclaw.cron.service.CronService"),
         patch("amberclaw.bus.queue.MessageBus"),
         patch("amberclaw.agent.loop.AgentLoop") as mock_agent_loop_cls,
-        patch("amberclaw.cli.commands.utils._print_agent_response") as mock_print_response,
+        patch(
+            "amberclaw.cli.commands.utils._print_agent_response"
+        ) as mock_print_response,
     ):
         agent_loop = MagicMock()
         agent_loop.channels_config = None
@@ -170,18 +176,21 @@ def mock_agent_runtime(tmp_path):
 
 def test_agent_help_shows_workspace_and_config_options():
     import re
+
     result = runner.invoke(app, ["agent", "--help"])
 
     assert result.exit_code == 0
     # Strip ANSI escape codes
-    clean_stdout = re.compile(r'\x1b[^m]*m').sub('', result.stdout)
+    clean_stdout = re.compile(r"\x1b[^m]*m").sub("", result.stdout)
     assert "--workspace" in clean_stdout
     assert "-w" in clean_stdout
     assert "--config" in clean_stdout
     assert "-c" in clean_stdout
 
 
-def test_agent_uses_default_config_when_no_workspace_or_config_flags(mock_agent_runtime):
+def test_agent_uses_default_config_when_no_workspace_or_config_flags(
+    mock_agent_runtime,
+):
     result = runner.invoke(app, ["agent", "-m", "hello"])
 
     assert result.exit_code == 0
@@ -194,7 +203,8 @@ def test_agent_uses_default_config_when_no_workspace_or_config_flags(mock_agent_
     )
     mock_agent_runtime["agent_loop"].process_direct.assert_awaited_once()
     mock_agent_runtime["print_response"].assert_called_once_with(
-        "mock-response", render_markdown=True,
+        "mock-response",
+        render_markdown=True,
     )
 
 
@@ -220,10 +230,18 @@ def test_agent_config_sets_active_path(monkeypatch, tmp_path: Path) -> None:
         "amberclaw.config.loader.set_config_path",
         lambda path: seen.__setitem__("config_path", path),
     )
-    monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
-    monkeypatch.setattr("amberclaw.config.paths.get_cron_dir", lambda: config_file.parent / "cron")
-    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None)
-    monkeypatch.setattr("amberclaw.providers.factory.make_provider", lambda _config: object())
+    monkeypatch.setattr(
+        "amberclaw.config.loader.load_config", lambda _path=None: config
+    )
+    monkeypatch.setattr(
+        "amberclaw.config.paths.get_cron_dir", lambda: config_file.parent / "cron"
+    )
+    monkeypatch.setattr(
+        "amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None
+    )
+    monkeypatch.setattr(
+        "amberclaw.providers.factory.make_provider", lambda _config: object()
+    )
     monkeypatch.setattr("amberclaw.bus.queue.MessageBus", lambda: object())
     monkeypatch.setattr("amberclaw.cron.service.CronService", lambda _store: object())
 
@@ -239,7 +257,8 @@ def test_agent_config_sets_active_path(monkeypatch, tmp_path: Path) -> None:
 
     monkeypatch.setattr("amberclaw.agent.loop.AgentLoop", _FakeAgentLoop)
     monkeypatch.setattr(
-        "amberclaw.cli.commands.utils._print_agent_response", lambda *_args, **_kwargs: None,
+        "amberclaw.cli.commands.utils._print_agent_response",
+        lambda *_args, **_kwargs: None,
     )
 
     result = runner.invoke(app, ["agent", "-m", "hello", "-c", str(config_file)])
@@ -256,10 +275,15 @@ def test_agent_overrides_workspace_path(mock_agent_runtime):
     assert result.exit_code == 0
     assert mock_agent_runtime["config"].agents.defaults.workspace == str(workspace_path)
     assert mock_agent_runtime["sync_templates"].call_args.args == (workspace_path,)
-    assert mock_agent_runtime["agent_loop_cls"].call_args.kwargs["workspace"] == workspace_path
+    assert (
+        mock_agent_runtime["agent_loop_cls"].call_args.kwargs["workspace"]
+        == workspace_path
+    )
 
 
-def test_agent_workspace_override_wins_over_config_workspace(mock_agent_runtime, tmp_path: Path):
+def test_agent_workspace_override_wins_over_config_workspace(
+    mock_agent_runtime, tmp_path: Path
+):
     config_path = tmp_path / "agent-config.json"
     config_path.write_text("{}")
     workspace_path = Path("/tmp/agent-workspace")
@@ -273,10 +297,15 @@ def test_agent_workspace_override_wins_over_config_workspace(mock_agent_runtime,
     assert mock_agent_runtime["load_config"].call_args.args == (config_path.resolve(),)
     assert mock_agent_runtime["config"].agents.defaults.workspace == str(workspace_path)
     assert mock_agent_runtime["sync_templates"].call_args.args == (workspace_path,)
-    assert mock_agent_runtime["agent_loop_cls"].call_args.kwargs["workspace"] == workspace_path
+    assert (
+        mock_agent_runtime["agent_loop_cls"].call_args.kwargs["workspace"]
+        == workspace_path
+    )
 
 
-def test_gateway_uses_workspace_from_config_by_default(monkeypatch, tmp_path: Path) -> None:
+def test_gateway_uses_workspace_from_config_by_default(
+    monkeypatch, tmp_path: Path
+) -> None:
     config_file = tmp_path / "instance" / "config.json"
     config_file.parent.mkdir(parents=True)
     config_file.write_text("{}")
@@ -289,9 +318,17 @@ def test_gateway_uses_workspace_from_config_by_default(monkeypatch, tmp_path: Pa
         "amberclaw.config.loader.set_config_path",
         lambda path: seen.__setitem__("config_path", path),
     )
-    monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
-    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda path: seen.__setitem__("workspace", path))
-    monkeypatch.setattr("amberclaw.providers.factory.make_provider", lambda _config: (_ for _ in ()).throw(_StopGateway("stop")))
+    monkeypatch.setattr(
+        "amberclaw.config.loader.load_config", lambda _path=None: config
+    )
+    monkeypatch.setattr(
+        "amberclaw.utils.helpers.sync_workspace_templates",
+        lambda path: seen.__setitem__("workspace", path),
+    )
+    monkeypatch.setattr(
+        "amberclaw.providers.factory.make_provider",
+        lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
+    )
 
     result = runner.invoke(app, ["gateway", "--config", str(config_file)])
 
@@ -311,9 +348,17 @@ def test_gateway_workspace_option_overrides_config(monkeypatch, tmp_path: Path) 
     seen: dict[str, Path] = {}
 
     monkeypatch.setattr("amberclaw.config.loader.set_config_path", lambda _path: None)
-    monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
-    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda path: seen.__setitem__("workspace", path))
-    monkeypatch.setattr("amberclaw.providers.factory.make_provider", lambda _config: (_ for _ in ()).throw(_StopGateway("stop")))
+    monkeypatch.setattr(
+        "amberclaw.config.loader.load_config", lambda _path=None: config
+    )
+    monkeypatch.setattr(
+        "amberclaw.utils.helpers.sync_workspace_templates",
+        lambda path: seen.__setitem__("workspace", path),
+    )
+    monkeypatch.setattr(
+        "amberclaw.providers.factory.make_provider",
+        lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
+    )
 
     result = runner.invoke(
         app,
@@ -325,7 +370,9 @@ def test_gateway_workspace_option_overrides_config(monkeypatch, tmp_path: Path) 
     assert config.workspace_path == override
 
 
-def test_gateway_uses_config_directory_for_cron_store(monkeypatch, tmp_path: Path) -> None:
+def test_gateway_uses_config_directory_for_cron_store(
+    monkeypatch, tmp_path: Path
+) -> None:
     config_file = tmp_path / "instance" / "config.json"
     config_file.parent.mkdir(parents=True)
     config_file.write_text("{}")
@@ -335,12 +382,22 @@ def test_gateway_uses_config_directory_for_cron_store(monkeypatch, tmp_path: Pat
     seen: dict[str, Path] = {}
 
     monkeypatch.setattr("amberclaw.config.loader.set_config_path", lambda _path: None)
-    monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
-    monkeypatch.setattr("amberclaw.config.paths.get_cron_dir", lambda: config_file.parent / "cron")
-    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None)
-    monkeypatch.setattr("amberclaw.providers.factory.make_provider", lambda _config: object())
+    monkeypatch.setattr(
+        "amberclaw.config.loader.load_config", lambda _path=None: config
+    )
+    monkeypatch.setattr(
+        "amberclaw.config.paths.get_cron_dir", lambda: config_file.parent / "cron"
+    )
+    monkeypatch.setattr(
+        "amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None
+    )
+    monkeypatch.setattr(
+        "amberclaw.providers.factory.make_provider", lambda _config: object()
+    )
     monkeypatch.setattr("amberclaw.bus.queue.MessageBus", lambda: object())
-    monkeypatch.setattr("amberclaw.session.manager.SessionManager", lambda _workspace: object())
+    monkeypatch.setattr(
+        "amberclaw.session.manager.SessionManager", lambda _workspace: object()
+    )
 
     class _StopCron:
         def __init__(self, store_path: Path) -> None:
@@ -355,7 +412,9 @@ def test_gateway_uses_config_directory_for_cron_store(monkeypatch, tmp_path: Pat
     assert seen["cron_store"] == config_file.parent / "cron" / "jobs.json"
 
 
-def test_gateway_uses_configured_port_when_cli_flag_is_missing(monkeypatch, tmp_path: Path) -> None:
+def test_gateway_uses_configured_port_when_cli_flag_is_missing(
+    monkeypatch, tmp_path: Path
+) -> None:
     config_file = tmp_path / "instance" / "config.json"
     config_file.parent.mkdir(parents=True)
     config_file.write_text("{}")
@@ -364,8 +423,12 @@ def test_gateway_uses_configured_port_when_cli_flag_is_missing(monkeypatch, tmp_
     config.gateway.port = 18791
 
     monkeypatch.setattr("amberclaw.config.loader.set_config_path", lambda _path: None)
-    monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
-    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None)
+    monkeypatch.setattr(
+        "amberclaw.config.loader.load_config", lambda _path=None: config
+    )
+    monkeypatch.setattr(
+        "amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None
+    )
     monkeypatch.setattr(
         "amberclaw.providers.factory.make_provider",
         lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
@@ -377,7 +440,9 @@ def test_gateway_uses_configured_port_when_cli_flag_is_missing(monkeypatch, tmp_
     assert "port 18791" in result.stdout
 
 
-def test_gateway_cli_port_overrides_configured_port(monkeypatch, tmp_path: Path) -> None:
+def test_gateway_cli_port_overrides_configured_port(
+    monkeypatch, tmp_path: Path
+) -> None:
     config_file = tmp_path / "instance" / "config.json"
     config_file.parent.mkdir(parents=True)
     config_file.write_text("{}")
@@ -386,14 +451,52 @@ def test_gateway_cli_port_overrides_configured_port(monkeypatch, tmp_path: Path)
     config.gateway.port = 18791
 
     monkeypatch.setattr("amberclaw.config.loader.set_config_path", lambda _path: None)
-    monkeypatch.setattr("amberclaw.config.loader.load_config", lambda _path=None: config)
-    monkeypatch.setattr("amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None)
+    monkeypatch.setattr(
+        "amberclaw.config.loader.load_config", lambda _path=None: config
+    )
+    monkeypatch.setattr(
+        "amberclaw.utils.helpers.sync_workspace_templates", lambda _path: None
+    )
     monkeypatch.setattr(
         "amberclaw.providers.factory.make_provider",
         lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
     )
 
-    result = runner.invoke(app, ["gateway", "--config", str(config_file), "--port", "18792"])
+    result = runner.invoke(
+        app, ["gateway", "--config", str(config_file), "--port", "18792"]
+    )
 
     assert isinstance(result.exception, _StopGateway)
     assert "port 18792" in result.stdout
+
+
+def test_cli_tui_command():
+    result = runner.invoke(app, ["tui", "--theme", "ocean"])
+    assert result.exit_code == 0
+    assert "AmberClaw AI OS" in result.stdout
+
+
+def test_cli_org_show_command():
+    result = runner.invoke(app, ["org", "show"])
+    assert result.exit_code == 0
+    assert "Organizational Hierarchy" in result.stdout
+    assert "admin" in result.stdout
+    assert "lead_eng" in result.stdout
+
+
+def test_cli_org_delegate_command():
+    result_allowed = runner.invoke(app, ["org", "delegate", "lead_eng", "dev_1"])
+    assert result_allowed.exit_code == 0
+    assert "Delegation ALLOWED" in result_allowed.stdout
+
+    result_denied = runner.invoke(app, ["org", "delegate", "dev_1", "lead_sales"])
+    assert result_denied.exit_code == 0
+    assert "Delegation DENIED" in result_denied.stdout
+
+
+def test_cli_org_escalate_command():
+    result = runner.invoke(app, ["org", "escalate", "dev_1"])
+    assert result.exit_code == 0
+    assert "Escalation chain" in result.stdout
+    assert "lead_eng" in result.stdout
+    assert "admin" in result.stdout

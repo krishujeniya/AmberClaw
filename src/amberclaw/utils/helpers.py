@@ -86,7 +86,9 @@ def sync_workspace_templates(workspace: Path, silent: bool = False) -> list[str]
         if dest.exists():
             return
         dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text(src.read_text(encoding="utf-8") if src else "", encoding="utf-8")
+        dest.write_text(
+            src.read_text(encoding="utf-8") if src else "", encoding="utf-8"
+        )
         added.append(str(dest.relative_to(workspace)))
 
     for item in tpl.iterdir():

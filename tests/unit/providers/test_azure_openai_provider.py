@@ -99,7 +99,10 @@ def test_prepare_request_payload():
 
     messages = [{"role": "user", "content": "Hello"}]
     payload = provider._prepare_request_payload(
-        "gpt-4o", messages, max_tokens=1500, temperature=0.8,
+        "gpt-4o",
+        messages,
+        max_tokens=1500,
+        temperature=0.8,
     )
 
     assert payload["messages"] == messages
@@ -110,14 +113,20 @@ def test_prepare_request_payload():
     assert "tools" not in payload
 
     # Test with tools
-    tools = [{"type": "function", "function": {"name": "get_weather", "parameters": {}}}]
-    payload_with_tools = provider._prepare_request_payload("gpt-4o", messages, tools=tools)
+    tools = [
+        {"type": "function", "function": {"name": "get_weather", "parameters": {}}}
+    ]
+    payload_with_tools = provider._prepare_request_payload(
+        "gpt-4o", messages, tools=tools
+    )
     assert payload_with_tools["tools"] == tools
     assert payload_with_tools["tool_choice"] == "auto"
 
     # Test with reasoning_effort
     payload_with_reasoning = provider._prepare_request_payload(
-        "gpt-5-chat", messages, reasoning_effort="medium",
+        "gpt-5-chat",
+        messages,
+        reasoning_effort="medium",
     )
     assert payload_with_reasoning["reasoning_effort"] == "medium"
     assert "temperature" not in payload_with_reasoning
@@ -134,7 +143,9 @@ def test_prepare_request_payload_sanitizes_messages():
     messages = [
         {
             "role": "assistant",
-            "tool_calls": [{"id": "call_123", "type": "function", "function": {"name": "x"}}],
+            "tool_calls": [
+                {"id": "call_123", "type": "function", "function": {"name": "x"}}
+            ],
             "reasoning_content": "hidden chain-of-thought",
         },
         {
@@ -152,7 +163,9 @@ def test_prepare_request_payload_sanitizes_messages():
         {
             "role": "assistant",
             "content": None,
-            "tool_calls": [{"id": "call_123", "type": "function", "function": {"name": "x"}}],
+            "tool_calls": [
+                {"id": "call_123", "type": "function", "function": {"name": "x"}}
+            ],
         },
         {
             "role": "tool",
@@ -176,7 +189,10 @@ async def test_chat_success():
     mock_response_data = {
         "choices": [
             {
-                "message": {"content": "Hello! How can I help you today?", "role": "assistant"},
+                "message": {
+                    "content": "Hello! How can I help you today?",
+                    "role": "assistant",
+                },
                 "finish_reason": "stop",
             },
         ],
@@ -220,7 +236,10 @@ async def test_chat_uses_default_model_when_no_model_provided():
 
     mock_response_data = {
         "choices": [
-            {"message": {"content": "Response", "role": "assistant"}, "finish_reason": "stop"},
+            {
+                "message": {"content": "Response", "role": "assistant"},
+                "finish_reason": "stop",
+            },
         ],
         "usage": {"prompt_tokens": 5, "completion_tokens": 5, "total_tokens": 10},
     }
@@ -285,7 +304,9 @@ async def test_chat_with_tool_calls():
         mock_client.return_value.__aenter__.return_value = mock_context
 
         messages = [{"role": "user", "content": "What's the weather?"}]
-        tools = [{"type": "function", "function": {"name": "get_weather", "parameters": {}}}]
+        tools = [
+            {"type": "function", "function": {"name": "get_weather", "parameters": {}}}
+        ]
         result = await provider.chat(messages, tools=tools, model="weather-model")
 
         assert isinstance(result, LLMResponse)
@@ -341,7 +362,10 @@ async def test_chat_connection_error():
         result = await provider.chat(messages)
 
         assert isinstance(result, LLMResponse)
-        assert "Error calling Azure OpenAI: Exception('Connection failed')" in result.content
+        assert (
+            "Error calling Azure OpenAI: Exception('Connection failed')"
+            in result.content
+        )
         assert result.finish_reason == "error"
 
 
@@ -399,7 +423,9 @@ if __name__ == "__main__":
 
     # Test payload preparation
     messages = [{"role": "user", "content": "Test"}]
-    payload = provider._prepare_request_payload("gpt-4o-deployment", messages, max_tokens=1000)
+    payload = provider._prepare_request_payload(
+        "gpt-4o-deployment", messages, max_tokens=1000
+    )
     assert payload["max_completion_tokens"] == 1000  # Azure 2024-10-21 format
     print("✅ Payload preparation works correctly")
 

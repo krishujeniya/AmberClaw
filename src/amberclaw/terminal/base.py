@@ -6,12 +6,10 @@ class BaseTerminalBackend(ABC):
     """Abstract base class for all terminal execution backends."""
 
     @abstractmethod
-    async def execute_bash(
-        self, command: str, timeout: int = 30
-    ) -> dict[str, Any]:
+    async def execute_bash(self, command: str, timeout: int = 30) -> dict[str, Any]:
         """
         Execute a bash command in the target environment.
-        
+
         Returns a dict containing:
         - stdout (str)
         - stderr (str)
@@ -29,7 +27,7 @@ class BaseTerminalBackend(ABC):
     ) -> dict[str, Any]:
         """
         Execute Python code in the target environment.
-        
+
         Returns a dict containing:
         - stdout (str)
         - stderr (str)

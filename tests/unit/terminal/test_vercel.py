@@ -12,7 +12,9 @@ async def test_vercel_connect_success() -> None:
     mock_sandbox = AsyncMock()
     mock_sandbox.sandbox_id = "test-sandbox-id"
 
-    with patch("vercel.sandbox.AsyncSandbox.create", return_value=mock_sandbox) as mock_create:
+    with patch(
+        "vercel.sandbox.AsyncSandbox.create", return_value=mock_sandbox
+    ) as mock_create:
         backend = VercelTerminalBackend(
             workspace_dir="/dummy/workspace",
             runtime="python3.13",
@@ -37,7 +39,9 @@ async def test_vercel_connect_success() -> None:
 @pytest.mark.asyncio
 async def test_vercel_connect_error() -> None:
     """Test connection error propagating correctly."""
-    with patch("vercel.sandbox.AsyncSandbox.create", side_effect=Exception("API Error")):
+    with patch(
+        "vercel.sandbox.AsyncSandbox.create", side_effect=Exception("API Error")
+    ):
         backend = VercelTerminalBackend(workspace_dir="/dummy/workspace")
         with pytest.raises(Exception, match="API Error"):
             await backend.connect()
@@ -72,12 +76,16 @@ async def test_vercel_sync_workspace() -> None:
     """Test directory detection, remote creation, and file uploads."""
     mock_sandbox = AsyncMock()
 
-    with patch("vercel.sandbox.AsyncSandbox.create", return_value=mock_sandbox), \
-         patch("os.walk") as mock_walk, \
-         patch("pathlib.Path.exists", return_value=True), \
-         patch("pathlib.Path.open") as mock_open, \
-         patch("amberclaw.terminal.vercel.VercelTerminalBackend._get_file_hash", return_value="dummy_hash"):
-
+    with (
+        patch("vercel.sandbox.AsyncSandbox.create", return_value=mock_sandbox),
+        patch("os.walk") as mock_walk,
+        patch("pathlib.Path.exists", return_value=True),
+        patch("pathlib.Path.open") as mock_open,
+        patch(
+            "amberclaw.terminal.vercel.VercelTerminalBackend._get_file_hash",
+            return_value="dummy_hash",
+        ),
+    ):
         # Mock directory structure: 1 nested file
         mock_walk.return_value = [("/dummy/workspace", [], ["sub/file.txt"])]
 
@@ -92,12 +100,14 @@ async def test_vercel_sync_workspace() -> None:
         # Check directories are created (subdir "sub" of "sub/file.txt")
         mock_sandbox.mk_dir.assert_called_once_with("sub")
         # Check files are uploaded
-        mock_sandbox.write_files.assert_called_once_with([
-            {
-                "path": "sub/file.txt",
-                "content": b"file contents",
-            }
-        ])
+        mock_sandbox.write_files.assert_called_once_with(
+            [
+                {
+                    "path": "sub/file.txt",
+                    "content": b"file contents",
+                }
+            ]
+        )
 
 
 @pytest.mark.asyncio
@@ -114,9 +124,13 @@ async def test_vercel_execute_bash() -> None:
     mock_sandbox = AsyncMock()
     mock_sandbox.run_command_detached.return_value = mock_cmd
 
-    with patch("vercel.sandbox.AsyncSandbox.create", return_value=mock_sandbox), \
-         patch("amberclaw.terminal.vercel.VercelTerminalBackend._sync_workspace", new_callable=AsyncMock):
-
+    with (
+        patch("vercel.sandbox.AsyncSandbox.create", return_value=mock_sandbox),
+        patch(
+            "amberclaw.terminal.vercel.VercelTerminalBackend._sync_workspace",
+            new_callable=AsyncMock,
+        ),
+    ):
         backend = VercelTerminalBackend(workspace_dir="/dummy/workspace")
         backend.sandbox = mock_sandbox
         backend._connected = True
@@ -126,7 +140,9 @@ async def test_vercel_execute_bash() -> None:
         assert result["stderr"] == ""
         assert result["exit_code"] == 0
         assert "execution_time_ms" in result
-        mock_sandbox.run_command_detached.assert_called_once_with("bash", ["-c", "echo 'hello'"])
+        mock_sandbox.run_command_detached.assert_called_once_with(
+            "bash", ["-c", "echo 'hello'"]
+        )
 
 
 @pytest.mark.asyncio
@@ -143,13 +159,19 @@ async def test_vercel_execute_python() -> None:
     mock_sandbox = AsyncMock()
     mock_sandbox.run_command_detached.return_value = mock_cmd
 
-    with patch("vercel.sandbox.AsyncSandbox.create", return_value=mock_sandbox), \
-         patch("amberclaw.terminal.vercel.VercelTerminalBackend._sync_workspace", new_callable=AsyncMock):
-
+    with (
+        patch("vercel.sandbox.AsyncSandbox.create", return_value=mock_sandbox),
+        patch(
+            "amberclaw.terminal.vercel.VercelTerminalBackend._sync_workspace",
+            new_callable=AsyncMock,
+        ),
+    ):
         backend = VercelTerminalBackend(workspace_dir="/dummy/workspace")
         backend.sandbox = mock_sandbox
         backend._connected = True
-        result = await backend.execute_python("print('hello')", timeout=15, env={"X": "1"})
+        result = await backend.execute_python(
+            "print('hello')", timeout=15, env={"X": "1"}
+        )
 
         assert result["stdout"] == "py success"
         assert result["exit_code"] == 0
@@ -173,9 +195,13 @@ async def test_vercel_timeout_handling() -> None:
     mock_sandbox = AsyncMock()
     mock_sandbox.run_command_detached.return_value = mock_cmd
 
-    with patch("vercel.sandbox.AsyncSandbox.create", return_value=mock_sandbox), \
-         patch("amberclaw.terminal.vercel.VercelTerminalBackend._sync_workspace", new_callable=AsyncMock):
-
+    with (
+        patch("vercel.sandbox.AsyncSandbox.create", return_value=mock_sandbox),
+        patch(
+            "amberclaw.terminal.vercel.VercelTerminalBackend._sync_workspace",
+            new_callable=AsyncMock,
+        ),
+    ):
         backend = VercelTerminalBackend(workspace_dir="/dummy/workspace")
         backend.sandbox = mock_sandbox
         backend._connected = True

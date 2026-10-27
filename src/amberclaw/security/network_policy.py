@@ -41,7 +41,8 @@ class NetworkPolicy:
                 base = host[2:]
                 escaped_base = re.escape(base)
                 pattern = re.compile(
-                    r"^(.*\.)?" + escaped_base + r"$", re.IGNORECASE,
+                    r"^(.*\.)?" + escaped_base + r"$",
+                    re.IGNORECASE,
                 )
             else:
                 escaped = re.escape(host).replace(r"\*", ".*")
@@ -59,7 +60,8 @@ class NetworkPolicy:
                     base = host[2:]
                     escaped_base = re.escape(base)
                     pattern = re.compile(
-                        r"^(.*\.)?" + escaped_base + r"$", re.IGNORECASE,
+                        r"^(.*\.)?" + escaped_base + r"$",
+                        re.IGNORECASE,
                     )
                 else:
                     escaped = re.escape(host).replace(r"\*", ".*")
@@ -120,7 +122,9 @@ class NetworkPolicy:
             },
         )
 
-    def is_allowed(self, host: str, port: int, binary_context: str | None = None) -> bool:
+    def is_allowed(
+        self, host: str, port: int, binary_context: str | None = None
+    ) -> bool:
         """Evaluate if the given host and port are allowed by the policy."""
         # 1. TLS-only check
         if self.enforce_tls_only and port != HTTPS_PORT:
@@ -135,7 +139,10 @@ class NetworkPolicy:
 
             allowed_hosts = rules.get("allowed_hosts", [])
             is_allowed_host = host.lower() in (h.lower() for h in allowed_hosts)
-            return is_allowed_host or any(pattern.match(host) for pattern in self._compiled_binary_patterns.get(binary_context, []))
+            return is_allowed_host or any(
+                pattern.match(host)
+                for pattern in self._compiled_binary_patterns.get(binary_context, [])
+            )
 
         # 3. Port check
         if port not in self.allowed_ports:
@@ -143,4 +150,6 @@ class NetworkPolicy:
 
         # 4. Host check
         is_exact_allowed = host.lower() in (h.lower() for h in self.allowed_hosts)
-        return is_exact_allowed or any(pattern.match(host) for pattern in self._compiled_patterns)
+        return is_exact_allowed or any(
+            pattern.match(host) for pattern in self._compiled_patterns
+        )

@@ -84,7 +84,9 @@ async def test_supervisor_health_monitor_diagnostics(tmp_path: Path):
     bus = MessageBus()
     nonexistent_path = tmp_path / "nonexistent_amberclaw_path"
     supervisor = ClawOSSupervisor(
-        bus=bus, workspace=nonexistent_path, check_interval_s=0.05,
+        bus=bus,
+        workspace=nonexistent_path,
+        check_interval_s=0.05,
     )
 
     # With no API keys in environment and non-existent workspace,

@@ -1,3 +1,4 @@
+# ruff: noqa: PLW0603
 """Redis client pool and initialization helper."""
 
 import redis.asyncio as aioredis

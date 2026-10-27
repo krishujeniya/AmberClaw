@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1.4
+FROM python:3.11-slim as builder
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project --no-dev
+
+# ---------------------------------------------------
+FROM python:3.11-slim as runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    libseccomp2 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g 10002 sandbox && \
+    useradd -u 10002 -g sandbox -s /bin/bash -m sandbox
+
+WORKDIR /sandbox
+
+COPY --from=builder --chown=sandbox:sandbox /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+COPY --chown=sandbox:sandbox src/ ./src/
+COPY --chown=sandbox:sandbox pyproject.toml ./
+
+USER 10002:10002
+
+ENTRYPOINT ["python", "-m", "amberclaw.security.sandbox"]

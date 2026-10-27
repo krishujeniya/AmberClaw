@@ -13,9 +13,21 @@ logger = logging.getLogger(__name__)
 class DockerTerminalBackend(BaseTerminalBackend):
     """Docker execution backend with strict sandbox limits (no network, cpu/mem capped)."""
 
-    def __init__(self, workspace_dir: str, image: str = "python:3.11-slim"):
+    def __init__(
+        self,
+        workspace_dir: str,
+        image: str = "python:3.11-slim",
+        gpu: bool = False,
+        gpu_type: str = "nvidia",
+    ):
         self.workspace_dir = str(Path(workspace_dir).resolve())
         self.image = image
+        self.gpu = gpu
+        self.gpu_type = gpu_type
+        if self.gpu_type not in ("nvidia", "rocm"):
+            raise ValueError(
+                f"Unsupported gpu_type: {self.gpu_type}. Must be 'nvidia' or 'rocm'."
+            )
         self.container_name = f"amberclaw-sandbox-{uuid.uuid4().hex[:12]}"
         self.container_running = False
         self._lock = asyncio.Lock()
@@ -78,20 +90,36 @@ class DockerTerminalBackend(BaseTerminalBackend):
                 "1.0",
                 "--read-only",
                 "--security-opt=no-new-privileges",
-                "-v",
-                f"{self.workspace_dir}:/workspace",
-                "-w",
-                "/workspace",
-                "--tmpfs",
-                "/tmp:rw,noexec,nosuid,size=64m",  # noqa: S108
-                "--cap-drop=ALL",
-                "--user",
-                "1000:1000",
-                self.image,
-                "tail",
-                "-f",
-                "/dev/null",
             ]
+            if self.gpu:
+                if self.gpu_type == "nvidia":
+                    run_cmd.append("--gpus=all")
+                elif self.gpu_type == "rocm":
+                    run_cmd.extend(
+                        [
+                            "--device=/dev/kfd",
+                            "--device=/dev/dri",
+                            "--group-add=video",
+                            "--ipc=host",
+                        ]
+                    )
+            run_cmd.extend(
+                [
+                    "-v",
+                    f"{self.workspace_dir}:/workspace",
+                    "-w",
+                    "/workspace",
+                    "--tmpfs",
+                    "/tmp:rw,noexec,nosuid,size=64m",  # noqa: S108
+                    "--cap-drop=ALL",
+                    "--user",
+                    "1000:1000",
+                    self.image,
+                    "tail",
+                    "-f",
+                    "/dev/null",
+                ]
+            )
 
             proc = await asyncio.create_subprocess_exec(
                 *run_cmd,
@@ -103,9 +131,7 @@ class DockerTerminalBackend(BaseTerminalBackend):
             if proc.returncode != 0:
                 err_msg = stderr.decode().strip()
                 logger.error("Failed to start Docker container: %s", err_msg)
-                raise RuntimeError(
-                    f"Docker container start failed: {err_msg}"
-                )
+                raise RuntimeError(f"Docker container start failed: {err_msg}")
 
             self.container_running = True
             try:
@@ -164,9 +190,7 @@ class DockerTerminalBackend(BaseTerminalBackend):
         async with self._lock:
             await self._stop_container()
 
-    async def execute_bash(
-        self, command: str, timeout: int = 30
-    ) -> dict[str, Any]:
+    async def execute_bash(self, command: str, timeout: int = 30) -> dict[str, Any]:
         """Execute a bash command in the Docker container."""
         if not self.container_running:
             await self.start()
@@ -187,9 +211,7 @@ class DockerTerminalBackend(BaseTerminalBackend):
                     proc.communicate(input=command.encode()),
                     timeout=timeout,
                 )
-                exit_code = (
-                    proc.returncode if proc.returncode is not None else -1
-                )
+                exit_code = proc.returncode if proc.returncode is not None else -1
             except TimeoutError:
                 # Timeout occurred, terminate/kill the exec process
                 try:
@@ -243,9 +265,7 @@ class DockerTerminalBackend(BaseTerminalBackend):
                     proc.communicate(input=code.encode()),
                     timeout=timeout,
                 )
-                exit_code = (
-                    proc.returncode if proc.returncode is not None else -1
-                )
+                exit_code = proc.returncode if proc.returncode is not None else -1
             except TimeoutError:
                 try:
                     proc.terminate()
@@ -332,7 +352,7 @@ class DockerTerminalBackend(BaseTerminalBackend):
 
     def __del__(self) -> None:
         # Destructor tries to run async task to clean up container
-        if self.container_running:
+        if getattr(self, "container_running", False):
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():

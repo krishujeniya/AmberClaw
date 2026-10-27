@@ -159,9 +159,23 @@ class LLMProvider(ABC):
         """
         pass
 
+    def get_capabilities(self, model: str | None = None) -> Any:
+        """Get capability contract for model."""
+        from amberclaw.providers.capabilities import detect_capabilities
+
+        target_model = model or self.get_default_model()
+        return detect_capabilities(target_model)
+
     @classmethod
     def _is_transient_error(cls, content: str | None) -> bool:
-        err = (content or "").lower()
+        if not content:
+            return False
+        from amberclaw.providers.errors import normalize_provider_error
+
+        norm = normalize_provider_error(content)
+        if norm.is_retryable:
+            return True
+        err = content.lower()
         return any(marker in err for marker in cls._TRANSIENT_ERROR_MARKERS)
 
     async def chat_with_retry(
@@ -219,19 +233,38 @@ class LLMProvider(ABC):
                             malformed = True
                             break
                     if malformed and attempt < num_retries:
-                        logger.warning("Malformed JSON in tool call, retrying with correction prompt...")
+                        logger.warning(
+                            "Malformed JSON in tool call, retrying with correction prompt..."
+                        )
                         correction_msg = {
                             "role": "user",
                             "content": "Your previous tool call contained malformed JSON. Please correct it and output strictly valid JSON without any markdown formatting.",
                         }
-                        messages = messages + [{"role": "assistant", "content": response.content or "", "tool_calls": [
-                            {"id": tc.id, "type": "function", "function": {"name": tc.name, "arguments": str(tc.arguments)}} for tc in response.tool_calls
-                        ]}, correction_msg]
+                        messages = messages + [
+                            {
+                                "role": "assistant",
+                                "content": response.content or "",
+                                "tool_calls": [
+                                    {
+                                        "id": tc.id,
+                                        "type": "function",
+                                        "function": {
+                                            "name": tc.name,
+                                            "arguments": str(tc.arguments),
+                                        },
+                                    }
+                                    for tc in response.tool_calls
+                                ],
+                            },
+                            correction_msg,
+                        ]
                         continue
                     return response
 
                 # If we're on the last attempt for this model, or if error is not transient, break to next model
-                if attempt >= num_retries or not self._is_transient_error(response.content):
+                if attempt >= num_retries or not self._is_transient_error(
+                    response.content
+                ):
                     break
 
                 delay = self._CHAT_RETRY_DELAYS[attempt]
@@ -246,7 +279,9 @@ class LLMProvider(ABC):
                 )
                 await asyncio.sleep(delay)
 
-            logger.warning("Primary model {} failed, checking fallbacks...", current_model)
+            logger.warning(
+                "Primary model {} failed, checking fallbacks...", current_model
+            )
 
         if last_response:
             return last_response

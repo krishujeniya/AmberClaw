@@ -25,12 +25,10 @@ services:
     networks:
       - amberclaw-net
 
-  # Vector DB for long-term memory
+  # Vector DB for long-term memory (private network only, no host port exposure)
   chromadb:
-    image: chromadb/chroma:latest
+    image: chromadb/chroma:0.4.22
     container_name: amberclaw_memory_db
-    ports:
-      - "8001:8000"
     volumes:
       - ./data/chroma:/chroma/chroma
     environment:

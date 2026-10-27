@@ -1,9 +1,10 @@
 """Unit tests for prompt caching and dynamic breakpoints in LiteLLMProvider."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from amberclaw.providers.litellm_provider import LiteLLMProvider
-from amberclaw.providers.registry import ProviderSpec
 
 
 @pytest.fixture
@@ -16,12 +17,12 @@ def test_supports_cache_control_flag():
     provider_enabled = LiteLLMProvider(
         api_key="test-key",
         default_model="anthropic/claude-3-5-sonnet",
-        enable_prompt_caching=True
+        enable_prompt_caching=True,
     )
     provider_disabled = LiteLLMProvider(
         api_key="test-key",
         default_model="anthropic/claude-3-5-sonnet",
-        enable_prompt_caching=False
+        enable_prompt_caching=False,
     )
 
     # Mock capabilities to support caching
@@ -31,15 +32,20 @@ def test_supports_cache_control_flag():
     provider_enabled.get_capabilities = MagicMock(side_effect=mock_get_capabilities)
     provider_disabled.get_capabilities = MagicMock(side_effect=mock_get_capabilities)
 
-    assert provider_enabled._supports_cache_control("anthropic/claude-3-5-sonnet") is True
-    assert provider_disabled._supports_cache_control("anthropic/claude-3-5-sonnet") is False
+    assert (
+        provider_enabled._supports_cache_control("anthropic/claude-3-5-sonnet") is True
+    )
+    assert (
+        provider_disabled._supports_cache_control("anthropic/claude-3-5-sonnet")
+        is False
+    )
 
 
 def test_apply_cache_control_breakpoints():
     provider = LiteLLMProvider(
         api_key="test-key",
         default_model="anthropic/claude-3-5-sonnet",
-        enable_prompt_caching=True
+        enable_prompt_caching=True,
     )
 
     messages = [
@@ -51,9 +57,7 @@ def test_apply_cache_control_breakpoints():
         {"role": "user", "content": "What should I do? (Turn 5)"},
     ]
 
-    tools = [
-        {"name": "get_weather", "description": "Get current weather"}
-    ]
+    tools = [{"name": "get_weather", "description": "Get current weather"}]
 
     new_msgs, new_tools = provider._apply_cache_control(messages, tools)
 
@@ -81,16 +85,20 @@ async def test_openrouter_edge_cache_header(mock_litellm):
         api_key="sk-or-testkey",
         default_model="anthropic/claude-3-5-sonnet",
         provider_name="openrouter",
-        enable_prompt_caching=True
+        enable_prompt_caching=True,
     )
 
     # Mock acompletion
     mock_response = MagicMock()
     mock_response.choices = [
-        MagicMock(message=MagicMock(content="Hello", tool_calls=[]), finish_reason="stop")
+        MagicMock(
+            message=MagicMock(content="Hello", tool_calls=[]), finish_reason="stop"
+        )
     ]
 
-    with patch("amberclaw.providers.litellm_provider.acompletion", new_callable=AsyncMock) as mock_acompletion:
+    with patch(
+        "amberclaw.providers.litellm_provider.acompletion", new_callable=AsyncMock
+    ) as mock_acompletion:
         mock_acompletion.return_value = mock_response
 
         messages = [{"role": "user", "content": "Hello"}]

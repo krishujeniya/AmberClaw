@@ -10,7 +10,9 @@ from amberclaw.governance.tickets import TicketStatus, tickets
 
 @pytest.mark.anyio
 async def test_governance_board_auto_approve():
-    board = GovernanceBoard(require_human_approval_above=RiskLevel.HIGH, max_auto_budget=10.0)
+    board = GovernanceBoard(
+        require_human_approval_above=RiskLevel.HIGH, max_auto_budget=10.0
+    )
     proposal = ActionProposal(
         action_id="act_001",
         agent_id="agent_test",
@@ -24,7 +26,9 @@ async def test_governance_board_auto_approve():
 
 @pytest.mark.anyio
 async def test_governance_board_high_risk_requires_approval():
-    board = GovernanceBoard(require_human_approval_above=RiskLevel.HIGH, max_auto_budget=10.0)
+    board = GovernanceBoard(
+        require_human_approval_above=RiskLevel.HIGH, max_auto_budget=10.0
+    )
     proposal = ActionProposal(
         action_id="act_002",
         agent_id="agent_test",
@@ -45,7 +49,9 @@ async def test_governance_board_high_risk_requires_approval():
     assert ticket.context["proposal_id"] == "act_002"
 
     # Resolve the ticket as approved
-    tickets.resolve_ticket(ticket.id, TicketStatus.APPROVED, reviewer_id="operator_test")
+    tickets.resolve_ticket(
+        ticket.id, TicketStatus.APPROVED, reviewer_id="operator_test"
+    )
 
     # Await the result of evaluation
     result = await task
@@ -54,7 +60,9 @@ async def test_governance_board_high_risk_requires_approval():
 
 @pytest.mark.anyio
 async def test_governance_board_high_risk_rejected():
-    board = GovernanceBoard(require_human_approval_above=RiskLevel.HIGH, max_auto_budget=10.0)
+    board = GovernanceBoard(
+        require_human_approval_above=RiskLevel.HIGH, max_auto_budget=10.0
+    )
     proposal = ActionProposal(
         action_id="act_003",
         agent_id="agent_test",
@@ -68,10 +76,14 @@ async def test_governance_board_high_risk_rejected():
 
     pending_tickets = tickets.get_pending_tickets()
     # Find the ticket created for this proposal
-    ticket = next(t for t in pending_tickets if t.context.get("proposal_id") == "act_003")
+    ticket = next(
+        t for t in pending_tickets if t.context.get("proposal_id") == "act_003"
+    )
 
     # Resolve the ticket as rejected
-    tickets.resolve_ticket(ticket.id, TicketStatus.REJECTED, reviewer_id="operator_test")
+    tickets.resolve_ticket(
+        ticket.id, TicketStatus.REJECTED, reviewer_id="operator_test"
+    )
 
     result = await task
     assert result is False
@@ -79,7 +91,9 @@ async def test_governance_board_high_risk_rejected():
 
 @pytest.mark.anyio
 async def test_governance_board_budget_exceeded():
-    board = GovernanceBoard(require_human_approval_above=RiskLevel.HIGH, max_auto_budget=1.0)
+    board = GovernanceBoard(
+        require_human_approval_above=RiskLevel.HIGH, max_auto_budget=1.0
+    )
     proposal = ActionProposal(
         action_id="act_004",
         agent_id="agent_test",
@@ -92,10 +106,14 @@ async def test_governance_board_budget_exceeded():
     await asyncio.sleep(0.1)
 
     pending_tickets = tickets.get_pending_tickets()
-    ticket = next(t for t in pending_tickets if t.context.get("proposal_id") == "act_004")
+    ticket = next(
+        t for t in pending_tickets if t.context.get("proposal_id") == "act_004"
+    )
 
     # Resolve the ticket as approved
-    tickets.resolve_ticket(ticket.id, TicketStatus.APPROVED, reviewer_id="operator_test")
+    tickets.resolve_ticket(
+        ticket.id, TicketStatus.APPROVED, reviewer_id="operator_test"
+    )
 
     result = await task
     assert result is True

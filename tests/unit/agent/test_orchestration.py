@@ -36,7 +36,9 @@ async def test_subagent_orchestration_coder_role():
         brave_api_key="fake-key",
     )
 
-    with patch("amberclaw.agent.subagent.AgentGraph", side_effect=MockAgentGraph) as mock_graph_cls:
+    with patch(
+        "amberclaw.agent.subagent.AgentGraph", side_effect=MockAgentGraph
+    ) as mock_graph_cls:
         await manager._run_subagent(
             task_id="test-coder",
             task="Write a python script",
@@ -72,7 +74,9 @@ async def test_subagent_orchestration_researcher_role():
         brave_api_key="fake-key",
     )
 
-    with patch("amberclaw.agent.subagent.AgentGraph", side_effect=MockAgentGraph) as mock_graph_cls:
+    with patch(
+        "amberclaw.agent.subagent.AgentGraph", side_effect=MockAgentGraph
+    ) as mock_graph_cls:
         await manager._run_subagent(
             task_id="test-researcher",
             task="Find the latest news",
@@ -107,7 +111,9 @@ async def test_subagent_orchestration_reader_role():
         bus=bus,
     )
 
-    with patch("amberclaw.agent.subagent.AgentGraph", side_effect=MockAgentGraph) as mock_graph_cls:
+    with patch(
+        "amberclaw.agent.subagent.AgentGraph", side_effect=MockAgentGraph
+    ) as mock_graph_cls:
         await manager._run_subagent(
             task_id="test-reader",
             task="Read config file",
@@ -143,7 +149,9 @@ async def test_subagent_orchestration_general_role():
         brave_api_key="fake-key",
     )
 
-    with patch("amberclaw.agent.subagent.AgentGraph", side_effect=MockAgentGraph) as mock_graph_cls:
+    with patch(
+        "amberclaw.agent.subagent.AgentGraph", side_effect=MockAgentGraph
+    ) as mock_graph_cls:
         await manager._run_subagent(
             task_id="test-general",
             task="Do everything",

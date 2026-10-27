@@ -65,7 +65,9 @@ async def test_skill_creator_above_turns_threshold(tmp_path: Path):
         assert "name: test-skill" in content
 
         # Check workspace path content
-        workspace_path = tmp_path / "skills" / "auto-created" / "test-skill" / "SKILL.md"
+        workspace_path = (
+            tmp_path / "skills" / "auto-created" / "test-skill" / "SKILL.md"
+        )
         assert workspace_path.exists()
         assert workspace_path.read_text(encoding="utf-8") == content
 
@@ -82,7 +84,9 @@ async def test_skill_creator_above_tools_threshold(tmp_path: Path):
         "# Skill: Many Tools\n"
     )
     mock_provider.chat_with_retry = MagicMock()
-    mock_provider.chat_with_retry.chat_with_retry = AsyncMock() # compatibility with mock
+    mock_provider.chat_with_retry.chat_with_retry = (
+        AsyncMock()
+    )  # compatibility with mock
     mock_provider.chat_with_retry = AsyncMock(return_value=mock_response)
 
     # 2 assistant turns but 6 tool calls -> above tools threshold (> 5)

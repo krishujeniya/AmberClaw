@@ -2,14 +2,14 @@
 
 from amberclaw.config.schema import PluginsModuleConfig
 from amberclaw.plugins.capabilities import PluginCapability
-from amberclaw.plugins.registry import PluginManifest, PluginRegistry
 from amberclaw.plugins.manager import PluginManager, PluginProxyTool
+from amberclaw.plugins.registry import PluginManifest, PluginRegistry
 
 __all__ = [
-    "PluginsModuleConfig",
     "PluginCapability",
-    "PluginManifest",
-    "PluginRegistry",
     "PluginManager",
+    "PluginManifest",
     "PluginProxyTool",
+    "PluginRegistry",
+    "PluginsModuleConfig",
 ]

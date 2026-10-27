@@ -59,12 +59,19 @@ class KnowledgeStore:
                 END;
             """)
 
-    def add(self, category: str, content: str, metadata: dict[str, Any] | None = None) -> int:
+    def add(
+        self, category: str, content: str, metadata: dict[str, Any] | None = None
+    ) -> int:
         """Add a new knowledge entry."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.execute(
                 "INSERT INTO knowledge (category, content, metadata, created_at) VALUES (?, ?, ?, ?)",
-                (category, content, json.dumps(metadata or {}), datetime.now().isoformat()),
+                (
+                    category,
+                    content,
+                    json.dumps(metadata or {}),
+                    datetime.now().isoformat(),
+                ),
             )
             return int(cursor.lastrowid or 0)
 

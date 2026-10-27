@@ -226,7 +226,10 @@ class TelegramChannel(BaseChannel):
             proxy=self.config.proxy if self.config.proxy else None,
         )
         builder = (
-            Application.builder().token(self.config.token).request(req).get_updates_request(req)
+            Application.builder()
+            .token(self.config.token)
+            .request(req)
+            .get_updates_request(req)
         )
         self._app = builder.build()
         self._app.add_error_handler(self._on_error)
@@ -330,7 +333,9 @@ class TelegramChannel(BaseChannel):
         reply_to_message_id = msg.metadata.get("message_id")
         message_thread_id = msg.metadata.get("message_thread_id")
         if message_thread_id is None and reply_to_message_id is not None:
-            message_thread_id = self._message_threads.get((msg.chat_id, reply_to_message_id))
+            message_thread_id = self._message_threads.get(
+                (msg.chat_id, reply_to_message_id)
+            )
         thread_kwargs = {}
         if message_thread_id is not None:
             thread_kwargs["message_thread_id"] = message_thread_id
@@ -339,7 +344,8 @@ class TelegramChannel(BaseChannel):
         if self.config.reply_to_message:
             if reply_to_message_id:
                 reply_params = ReplyParameters(
-                    message_id=reply_to_message_id, allow_sending_without_reply=True,
+                    message_id=reply_to_message_id,
+                    allow_sending_without_reply=True,
                 )
 
         # Send media files
@@ -382,7 +388,9 @@ class TelegramChannel(BaseChannel):
             for chunk in split_message(msg.content, TELEGRAM_MAX_MESSAGE_LEN):
                 # Final response: simulate streaming via draft, then persist
                 if not is_progress:
-                    await self._send_with_streaming(chat_id, chunk, reply_params, thread_kwargs)
+                    await self._send_with_streaming(
+                        chat_id, chunk, reply_params, thread_kwargs
+                    )
                 else:
                     await self._send_text(chat_id, chunk, reply_params, thread_kwargs)
 
@@ -443,7 +451,9 @@ class TelegramChannel(BaseChannel):
             pass
         await self._send_text(chat_id, text, reply_params, thread_kwargs)
 
-    async def _on_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def _on_start(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
         """Handle /start command."""
         if not update.message or not update.effective_user:
             return
@@ -455,7 +465,9 @@ class TelegramChannel(BaseChannel):
             "Type /help to see available commands.",
         )
 
-    async def _on_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def _on_help(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
         """Handle /help command, bypassing ACL so all users can access it."""
         if not update.message:
             return
@@ -517,7 +529,11 @@ class TelegramChannel(BaseChannel):
             entity_type = getattr(entity, "type", None)
             if entity_type == "text_mention":
                 user = getattr(entity, "user", None)
-                if user is not None and bot_id is not None and getattr(user, "id", None) == bot_id:
+                if (
+                    user is not None
+                    and bot_id is not None
+                    and getattr(user, "id", None) == bot_id
+                ):
                     return True
                 continue
             if entity_type != "mention":
@@ -554,7 +570,9 @@ class TelegramChannel(BaseChannel):
             ):
                 return True
 
-        reply_user = getattr(getattr(message, "reply_to_message", None), "from_user", None)
+        reply_user = getattr(
+            getattr(message, "reply_to_message", None), "from_user", None
+        )
         return bool(bot_id and reply_user and reply_user.id == bot_id)
 
     def _remember_thread_context(self, message) -> None:
@@ -567,7 +585,9 @@ class TelegramChannel(BaseChannel):
         if len(self._message_threads) > 1000:
             self._message_threads.pop(next(iter(self._message_threads)))
 
-    async def _forward_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def _forward_command(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
         """Forward slash commands to the bus for unified handling in AgentLoop."""
         if not update.message or not update.effective_user:
             return
@@ -582,7 +602,9 @@ class TelegramChannel(BaseChannel):
             session_key=self._derive_topic_session_key(message),
         )
 
-    async def _on_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def _on_message(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
         """Handle incoming messages (text, photos, voice, documents)."""
         if not update.message or not update.effective_user:
             return
@@ -651,7 +673,9 @@ class TelegramChannel(BaseChannel):
                     transcriber = GroqTranscriptionProvider(api_key=self.groq_api_key)
                     transcription = await transcriber.transcribe(file_path)
                     if transcription:
-                        logger.info("Transcribed {}: {}...", media_type, transcription[:50])
+                        logger.info(
+                            "Transcribed {}: {}...", media_type, transcription[:50]
+                        )
                         content_parts.append(f"[transcription: {transcription}]")
                     else:
                         content_parts.append(f"[{media_type}: {file_path}]")
@@ -689,7 +713,9 @@ class TelegramChannel(BaseChannel):
                 buf["contents"].append(content)
             buf["media"].extend(media_paths)
             if key not in self._media_group_tasks:
-                self._media_group_tasks[key] = asyncio.create_task(self._flush_media_group(key))
+                self._media_group_tasks[key] = asyncio.create_task(
+                    self._flush_media_group(key)
+                )
             return
 
         # Start typing indicator before processing
@@ -739,14 +765,18 @@ class TelegramChannel(BaseChannel):
         """Repeatedly send 'typing' action until cancelled."""
         try:
             while self._app:
-                await self._app.bot.send_chat_action(chat_id=int(chat_id), action="typing")
+                await self._app.bot.send_chat_action(
+                    chat_id=int(chat_id), action="typing"
+                )
                 await asyncio.sleep(4)
         except asyncio.CancelledError:
             pass
         except Exception as e:
             logger.debug("Typing indicator stopped for {}: {}", chat_id, e)
 
-    async def _on_error(self, update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def _on_error(
+        self, update: object, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
         """Log polling / handler errors instead of silently swallowing them."""
         logger.error("Telegram error: {}", context.error)
 

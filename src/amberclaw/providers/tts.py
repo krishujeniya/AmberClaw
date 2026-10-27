@@ -19,7 +19,9 @@ class TTSProvider(Protocol):
 class OpenAIttsProvider:
     """TTS provider using OpenAI's TTS API."""
 
-    def __init__(self, api_key: str | None = None, model: str = "tts-1", voice: str = "alloy"):
+    def __init__(
+        self, api_key: str | None = None, model: str = "tts-1", voice: str = "alloy"
+    ):
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self.model = model
         self.voice = voice
@@ -39,7 +41,9 @@ class OpenAIttsProvider:
                     "input": text,
                     "voice": self.voice,
                 }
-                response = await client.post(self.api_url, headers=headers, json=data, timeout=60.0)
+                response = await client.post(
+                    self.api_url, headers=headers, json=data, timeout=60.0
+                )
                 response.raise_for_status()
 
                 with open(output_path, "wb") as f:
@@ -53,7 +57,9 @@ class OpenAIttsProvider:
 class ElevenLabsTTSProvider:
     """TTS provider using ElevenLabs API."""
 
-    def __init__(self, api_key: str | None = None, voice_id: str = "pNInz6obpgmqMArAY74m"):
+    def __init__(
+        self, api_key: str | None = None, voice_id: str = "pNInz6obpgmqMArAY74m"
+    ):
         self.api_key = api_key or os.environ.get("ELEVENLABS_API_KEY")
         self.voice_id = voice_id
         self.api_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
@@ -79,7 +85,9 @@ class ElevenLabsTTSProvider:
                         "similarity_boost": 0.5,
                     },
                 }
-                response = await client.post(self.api_url, headers=headers, json=data, timeout=60.0)
+                response = await client.post(
+                    self.api_url, headers=headers, json=data, timeout=60.0
+                )
                 response.raise_for_status()
 
                 with open(output_path, "wb") as f:

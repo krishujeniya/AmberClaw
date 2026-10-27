@@ -5,18 +5,12 @@ import re
 from loguru import logger
 
 # Compiled regular expressions for common PII patterns (fallback)
-EMAIL_REGEX = re.compile(
-    r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b"
-)
+EMAIL_REGEX = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b")
 IP_REGEX = re.compile(
     r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
 )
-CREDIT_CARD_REGEX = re.compile(
-    r"\b(?:\d[ -]*?){13,16}\b"
-)
-PHONE_REGEX = re.compile(
-    r"\b(?:\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b"
-)
+CREDIT_CARD_REGEX = re.compile(r"\b(?:\d[ -]*?){13,16}\b")
+PHONE_REGEX = re.compile(r"\b(?:\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b")
 
 
 class PIIRedactor:
@@ -46,7 +40,9 @@ class PIIRedactor:
             self._anonymizer = AnonymizerEngine()
             self.presidio_available = True
         except Exception as e:
-            logger.debug("Presidio initialization failed: {}. Falling back to regex.", e)
+            logger.debug(
+                "Presidio initialization failed: {}. Falling back to regex.", e
+            )
 
     def redact(self, text: str) -> str:
         """Scan and redact PII patterns from text."""
@@ -68,7 +64,15 @@ class PIIRedactor:
         results = self._analyzer.analyze(
             text=text,
             language="en",
-            entities=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "IP_ADDRESS", "CREDIT_CARD", "US_SSN", "LOCATION"],
+            entities=[
+                "PERSON",
+                "EMAIL_ADDRESS",
+                "PHONE_NUMBER",
+                "IP_ADDRESS",
+                "CREDIT_CARD",
+                "US_SSN",
+                "LOCATION",
+            ],
         )
 
         if not results:
@@ -76,13 +80,32 @@ class PIIRedactor:
 
         # Set custom operators for anonymization
         operators = {
-            "PERSON": OperatorConfig("replace", {"new_value": self.placeholders.get("person", "[REDACTED_PERSON]")}),
-            "EMAIL_ADDRESS": OperatorConfig("replace", {"new_value": self.placeholders.get("email", "[REDACTED_EMAIL]")}),
-            "PHONE_NUMBER": OperatorConfig("replace", {"new_value": self.placeholders.get("phone", "[REDACTED_PHONE]")}),
-            "IP_ADDRESS": OperatorConfig("replace", {"new_value": self.placeholders.get("ip", "[REDACTED_IP]")}),
-            "CREDIT_CARD": OperatorConfig("replace", {"new_value": self.placeholders.get("credit_card", "[REDACTED_CARD]")}),
-            "US_SSN": OperatorConfig("replace", {"new_value": self.placeholders.get("ssn", "[REDACTED_SSN]")}),
-            "LOCATION": OperatorConfig("replace", {"new_value": self.placeholders.get("location", "[REDACTED_LOCATION]")}),
+            "PERSON": OperatorConfig(
+                "replace",
+                {"new_value": self.placeholders.get("person", "[REDACTED_PERSON]")},
+            ),
+            "EMAIL_ADDRESS": OperatorConfig(
+                "replace",
+                {"new_value": self.placeholders.get("email", "[REDACTED_EMAIL]")},
+            ),
+            "PHONE_NUMBER": OperatorConfig(
+                "replace",
+                {"new_value": self.placeholders.get("phone", "[REDACTED_PHONE]")},
+            ),
+            "IP_ADDRESS": OperatorConfig(
+                "replace", {"new_value": self.placeholders.get("ip", "[REDACTED_IP]")}
+            ),
+            "CREDIT_CARD": OperatorConfig(
+                "replace",
+                {"new_value": self.placeholders.get("credit_card", "[REDACTED_CARD]")},
+            ),
+            "US_SSN": OperatorConfig(
+                "replace", {"new_value": self.placeholders.get("ssn", "[REDACTED_SSN]")}
+            ),
+            "LOCATION": OperatorConfig(
+                "replace",
+                {"new_value": self.placeholders.get("location", "[REDACTED_LOCATION]")},
+            ),
         }
 
         # Anonymize using the custom operators
@@ -99,6 +122,8 @@ class PIIRedactor:
         # Redact IPs
         text = IP_REGEX.sub(self.placeholders.get("ip", "[REDACTED_IP]"), text)
         # Redact credit cards
-        text = CREDIT_CARD_REGEX.sub(self.placeholders.get("credit_card", "[REDACTED_CARD]"), text)
+        text = CREDIT_CARD_REGEX.sub(
+            self.placeholders.get("credit_card", "[REDACTED_CARD]"), text
+        )
         # Redact phones
         return PHONE_REGEX.sub(self.placeholders.get("phone", "[REDACTED_PHONE]"), text)

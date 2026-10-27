@@ -2,18 +2,22 @@
 
 import argparse
 import asyncio
+import contextlib
 import importlib.util
 import inspect
 import json
-import os
 import sys
 import traceback
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import create_model
 
-from amberclaw.plugins.capabilities import PluginCapability, apply_sandbox_with_capabilities
+from amberclaw.plugins.capabilities import (
+    PluginCapability,
+    apply_sandbox_with_capabilities,
+)
 
 # In-memory registry of tools exposed by the plugin
 REGISTERED_TOOLS: dict[str, dict[str, Any]] = {}
@@ -31,15 +35,9 @@ def register_tool(func: Callable) -> Callable:
         if param_name == "self":
             continue
         annotation = (
-            param.annotation
-            if param.annotation is not inspect.Parameter.empty
-            else Any
+            param.annotation if param.annotation is not inspect.Parameter.empty else Any
         )
-        default = (
-            param.default
-            if param.default is not inspect.Parameter.empty
-            else ...
-        )
+        default = param.default if param.default is not inspect.Parameter.empty else ...
         fields[param_name] = (annotation, default)
 
     model_name = f"{name}_args"
@@ -60,9 +58,9 @@ def scan_and_register_module_functions(module: Any) -> None:
             inspect.isfunction(obj)
             and not name.startswith("_")
             and obj.__module__ == module.__name__
+            and name not in REGISTERED_TOOLS
         ):
-            if name not in REGISTERED_TOOLS:
-                register_tool(obj)
+            register_tool(obj)
 
 
 def load_plugin(entrypoint_path: Path) -> Any:
@@ -75,7 +73,9 @@ def load_plugin(entrypoint_path: Path) -> Any:
     if str(plugin_dir) not in sys.path:
         sys.path.insert(0, str(plugin_dir))
 
-    spec = importlib.util.spec_from_file_location("plugin_entrypoint", str(entrypoint_path))
+    spec = importlib.util.spec_from_file_location(
+        "plugin_entrypoint", str(entrypoint_path)
+    )
     if spec is None or spec.loader is None:
         raise ImportError(f"Could not load module spec for {entrypoint_path}")
 
@@ -109,7 +109,7 @@ async def handle_request(req: dict[str, Any]) -> dict[str, Any]:
             )
         return {"jsonrpc": "2.0", "result": tools_list, "id": req_id}
 
-    elif method == "execute_tool":
+    if method == "execute_tool":
         tool_name = params.get("name")
         tool_args = params.get("args", {})
 
@@ -163,8 +163,12 @@ async def handle_request(req: dict[str, Any]) -> dict[str, Any]:
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description="AmberClaw Plugin Host")
-    parser.add_argument("--entrypoint", required=True, help="Path to plugin entrypoint .py file")
-    parser.add_argument("--capabilities", default="", help="Comma-separated capability list")
+    parser.add_argument(
+        "--entrypoint", required=True, help="Path to plugin entrypoint .py file"
+    )
+    parser.add_argument(
+        "--capabilities", default="", help="Comma-separated capability list"
+    )
     parser.add_argument("--workspace", required=True, help="Workspace path")
     parser.add_argument("--plugin-dir", required=True, help="Plugin directory path")
 
@@ -179,7 +183,9 @@ async def main() -> None:
                 try:
                     caps.append(PluginCapability(val_clean))
                 except ValueError:
-                    sys.stderr.write(f"Warning: Unknown capability '{val_clean}' ignored.\n")
+                    sys.stderr.write(
+                        f"Warning: Unknown capability '{val_clean}' ignored.\n"
+                    )
 
     # Load the plugin module first to register tools
     try:
@@ -194,18 +200,16 @@ async def main() -> None:
     apply_sandbox_with_capabilities(caps, Path(args.workspace), Path(args.plugin_dir))
 
     # Read/write loop on stdin/stdout
-    loop = asyncio.get_event_loop()
-    reader = asyncio.StreamReader()
-    protocol = asyncio.StreamReaderProtocol(reader)
-    await loop.connect_read_pipe(lambda: protocol, sys.stdin)
-
     while True:
-        line = await reader.readline()
+        line = await asyncio.to_thread(sys.stdin.readline)
         if not line:
             break
+        line_str = line.strip()
+        if not line_str:
+            continue
 
         try:
-            req = json.loads(line.decode("utf-8"))
+            req = json.loads(line_str)
             res = await handle_request(req)
         except Exception as e:
             res = {
@@ -225,7 +229,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(main())
-    except KeyboardInterrupt:
-        pass

@@ -11,12 +11,22 @@ from amberclaw.terminal.singularity import SingularityTerminalBackend
 async def test_singularity_binary_resolution() -> None:
     """Test resolution of singularity vs apptainer binaries."""
     # Scenario 1: Apptainer is present
-    with patch("shutil.which", side_effect=lambda bin_name: "/usr/bin/apptainer" if bin_name == "apptainer" else None):
+    with patch(
+        "shutil.which",
+        side_effect=lambda bin_name: (
+            "/usr/bin/apptainer" if bin_name == "apptainer" else None
+        ),
+    ):
         backend = SingularityTerminalBackend(workspace_dir="/dummy/workspace")
         assert backend._binary == "apptainer"
 
     # Scenario 2: Singularity only is present
-    with patch("shutil.which", side_effect=lambda bin_name: "/usr/bin/singularity" if bin_name == "singularity" else None):
+    with patch(
+        "shutil.which",
+        side_effect=lambda bin_name: (
+            "/usr/bin/singularity" if bin_name == "singularity" else None
+        ),
+    ):
         backend = SingularityTerminalBackend(workspace_dir="/dummy/workspace")
         assert backend._binary == "singularity"
 
@@ -34,16 +44,21 @@ async def test_singularity_execute_bash() -> None:
     mock_proc.communicate.return_value = (b"hello from singularity", b"")
 
     # Apptainer is resolved
-    with patch("shutil.which", side_effect=lambda bin_name: "/usr/bin/apptainer" if bin_name == "apptainer" else None), \
-         patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
-         
+    with (
+        patch(
+            "shutil.which",
+            side_effect=lambda bin_name: (
+                "/usr/bin/apptainer" if bin_name == "apptainer" else None
+            ),
+        ),
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec,
+    ):
         backend = SingularityTerminalBackend(
-            workspace_dir="/dummy/workspace",
-            image="docker://python:3.11-slim"
+            workspace_dir="/dummy/workspace", image="docker://python:3.11-slim"
         )
-        
+
         result = await backend.execute_bash("echo 'hello'", timeout=12)
-        
+
         # Verify call arguments
         mock_exec.assert_called_once_with(
             "apptainer",
@@ -62,7 +77,7 @@ async def test_singularity_execute_bash() -> None:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        
+
         assert result["stdout"] == "hello from singularity"
         assert result["stderr"] == ""
         assert result["exit_code"] == 0
@@ -76,21 +91,26 @@ async def test_singularity_execute_python_with_env() -> None:
     mock_proc.communicate.return_value = (b"py output", b"")
 
     # Singularity only is resolved
-    with patch("shutil.which", side_effect=lambda bin_name: "/usr/bin/singularity" if bin_name == "singularity" else None), \
-         patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
-         
+    with (
+        patch(
+            "shutil.which",
+            side_effect=lambda bin_name: (
+                "/usr/bin/singularity" if bin_name == "singularity" else None
+            ),
+        ),
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec,
+    ):
         backend = SingularityTerminalBackend(
-            workspace_dir="/dummy/workspace",
-            image="/path/to/image.sif"
+            workspace_dir="/dummy/workspace", image="/path/to/image.sif"
         )
-        
+
         custom_env = {"MY_VAR": "val1", "OTHER": "val2"}
         result = await backend.execute_python(
             "print('test')",
             timeout=25,
             env=custom_env,
         )
-        
+
         # Verify call arguments and environment propagation
         mock_exec.assert_called_once_with(
             "singularity",
@@ -113,9 +133,9 @@ async def test_singularity_execute_python_with_env() -> None:
                 "APPTAINERENV_MY_VAR": "val1",
                 "SINGULARITYENV_OTHER": "val2",
                 "APPTAINERENV_OTHER": "val2",
-            }
+            },
         )
-        
+
         assert result["stdout"] == "py output"
         assert result["exit_code"] == 0
 
@@ -126,16 +146,22 @@ async def test_singularity_timeout_handling() -> None:
     mock_proc = AsyncMock()
     mock_proc.terminate = MagicMock()
     mock_proc.communicate.side_effect = TimeoutError("Timed out")
-    
-    with patch("shutil.which", side_effect=lambda bin_name: "/usr/bin/singularity" if bin_name == "singularity" else None), \
-         patch("asyncio.create_subprocess_exec", return_value=mock_proc):
-         
+
+    with (
+        patch(
+            "shutil.which",
+            side_effect=lambda bin_name: (
+                "/usr/bin/singularity" if bin_name == "singularity" else None
+            ),
+        ),
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+    ):
         backend = SingularityTerminalBackend(workspace_dir="/dummy/workspace")
         result = await backend.execute_bash("sleep 100", timeout=1)
-        
+
         assert result["exit_code"] == -9  # noqa: PLR2004
         assert "Timeout Error" in result["stderr"]
-        
+
         # Verify that terminate is called and waited
         mock_proc.terminate.assert_called_once()
         mock_proc.wait.assert_awaited_once()
@@ -144,12 +170,20 @@ async def test_singularity_timeout_handling() -> None:
 @pytest.mark.asyncio
 async def test_singularity_exception_handling() -> None:
     """Test generic execution errors fallback gracefully."""
-    with patch("shutil.which", side_effect=lambda bin_name: "/usr/bin/singularity" if bin_name == "singularity" else None), \
-         patch("asyncio.create_subprocess_exec", side_effect=Exception("Binary missing")):
-         
+    with (
+        patch(
+            "shutil.which",
+            side_effect=lambda bin_name: (
+                "/usr/bin/singularity" if bin_name == "singularity" else None
+            ),
+        ),
+        patch(
+            "asyncio.create_subprocess_exec", side_effect=Exception("Binary missing")
+        ),
+    ):
         backend = SingularityTerminalBackend(workspace_dir="/dummy/workspace")
         result = await backend.execute_bash("echo 'hello'")
-        
+
         assert result["exit_code"] == -1
         assert "Binary missing" in result["stderr"]
 
@@ -157,14 +191,101 @@ async def test_singularity_exception_handling() -> None:
 @pytest.mark.asyncio
 async def test_factory_singularity_instantiation() -> None:
     """Test BackendFactory returns a correct SingularityTerminalBackend."""
-    with patch("shutil.which", side_effect=lambda bin_name: "/usr/bin/singularity" if bin_name == "singularity" else None):
+    with patch(
+        "shutil.which",
+        side_effect=lambda bin_name: (
+            "/usr/bin/singularity" if bin_name == "singularity" else None
+        ),
+    ):
         backend = BackendFactory.create_backend(
             backend_type="singularity",
             workspace_dir="/dummy/workspace",
-            image="docker://ubuntu:latest"
+            image="docker://ubuntu:latest",
         )
-        
+
         assert isinstance(backend, SingularityTerminalBackend)
         assert backend.workspace_dir == "/dummy/workspace"
         assert backend.image == "docker://ubuntu:latest"
         assert backend._binary == "singularity"
+
+
+@pytest.mark.asyncio
+async def test_singularity_backend_gpu() -> None:
+    """Test GPU acceleration options in Singularity/Apptainer execution."""
+    mock_proc = AsyncMock()
+    mock_proc.returncode = 0
+    mock_proc.communicate.return_value = (b"gpu output", b"")
+
+    # 1. Nvidia GPU configuration
+    with (
+        patch(
+            "shutil.which",
+            side_effect=lambda bin_name: (
+                "/usr/bin/singularity" if bin_name == "singularity" else None
+            ),
+        ),
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec,
+    ):
+        backend = SingularityTerminalBackend(
+            workspace_dir="/dummy/workspace",
+            gpu=True,
+            gpu_type="nvidia",
+        )
+        await backend.execute_bash("echo 'nvidia'")
+
+        # Verify container execution was called with --nv flag
+        args = mock_exec.call_args[0]
+        assert "--nv" in args
+        assert "--rocm" not in args
+
+    # 2. AMD ROCm GPU configuration
+    mock_proc_rocm = AsyncMock()
+    mock_proc_rocm.returncode = 0
+    mock_proc_rocm.communicate.return_value = (b"gpu output rocm", b"")
+    with (
+        patch(
+            "shutil.which",
+            side_effect=lambda bin_name: (
+                "/usr/bin/singularity" if bin_name == "singularity" else None
+            ),
+        ),
+        patch(
+            "asyncio.create_subprocess_exec", return_value=mock_proc_rocm
+        ) as mock_exec_rocm,
+    ):
+        backend_rocm = SingularityTerminalBackend(
+            workspace_dir="/dummy/workspace",
+            gpu=True,
+            gpu_type="rocm",
+        )
+        await backend_rocm.execute_bash("echo 'rocm'")
+
+        # Verify container execution was called with --rocm flag
+        args = mock_exec_rocm.call_args[0]
+        assert "--rocm" in args
+        assert "--nv" not in args
+
+    # 3. Invalid GPU type
+    with pytest.raises(ValueError, match="Unsupported gpu_type"):
+        SingularityTerminalBackend(
+            workspace_dir="/dummy/workspace",
+            gpu=True,
+            gpu_type="invalid_gpu_type",
+        )
+
+    # 4. BackendFactory creation with GPU settings
+    with patch(
+        "shutil.which",
+        side_effect=lambda bin_name: (
+            "/usr/bin/singularity" if bin_name == "singularity" else None
+        ),
+    ):
+        backend_factory = BackendFactory.create_backend(
+            backend_type="singularity",
+            workspace_dir="/dummy/workspace",
+            gpu=True,
+            gpu_type="rocm",
+        )
+        assert isinstance(backend_factory, SingularityTerminalBackend)
+        assert backend_factory.gpu is True
+        assert backend_factory.gpu_type == "rocm"

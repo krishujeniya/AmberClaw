@@ -15,7 +15,8 @@ class ExecArgs(BaseModel):
 
     command: str = Field(..., description="The shell command to execute")
     working_dir: str | None = Field(
-        None, description="Optional working directory for the command",
+        None,
+        description="Optional working directory for the command",
     )
 
 
@@ -78,11 +79,15 @@ class ExecTool(PydanticTool):
         preexec = None
         if self.restrict_to_workspace:
             import platform
+
             if platform.system() == "Linux":
                 from amberclaw.security.landlock import apply_sandbox
+
                 workspace_dir = os.path.abspath(cwd)
+
                 def _sandbox_preexec():
                     apply_sandbox(workspace_dir)
+
                 preexec = _sandbox_preexec
 
         try:
@@ -96,7 +101,9 @@ class ExecTool(PydanticTool):
             )
 
             try:
-                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=self.timeout)
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(), timeout=self.timeout
+                )
             except TimeoutError:
                 process.kill()
                 # Wait for the process to fully terminate so pipes are
@@ -125,7 +132,10 @@ class ExecTool(PydanticTool):
             # Truncate very long output
             max_len = 10000
             if len(result) > max_len:
-                result = result[:max_len] + f"\n... (truncated, {len(result) - max_len} more chars)"
+                result = (
+                    result[:max_len]
+                    + f"\n... (truncated, {len(result) - max_len} more chars)"
+                )
 
             return result
 
@@ -147,7 +157,9 @@ class ExecTool(PydanticTool):
 
         if self.restrict_to_workspace:
             if "..\\" in cmd or "../" in cmd:
-                return "Error: Command blocked by safety guard (path traversal detected)"
+                return (
+                    "Error: Command blocked by safety guard (path traversal detected)"
+                )
 
             cwd_path = Path(cwd).resolve()
 
@@ -164,5 +176,7 @@ class ExecTool(PydanticTool):
     @staticmethod
     def _extract_absolute_paths(command: str) -> list[str]:
         win_paths = re.findall(r"[A-Za-z]:\\[^\s\"'|><;]+", command)  # Windows: C:\...
-        posix_paths = re.findall(r"(?:^|[\s|>])(/[^\s\"'>]+)", command)  # POSIX: /absolute only
+        posix_paths = re.findall(
+            r"(?:^|[\s|>])(/[^\s\"'>]+)", command
+        )  # POSIX: /absolute only
         return win_paths + posix_paths

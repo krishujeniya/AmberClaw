@@ -67,7 +67,8 @@ class WebSearchArgs(BaseModel):
     query: str = Field(..., description="Search query")
     count: int | None = Field(None, description="Results (1-10)", ge=1, le=10)
     provider: Literal["brave", "tavily", "serpapi"] | None = Field(
-        None, description="Search provider (defaults to best available key)",
+        None,
+        description="Search provider (defaults to best available key)",
     )
 
 
@@ -86,7 +87,9 @@ class WebSearchTool(PydanticTool):
     def args_schema(self) -> type[WebSearchArgs]:
         return WebSearchArgs
 
-    def __init__(self, api_key: str | None = None, max_results: int = 5, proxy: str | None = None):
+    def __init__(
+        self, api_key: str | None = None, max_results: int = 5, proxy: str | None = None
+    ):
         super().__init__()
         self._init_api_key = api_key
         self.max_results = max_results
@@ -110,7 +113,7 @@ class WebSearchTool(PydanticTool):
                     provider = cast(Literal["brave", "tavily", "serpapi"], p)
                     break
 
-        provider = provider or "brave" # Default to brave if nothing found
+        provider = provider or "brave"  # Default to brave if nothing found
         api_key = self._get_api_key(provider)
 
         if not api_key:
@@ -122,30 +125,50 @@ class WebSearchTool(PydanticTool):
                 if provider == "tavily":
                     r = await client.post(
                         "https://api.tavily.com/search",
-                        json={"api_key": api_key, "query": args.query, "max_results": n},
+                        json={
+                            "api_key": api_key,
+                            "query": args.query,
+                            "max_results": n,
+                        },
                         timeout=10.0,
                     )
                     r.raise_for_status()
                     results = [
-                        {"title": res.get("title"), "url": res.get("url"), "description": res.get("content")}
+                        {
+                            "title": res.get("title"),
+                            "url": res.get("url"),
+                            "description": res.get("content"),
+                        }
                         for res in r.json().get("results", [])
                     ]
                 elif provider == "serpapi":
                     r = await client.get(
                         "https://serpapi.com/search",
-                        params={"q": args.query, "api_key": api_key, "engine": "google", "num": n},
+                        params={
+                            "q": args.query,
+                            "api_key": api_key,
+                            "engine": "google",
+                            "num": n,
+                        },
                         timeout=10.0,
                     )
                     r.raise_for_status()
                     results = [
-                        {"title": res.get("title"), "url": res.get("link"), "description": res.get("snippet")}
+                        {
+                            "title": res.get("title"),
+                            "url": res.get("link"),
+                            "description": res.get("snippet"),
+                        }
                         for res in r.json().get("organic_results", [])
                     ]
                 else:  # brave
                     r = await client.get(
                         "https://api.search.brave.com/res/v1/web/search",
                         params={"q": args.query, "count": n},
-                        headers={"Accept": "application/json", "X-Subscription-Token": api_key},
+                        headers={
+                            "Accept": "application/json",
+                            "X-Subscription-Token": api_key,
+                        },
                         timeout=10.0,
                     )
                     r.raise_for_status()
@@ -214,7 +237,9 @@ class WebFetchTool(PydanticTool):
             )
 
         try:
-            logger.debug("WebFetch: {}", "proxy enabled" if self.proxy else "direct connection")
+            logger.debug(
+                "WebFetch: {}", "proxy enabled" if self.proxy else "direct connection"
+            )
             from typing import cast
 
             async with httpx.AsyncClient(
@@ -229,8 +254,13 @@ class WebFetchTool(PydanticTool):
             ctype = r.headers.get("content-type", "")
 
             if "application/json" in ctype:
-                text, extractor = json.dumps(r.json(), indent=2, ensure_ascii=False), "json"
-            elif "text/html" in ctype or r.text[:256].lower().startswith(("<!doctype", "<html")):
+                text, extractor = (
+                    json.dumps(r.json(), indent=2, ensure_ascii=False),
+                    "json",
+                )
+            elif "text/html" in ctype or r.text[:256].lower().startswith(
+                ("<!doctype", "<html")
+            ):
                 doc = Document(r.text)
                 content = (
                     self._to_markdown(doc.summary())
@@ -260,7 +290,9 @@ class WebFetchTool(PydanticTool):
             )
         except httpx.ProxyError as e:
             logger.error("WebFetch proxy error for {}: {}", args.url, e)
-            return json.dumps({"error": f"Proxy error: {e}", "url": args.url}, ensure_ascii=False)
+            return json.dumps(
+                {"error": f"Proxy error: {e}", "url": args.url}, ensure_ascii=False
+            )
         except Exception as e:
             logger.error("WebFetch error for {}: {}", args.url, e)
             return json.dumps({"error": str(e), "url": args.url}, ensure_ascii=False)
@@ -281,7 +313,10 @@ class WebFetchTool(PydanticTool):
             flags=re.I,
         )
         text = re.sub(
-            r"<li[^>]*>([\s\S]*?)</li>", lambda m: f"\n- {_strip_tags(m[1])}", text, flags=re.I,
+            r"<li[^>]*>([\s\S]*?)</li>",
+            lambda m: f"\n- {_strip_tags(m[1])}",
+            text,
+            flags=re.I,
         )
         text = re.sub(r"</(p|div|section|article)>", "\n\n", text, flags=re.I)
         text = re.sub(r"<(br|hr)\s*/?>", "\n", text, flags=re.I)

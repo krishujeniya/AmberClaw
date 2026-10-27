@@ -96,7 +96,9 @@ def _migrate_config(data: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
-def load_runtime_config(config: str | None = None, workspace: str | None = None) -> Config:
+def load_runtime_config(
+    config: str | None = None, workspace: str | None = None
+) -> Config:
     """Load config and optionally override the active workspace."""
     config_path = None
     if config:

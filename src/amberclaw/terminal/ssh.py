@@ -59,9 +59,13 @@ class SSHTerminalBackend(BaseTerminalBackend):
                 allow_agent=self.agent_forwarding,
             )
             self.client = client
-            logger.info("SSH connection established successfully to %s:%d", self.host, self.port)
+            logger.info(
+                "SSH connection established successfully to %s:%d", self.host, self.port
+            )
         except Exception as e:
-            logger.error("Failed to connect to %s:%d via SSH: %s", self.host, self.port, e)
+            logger.error(
+                "Failed to connect to %s:%d via SSH: %s", self.host, self.port, e
+            )
             raise
 
     def _close_sync(self) -> None:
@@ -103,6 +107,7 @@ class SSHTerminalBackend(BaseTerminalBackend):
                 from paramiko.agent import (  # type: ignore[import-untyped]
                     AgentRequestHandler,
                 )
+
                 AgentRequestHandler(chan)
             except Exception as e:
                 logger.debug("Could not start AgentRequestHandler: %s", e)
@@ -124,7 +129,11 @@ class SSHTerminalBackend(BaseTerminalBackend):
                 chan.shutdown_write()
 
             # Poll for stdout/stderr data or channel exit readiness
-            while not chan.exit_status_ready() or chan.recv_ready() or chan.recv_stderr_ready():
+            while (
+                not chan.exit_status_ready()
+                or chan.recv_ready()
+                or chan.recv_stderr_ready()
+            ):
                 if chan.recv_ready():
                     data = chan.recv(4096)
                     if data:
@@ -169,7 +178,9 @@ class SSHTerminalBackend(BaseTerminalBackend):
     async def execute_bash(self, command: str, timeout: int = 30) -> dict[str, Any]:
         """Asynchronously execute a bash command on the remote system."""
         try:
-            return await asyncio.to_thread(self._execute_command_sync, command, None, timeout)
+            return await asyncio.to_thread(
+                self._execute_command_sync, command, None, timeout
+            )
         except Exception as e:
             logger.error("SSH bash execution failed: %s", e)
             return {
@@ -198,7 +209,9 @@ class SSHTerminalBackend(BaseTerminalBackend):
             full_command = python_cmd
 
         try:
-            return await asyncio.to_thread(self._execute_command_sync, full_command, code, timeout)
+            return await asyncio.to_thread(
+                self._execute_command_sync, full_command, code, timeout
+            )
         except Exception as e:
             logger.error("SSH Python execution failed: %s", e)
             return {

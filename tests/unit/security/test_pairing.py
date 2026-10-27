@@ -90,7 +90,6 @@ async def test_agent_loop_handle_pairing(temp_pairing_dir, tmp_path):
     mock_config_path = tmp_path / "config.json"
 
     class FakeChannelsConfig:
-
         def __init__(self):
             self.dummy = SimpleNamespace(allow_from=[])
 

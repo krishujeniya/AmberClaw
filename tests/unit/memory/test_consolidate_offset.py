@@ -263,7 +263,9 @@ class TestLastConsolidatedEdgeCases:
 
         total_messages = len(session.messages)
         old_messages = get_old_messages(session, session.last_consolidated, KEEP_COUNT)
-        expected_consolidate_count = total_messages - KEEP_COUNT - session.last_consolidated
+        expected_consolidate_count = (
+            total_messages - KEEP_COUNT - session.last_consolidated
+        )
 
         assert len(old_messages) == expected_consolidate_count
         assert_messages_content(old_messages, 15, 24)
@@ -485,7 +487,9 @@ class TestConsolidationDeduplicationGuard:
     """Test that consolidation tasks are deduplicated and serialized."""
 
     @pytest.mark.asyncio
-    async def test_consolidation_guard_prevents_duplicate_tasks(self, tmp_path: Path) -> None:
+    async def test_consolidation_guard_prevents_duplicate_tasks(
+        self, tmp_path: Path
+    ) -> None:
         """Concurrent messages above memory_window spawn only one consolidation task."""
         from amberclaw.agent.loop import AgentLoop
         from amberclaw.bus.events import InboundMessage
@@ -496,10 +500,16 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
+            bus=bus,
+            provider=provider,
+            workspace=tmp_path,
+            model="test-model",
+            memory_window=10,
         )
 
-        loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
+        loop.provider.chat_with_retry = AsyncMock(
+            return_value=LLMResponse(content="ok", tool_calls=[])
+        )
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         session = loop.sessions.get_or_create("cli:test")
@@ -518,7 +528,9 @@ class TestConsolidationDeduplicationGuard:
 
         loop._consolidate_memory = _fake_consolidate  # type: ignore[method-assign]
 
-        msg = InboundMessage(channel="cli", sender_id="user", chat_id="test", content="hello")
+        msg = InboundMessage(
+            channel="cli", sender_id="user", chat_id="test", content="hello"
+        )
         await loop._process_message(msg)
         await loop._process_message(msg)
         await asyncio.sleep(0.1)
@@ -529,7 +541,8 @@ class TestConsolidationDeduplicationGuard:
 
     @pytest.mark.asyncio
     async def test_new_command_guard_prevents_concurrent_consolidation(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         """/new command does not run consolidation concurrently with in-flight consolidation."""
         from amberclaw.agent.loop import AgentLoop
@@ -541,10 +554,16 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
+            bus=bus,
+            provider=provider,
+            workspace=tmp_path,
+            model="test-model",
+            memory_window=10,
         )
 
-        loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
+        loop.provider.chat_with_retry = AsyncMock(
+            return_value=LLMResponse(content="ok", tool_calls=[])
+        )
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         session = loop.sessions.get_or_create("cli:test")
@@ -567,10 +586,14 @@ class TestConsolidationDeduplicationGuard:
 
         loop._consolidate_memory = _fake_consolidate  # type: ignore[method-assign]
 
-        msg = InboundMessage(channel="cli", sender_id="user", chat_id="test", content="hello")
+        msg = InboundMessage(
+            channel="cli", sender_id="user", chat_id="test", content="hello"
+        )
         await loop._process_message(msg)
 
-        new_msg = InboundMessage(channel="cli", sender_id="user", chat_id="test", content="/new")
+        new_msg = InboundMessage(
+            channel="cli", sender_id="user", chat_id="test", content="/new"
+        )
         await loop._process_message(new_msg)
         await asyncio.sleep(0.1)
 
@@ -593,10 +616,16 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
+            bus=bus,
+            provider=provider,
+            workspace=tmp_path,
+            model="test-model",
+            memory_window=10,
         )
 
-        loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
+        loop.provider.chat_with_retry = AsyncMock(
+            return_value=LLMResponse(content="ok", tool_calls=[])
+        )
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         session = loop.sessions.get_or_create("cli:test")
@@ -613,11 +642,15 @@ class TestConsolidationDeduplicationGuard:
 
         loop._consolidate_memory = _slow_consolidate  # type: ignore[method-assign]
 
-        msg = InboundMessage(channel="cli", sender_id="user", chat_id="test", content="hello")
+        msg = InboundMessage(
+            channel="cli", sender_id="user", chat_id="test", content="hello"
+        )
         await loop._process_message(msg)
 
         await started.wait()
-        assert len(loop._consolidation_tasks) == 1, "Task must be referenced while in-flight"
+        assert len(loop._consolidation_tasks) == 1, (
+            "Task must be referenced while in-flight"
+        )
 
         await asyncio.sleep(0.15)
         assert len(loop._consolidation_tasks) == 0, (
@@ -626,7 +659,8 @@ class TestConsolidationDeduplicationGuard:
 
     @pytest.mark.asyncio
     async def test_new_waits_for_inflight_consolidation_and_preserves_messages(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         """/new waits for in-flight consolidation and archives before clear."""
         from amberclaw.agent.loop import AgentLoop
@@ -638,10 +672,16 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
+            bus=bus,
+            provider=provider,
+            workspace=tmp_path,
+            model="test-model",
+            memory_window=10,
         )
 
-        loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
+        loop.provider.chat_with_retry = AsyncMock(
+            return_value=LLMResponse(content="ok", tool_calls=[])
+        )
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         session = loop.sessions.get_or_create("cli:test")
@@ -665,27 +705,39 @@ class TestConsolidationDeduplicationGuard:
 
         loop._consolidate_memory = _fake_consolidate  # type: ignore[method-assign]
 
-        msg = InboundMessage(channel="cli", sender_id="user", chat_id="test", content="hello")
+        msg = InboundMessage(
+            channel="cli", sender_id="user", chat_id="test", content="hello"
+        )
         await loop._process_message(msg)
         await started.wait()
 
-        new_msg = InboundMessage(channel="cli", sender_id="user", chat_id="test", content="/new")
+        new_msg = InboundMessage(
+            channel="cli", sender_id="user", chat_id="test", content="/new"
+        )
         pending_new = asyncio.create_task(loop._process_message(new_msg))
 
         await asyncio.sleep(0.02)
-        assert not pending_new.done(), "/new should wait while consolidation is in-flight"
+        assert not pending_new.done(), (
+            "/new should wait while consolidation is in-flight"
+        )
 
         release.set()
         response = await pending_new
         assert response is not None
         assert "new session started" in response.content.lower()
-        assert archived_count > 0, "Expected /new archival to process a non-empty snapshot"
+        assert archived_count > 0, (
+            "Expected /new archival to process a non-empty snapshot"
+        )
 
         session_after = loop.sessions.get_or_create("cli:test")
-        assert session_after.messages == [], "Session should be cleared after successful archival"
+        assert session_after.messages == [], (
+            "Session should be cleared after successful archival"
+        )
 
     @pytest.mark.asyncio
-    async def test_new_does_not_clear_session_when_archive_fails(self, tmp_path: Path) -> None:
+    async def test_new_does_not_clear_session_when_archive_fails(
+        self, tmp_path: Path
+    ) -> None:
         """/new must keep session data if archive step reports failure."""
         from amberclaw.agent.loop import AgentLoop
         from amberclaw.bus.events import InboundMessage
@@ -696,10 +748,16 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
+            bus=bus,
+            provider=provider,
+            workspace=tmp_path,
+            model="test-model",
+            memory_window=10,
         )
 
-        loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
+        loop.provider.chat_with_retry = AsyncMock(
+            return_value=LLMResponse(content="ok", tool_calls=[])
+        )
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         session = loop.sessions.get_or_create("cli:test")
@@ -716,7 +774,9 @@ class TestConsolidationDeduplicationGuard:
 
         loop._consolidate_memory = _failing_consolidate  # type: ignore[method-assign]
 
-        new_msg = InboundMessage(channel="cli", sender_id="user", chat_id="test", content="/new")
+        new_msg = InboundMessage(
+            channel="cli", sender_id="user", chat_id="test", content="/new"
+        )
         response = await loop._process_message(new_msg)
 
         assert response is not None
@@ -728,7 +788,8 @@ class TestConsolidationDeduplicationGuard:
 
     @pytest.mark.asyncio
     async def test_new_archives_only_unconsolidated_messages_after_inflight_task(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         """/new should archive only messages not yet consolidated by prior task."""
         from amberclaw.agent.loop import AgentLoop
@@ -740,10 +801,16 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
+            bus=bus,
+            provider=provider,
+            workspace=tmp_path,
+            model="test-model",
+            memory_window=10,
         )
 
-        loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
+        loop.provider.chat_with_retry = AsyncMock(
+            return_value=LLMResponse(content="ok", tool_calls=[])
+        )
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         session = loop.sessions.get_or_create("cli:test")
@@ -769,11 +836,15 @@ class TestConsolidationDeduplicationGuard:
 
         loop._consolidate_memory = _fake_consolidate  # type: ignore[method-assign]
 
-        msg = InboundMessage(channel="cli", sender_id="user", chat_id="test", content="hello")
+        msg = InboundMessage(
+            channel="cli", sender_id="user", chat_id="test", content="hello"
+        )
         await loop._process_message(msg)
         await started.wait()
 
-        new_msg = InboundMessage(channel="cli", sender_id="user", chat_id="test", content="/new")
+        new_msg = InboundMessage(
+            channel="cli", sender_id="user", chat_id="test", content="/new"
+        )
         pending_new = asyncio.create_task(loop._process_message(new_msg))
         await asyncio.sleep(0.02)
         assert not pending_new.done()
@@ -799,9 +870,15 @@ class TestConsolidationDeduplicationGuard:
         provider = MagicMock()
         provider.get_default_model.return_value = "test-model"
         loop = AgentLoop(
-            bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
+            bus=bus,
+            provider=provider,
+            workspace=tmp_path,
+            model="test-model",
+            memory_window=10,
         )
-        loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="ok", tool_calls=[]))
+        loop.provider.chat_with_retry = AsyncMock(
+            return_value=LLMResponse(content="ok", tool_calls=[])
+        )
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         session = loop.sessions.get_or_create("cli:test")
@@ -815,7 +892,9 @@ class TestConsolidationDeduplicationGuard:
 
         loop._consolidate_memory = _ok_consolidate  # type: ignore[method-assign]
 
-        new_msg = InboundMessage(channel="cli", sender_id="user", chat_id="test", content="/new")
+        new_msg = InboundMessage(
+            channel="cli", sender_id="user", chat_id="test", content="/new"
+        )
         response = await loop._process_message(new_msg)
 
         assert response is not None

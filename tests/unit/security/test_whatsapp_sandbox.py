@@ -36,13 +36,16 @@ def test_get_whatsapp_bridge_paths() -> None:
 
 def test_build_bwrap_args_success() -> None:
     bridge_dir = Path("/tmp/amberclaw/bridge")  # noqa: S108
-    auth_dir = Path("/tmp/amberclaw/auth")      # noqa: S108
-    media_dir = Path("/tmp/amberclaw/media")    # noqa: S108
+    auth_dir = Path("/tmp/amberclaw/auth")  # noqa: S108
+    media_dir = Path("/tmp/amberclaw/media")  # noqa: S108
 
-    with patch("amberclaw.security.whatsapp_sandbox.is_bwrap_available", return_value=True), \
-         patch("shutil.which", return_value="/usr/bin/node"), \
-         patch("os.path.exists", return_value=True):
-
+    with (
+        patch(
+            "amberclaw.security.whatsapp_sandbox.is_bwrap_available", return_value=True
+        ),
+        patch("shutil.which", return_value="/usr/bin/node"),
+        patch("os.path.exists", return_value=True),
+    ):
         args = build_bwrap_args(
             bridge_dir,
             auth_dir,
@@ -73,10 +76,12 @@ def test_build_bwrap_args_success() -> None:
 
 def test_build_bwrap_args_not_available() -> None:
     bridge_dir = Path("/tmp/amberclaw/bridge")  # noqa: S108
-    auth_dir = Path("/tmp/amberclaw/auth")      # noqa: S108
-    media_dir = Path("/tmp/amberclaw/media")    # noqa: S108
+    auth_dir = Path("/tmp/amberclaw/auth")  # noqa: S108
+    media_dir = Path("/tmp/amberclaw/media")  # noqa: S108
 
-    with patch("amberclaw.security.whatsapp_sandbox.is_bwrap_available", return_value=False):
+    with patch(
+        "amberclaw.security.whatsapp_sandbox.is_bwrap_available", return_value=False
+    ):
         args = build_bwrap_args(
             bridge_dir,
             auth_dir,
@@ -93,11 +98,14 @@ async def test_spawn_isolated_whatsapp_bridge_fallback() -> None:
     config.channels.whatsapp.bridge_port = 3005
 
     # Mock the index.js check and subprocess exec
-    with patch("amberclaw.security.whatsapp_sandbox.is_bwrap_available", return_value=False), \
-         patch("pathlib.Path.exists", return_value=True), \
-         patch("shutil.which", return_value="/usr/bin/node"), \
-         patch("asyncio.create_subprocess_exec") as mock_exec:
-
+    with (
+        patch(
+            "amberclaw.security.whatsapp_sandbox.is_bwrap_available", return_value=False
+        ),
+        patch("pathlib.Path.exists", return_value=True),
+        patch("shutil.which", return_value="/usr/bin/node"),
+        patch("asyncio.create_subprocess_exec") as mock_exec,
+    ):
         mock_proc = MagicMock()
         mock_exec.return_value = mock_proc
 

@@ -9,7 +9,9 @@ from amberclaw.agent.tools.base import PydanticTool
 
 
 def _resolve_path(
-    path: str, workspace: Path | None = None, allowed_dir: Path | None = None,
+    path: str,
+    workspace: Path | None = None,
+    allowed_dir: Path | None = None,
 ) -> Path:
     """Resolve path against workspace (if relative) and enforce directory restriction."""
     p = Path(path).expanduser()
@@ -22,7 +24,9 @@ def _resolve_path(
         try:
             resolved.relative_to(enforced_dir.resolve())
         except ValueError:
-            raise PermissionError(f"Path {path} is outside allowed directory {enforced_dir}")
+            raise PermissionError(
+                f"Path {path} is outside allowed directory {enforced_dir}"
+            )
     return resolved
 
 
@@ -35,7 +39,9 @@ class ReadFileArgs(BaseModel):
 class ReadFileTool(PydanticTool):
     """Tool to read file contents."""
 
-    _MAX_CHARS = 128_000  # ~128 KB — prevents OOM from reading huge files into LLM context
+    _MAX_CHARS = (
+        128_000  # ~128 KB — prevents OOM from reading huge files into LLM context
+    )
 
     @property
     def name(self) -> str:
@@ -183,7 +189,9 @@ class EditFileTool(PydanticTool):
 
         best_ratio, best_start = 0.0, 0
         for i in range(max(1, len(lines) - window + 1)):
-            ratio = difflib.SequenceMatcher(None, old_lines, lines[i : i + window]).ratio()
+            ratio = difflib.SequenceMatcher(
+                None, old_lines, lines[i : i + window]
+            ).ratio()
             if ratio > best_ratio:
                 best_ratio, best_start = ratio, i
 
@@ -198,9 +206,7 @@ class EditFileTool(PydanticTool):
                 ),
             )
             return f"Error: old_text not found in {path}.\nBest match ({best_ratio:.0%} similar) at line {best_start + 1}:\n{diff}"
-        return (
-            f"Error: old_text not found in {path}. No similar text found. Verify the file content."
-        )
+        return f"Error: old_text not found in {path}. No similar text found. Verify the file content."
 
 
 class ListDirArgs(BaseModel):

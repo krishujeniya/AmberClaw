@@ -104,23 +104,21 @@ def test_scan_file_and_workspace(tmp_path: Path):
     # Create test directory structure
     src_dir = tmp_path / "src"
     src_dir.mkdir()
-    
+
     file_clean = src_dir / "clean.py"
     file_clean.write_text("def run():\n    print('Hello World')\n")
-    
+
     file_dirty = src_dir / "dirty.py"
     file_dirty.write_text(
-        "import os\n"
-        "OPENAI_KEY = 'sk-" + "a" * 48 + "'\n"
-        "print('Config loaded')\n"
+        "import os\nOPENAI_KEY = 'sk-" + "a" * 48 + "'\nprint('Config loaded')\n"
     )
-    
+
     # Check scan_file
     dirty_findings = SecretScanner.scan_file(file_dirty)
     assert len(dirty_findings) == 1
     assert dirty_findings[0]["line"] == 2  # noqa: PLR2004
     assert dirty_findings[0]["type"] == "OpenAI API Key"
-    
+
     clean_findings = SecretScanner.scan_file(file_clean)
     assert len(clean_findings) == 0
 
@@ -130,8 +128,5 @@ def test_scan_file_and_workspace(tmp_path: Path):
     assert all_findings[0]["file"] == str(file_dirty)
 
     # Test exclusion
-    excluded_findings = SecretScanner.scan_workspace(
-        tmp_path,
-        exclude_patterns={"src"}
-    )
+    excluded_findings = SecretScanner.scan_workspace(tmp_path, exclude_patterns={"src"})
     assert len(excluded_findings) == 0

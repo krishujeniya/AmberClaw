@@ -13,11 +13,13 @@ from loguru import logger
 from amberclaw.memory.base import ScopeContext
 from amberclaw.memory.frozen_memory import FrozenSnapshotMemory
 from amberclaw.memory.rag_pipeline import HybridRetriever
+from amberclaw.memory.sanitizer import MemorySanitizer
 from amberclaw.memory.session_db import SessionDB
 
 try:
     from langchain_core.documents import Document
 except ImportError:
+
     class Document:  # type: ignore
         """Fallback Document stub class when LangChain is not installed."""
 
@@ -49,7 +51,9 @@ class MemoryManager:
                 db_dir=self.workspace / "memory" / "chroma",
             )
         except ImportError:
-            logger.warning("HybridRetriever disabled (LangChain/Chroma dependencies not installed)")
+            logger.warning(
+                "HybridRetriever disabled (LangChain/Chroma dependencies not installed)"
+            )
             self.hybrid_retriever = None
         self.frozen_memory = FrozenSnapshotMemory(workspace=self.workspace)
 
@@ -75,12 +79,21 @@ class MemoryManager:
             session_id = session_id or scope_context.session_id or ""
             org_id = org_id or scope_context.org_id
 
-        # 1. Immediate write to SQLite transaction database to ensure persistence
+        # 1. Sanitize content against prompt injection and memory poisoning
+        content, was_poisoned = MemorySanitizer.sanitize_text(content)
+        turn_metadata = dict(metadata) if metadata else {}
+        if was_poisoned:
+            logger.warning(
+                f"MemorySanitizer detected prompt injection in turn for session {session_id}."
+            )
+            turn_metadata["poisoning_detected"] = True
+
+        # 2. Immediate write to SQLite transaction database to ensure persistence
         turn_id = self.session_db.add_turn(
             session_id=session_id,
             role=role,
             content=content,
-            metadata=metadata,
+            metadata=turn_metadata,
             user_id=user_id,
             agent_id=agent_id,
             org_id=org_id,
@@ -96,18 +109,18 @@ class MemoryManager:
                 "user_id": user_id or "",
                 "agent_id": agent_id or "",
                 "org_id": org_id or "",
-                **(metadata or {}),
+                **turn_metadata,
             },
         )
 
-        # 2. Handle RAG indexing based on frequency configuration
+        # 3. Handle RAG indexing based on frequency configuration
         if self.hybrid_retriever:
             if self.write_frequency == "turn":
-                self.hybrid_retriever.ingest([doc])
+                self.hybrid_retriever.ingest([doc], org_id=org_id)
 
             elif self.write_frequency == "async":
                 task = asyncio.create_task(
-                    asyncio.to_thread(self.hybrid_retriever.ingest, [doc]),
+                    asyncio.to_thread(self.hybrid_retriever.ingest, [doc], org_id),
                 )
                 self.background_tasks.add(task)
                 task.add_done_callback(self.background_tasks.discard)
@@ -157,50 +170,77 @@ class MemoryManager:
             # Semantic RAG search (Vector + BM25)
             rag_docs = []
             if self.hybrid_retriever:
-                # Build metadata filter for vector store
-                or_clauses = []
-                if session_id:
-                    or_clauses.append({"session_id": session_id})
-                if user_id:
-                    or_clauses.append({"user_id": user_id})
-                if agent_id:
-                    or_clauses.append({"agent_id": agent_id})
-                if org_id:
-                    or_clauses.append({"org_id": org_id})
-
+                # Build metadata filter enforcing tenant scope as invariant
                 filter_dict = None
-                if or_clauses:
-                    filter_dict = {"$or": or_clauses} if len(or_clauses) > 1 else or_clauses[0]
+                if org_id:
+                    tenant_clause = {"org_id": org_id}
+                    sub_clauses = []
+                    if session_id:
+                        sub_clauses.append({"session_id": session_id})
+                    if user_id:
+                        sub_clauses.append({"user_id": user_id})
+                    if agent_id:
+                        sub_clauses.append({"agent_id": agent_id})
 
-                retriever = self.hybrid_retriever.get_retriever(top_k=limit, filter=filter_dict)
-                if retriever:
-                    try:
-                        raw_rag_docs = retriever.invoke(query)
-                        # Secure post-filtering to prevent cross-tenant/cross-scope leakage
-                        for doc in raw_rag_docs:
-                            doc_sess = doc.metadata.get("session_id")
-                            doc_user = doc.metadata.get("user_id")
-                            doc_ag = doc.metadata.get("agent_id")
-                            doc_org = doc.metadata.get("org_id")
+                    if sub_clauses:
+                        inner = (
+                            {"$or": sub_clauses}
+                            if len(sub_clauses) > 1
+                            else sub_clauses[0]
+                        )
+                        filter_dict = {"$and": [tenant_clause, inner]}
+                    else:
+                        filter_dict = tenant_clause
+                else:
+                    or_clauses = []
+                    if session_id:
+                        or_clauses.append({"session_id": session_id})
+                    if user_id:
+                        or_clauses.append({"user_id": user_id})
+                    if agent_id:
+                        or_clauses.append({"agent_id": agent_id})
+                    if or_clauses:
+                        filter_dict = (
+                            {"$or": or_clauses}
+                            if len(or_clauses) > 1
+                            else or_clauses[0]
+                        )
 
-                            match = False
-                            if session_id and doc_sess == session_id:
-                                match = True
-                            if user_id and doc_user == user_id:
-                                match = True
-                            if agent_id and doc_ag == agent_id:
-                                match = True
-                            if org_id and doc_org == org_id:
-                                match = True
+                # Pre-filtered retrieval
+                try:
+                    raw_rag_docs = self.hybrid_retriever.retrieve(
+                        query=query,
+                        top_k=limit,
+                        org_id=org_id,
+                        filter=filter_dict,
+                    )
+                    # Verify post-filtering to prevent cross-scope leakage
+                    for doc in raw_rag_docs:
+                        doc_sess = doc.metadata.get("session_id")
+                        doc_user = doc.metadata.get("user_id")
+                        doc_ag = doc.metadata.get("agent_id")
+                        doc_org = doc.metadata.get("org_id")
 
-                            # If no filters set, allow everything
-                            if not (session_id or user_id or agent_id or org_id):
-                                match = True
+                        # Invariant tenant isolation
+                        if org_id and doc_org != org_id:
+                            continue
 
-                            if match:
-                                rag_docs.append(doc)
-                    except Exception as e:
-                        logger.warning(f"RAG retriever invoke failed: {e}")
+                        match = False
+                        if session_id and doc_sess == session_id:
+                            match = True
+                        if user_id and doc_user == user_id:
+                            match = True
+                        if agent_id and doc_ag == agent_id:
+                            match = True
+
+                        # If no sub-filters set or matched, allow
+                        if not (session_id or user_id or agent_id):
+                            match = True
+
+                        if match:
+                            rag_docs.append(doc)
+                except Exception as e:
+                    logger.warning(f"RAG retriever retrieve failed: {e}")
 
             # Full-text search (FTS5 matched turns, hierarchical/OR-ed)
             fts_turns = self.session_db.search_turns(
@@ -288,6 +328,26 @@ class MemoryManager:
         if docs and self.hybrid_retriever:
             logger.info(f"Flushing {len(docs)} buffered turns to vector store.")
             self.hybrid_retriever.ingest(docs)
+
+    def delete_session(self, session_id: str, org_id: str | None = None) -> int:
+        """Delete session turns from database, vector/BM25 memory, and buffer."""
+        self.turn_buffers.pop(session_id, None)
+        deleted = self.session_db.delete_session(session_id)
+        if self.hybrid_retriever:
+            self.hybrid_retriever.delete_by_session(session_id, org_id=org_id)
+        return deleted
+
+    def delete_document(self, doc_id: str, org_id: str | None = None) -> int:
+        """Propagate document deletion to hybrid retriever."""
+        if self.hybrid_retriever:
+            return self.hybrid_retriever.delete_document(doc_id, org_id=org_id)
+        return 0
+
+    def delete_by_source(self, source_uri: str, org_id: str | None = None) -> int:
+        """Propagate source deletion to hybrid retriever."""
+        if self.hybrid_retriever:
+            return self.hybrid_retriever.delete_by_source(source_uri, org_id=org_id)
+        return 0
 
     def close(self) -> None:
         """Close connections."""

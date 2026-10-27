@@ -49,7 +49,12 @@ _ATTACH_TOO_LARGE = "[attachment: {} - too large]"
 _ATTACH_FAILED = "[attachment: {} - download failed]"
 _ATTACH_UPLOAD_FAILED = "[attachment: {} - upload failed]"
 _DEFAULT_ATTACH_NAME = "attachment"
-_MSGTYPE_MAP = {"m.image": "image", "m.audio": "audio", "m.video": "video", "m.file": "file"}
+_MSGTYPE_MAP = {
+    "m.image": "image",
+    "m.audio": "audio",
+    "m.video": "video",
+    "m.file": "file",
+}
 
 MATRIX_MEDIA_EVENT_FILTER = (RoomMessageMedia, RoomEncryptedMedia)
 MatrixMediaEvent: TypeAlias = RoomMessageMedia | RoomEncryptedMedia
@@ -111,7 +116,9 @@ def _filter_matrix_html_attribute(tag: str, attr: str, value: str) -> str | None
         return value if value.lower().startswith("mxc://") else None
     if tag == "code" and attr == "class":
         classes = [
-            c for c in value.split() if c.startswith("language-") and not c.startswith("language-_")
+            c
+            for c in value.split()
+            if c.startswith("language-") and not c.startswith("language-_")
         ]
         return " ".join(classes) if classes else None
     return value
@@ -163,7 +170,9 @@ class _NioLoguruHandler(logging.Handler):
         frame, depth = logging.currentframe(), 2
         while frame and frame.f_code.co_filename == logging.__file__:
             frame, depth = frame.f_back, depth + 1
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
 
 
 def _configure_nio_logging_bridge() -> None:
@@ -209,7 +218,8 @@ class MatrixChannel(BaseChannel):
             user=self.config.user_id,
             store_path=store_path,
             config=AsyncClientConfig(
-                store_sync_tokens=True, encryption_enabled=self.config.e2ee_enabled,
+                store_sync_tokens=True,
+                encryption_enabled=self.config.e2ee_enabled,
             ),
         )
         self.client.user_id = self.config.user_id
@@ -220,15 +230,21 @@ class MatrixChannel(BaseChannel):
         self._register_response_callbacks()
 
         if not self.config.e2ee_enabled:
-            logger.warning("Matrix E2EE disabled; encrypted rooms may be undecryptable.")
+            logger.warning(
+                "Matrix E2EE disabled; encrypted rooms may be undecryptable."
+            )
 
         if self.config.device_id:
             try:
                 self.client.load_store()
             except Exception:
-                logger.exception("Matrix store load failed; restart may replay recent messages.")
+                logger.exception(
+                    "Matrix store load failed; restart may replay recent messages."
+                )
         else:
-            logger.warning("Matrix device_id empty; restart may replay recent messages.")
+            logger.warning(
+                "Matrix device_id empty; restart may replay recent messages."
+            )
 
         self._sync_task = asyncio.create_task(self._sync_loop())
 
@@ -242,7 +258,8 @@ class MatrixChannel(BaseChannel):
         if self._sync_task:
             try:
                 await asyncio.wait_for(
-                    asyncio.shield(self._sync_task), timeout=self.config.sync_stop_grace_seconds,
+                    asyncio.shield(self._sync_task),
+                    timeout=self.config.sync_stop_grace_seconds,
                 )
             except (TimeoutError, asyncio.CancelledError):
                 self._sync_task.cancel()
@@ -291,7 +308,9 @@ class MatrixChannel(BaseChannel):
     ) -> dict[str, Any]:
         """Build Matrix content payload for an uploaded file/image/audio/video."""
         prefix = mime.split("/", maxsplit=1)[0]
-        msgtype = {"image": "m.image", "audio": "m.audio", "video": "m.video"}.get(prefix, "m.file")
+        msgtype = {"image": "m.image", "audio": "m.audio", "video": "m.video"}.get(
+            prefix, "m.file"
+        )
         content: dict[str, Any] = {
             "msgtype": msgtype,
             "body": filename,
@@ -373,20 +392,26 @@ class MatrixChannel(BaseChannel):
         if limit_bytes <= 0 or size_bytes > limit_bytes:
             return _ATTACH_TOO_LARGE.format(filename)
 
-        mime = mimetypes.guess_type(filename, strict=False)[0] or "application/octet-stream"
+        mime = (
+            mimetypes.guess_type(filename, strict=False)[0]
+            or "application/octet-stream"
+        )
         try:
             with resolved.open("rb") as f:
                 upload_result = await self.client.upload(
                     f,
                     content_type=mime,
                     filename=filename,
-                    encrypt=self.config.e2ee_enabled and self._is_encrypted_room(room_id),
+                    encrypt=self.config.e2ee_enabled
+                    and self._is_encrypted_room(room_id),
                     filesize=size_bytes,
                 )
         except Exception:
             return fail
 
-        upload_response = upload_result[0] if isinstance(upload_result, tuple) else upload_result
+        upload_response = (
+            upload_result[0] if isinstance(upload_result, tuple) else upload_result
+        )
         encryption_info = (
             upload_result[1]
             if isinstance(upload_result, tuple) and isinstance(upload_result[1], dict)
@@ -450,7 +475,9 @@ class MatrixChannel(BaseChannel):
 
     def _register_event_callbacks(self) -> None:
         self.client.add_event_callback(self._on_message, RoomMessageText)
-        self.client.add_event_callback(self._on_media_message, MATRIX_MEDIA_EVENT_FILTER)
+        self.client.add_event_callback(
+            self._on_media_message, MATRIX_MEDIA_EVENT_FILTER
+        )
         self.client.add_event_callback(self._on_room_invite, InviteEvent)
 
     def _register_response_callbacks(self) -> None:
@@ -463,7 +490,9 @@ class MatrixChannel(BaseChannel):
         code = getattr(response, "status_code", None)
         is_auth = code in {"M_UNKNOWN_TOKEN", "M_FORBIDDEN", "M_UNAUTHORIZED"}
         is_fatal = is_auth or getattr(response, "soft_logout", False)
-        (logger.error if is_fatal else logger.warning)("Matrix {} failed: {}", label, response)
+        (logger.error if is_fatal else logger.warning)(
+            "Matrix {} failed: {}", label, response
+        )
 
     async def _on_sync_error(self, response: SyncError) -> None:
         self._log_response_error("sync", response)
@@ -480,7 +509,9 @@ class MatrixChannel(BaseChannel):
             return
         try:
             response = await self.client.room_typing(
-                room_id=room_id, typing_state=typing, timeout=TYPING_NOTICE_TIMEOUT_MS,
+                room_id=room_id,
+                typing_state=typing,
+                timeout=TYPING_NOTICE_TIMEOUT_MS,
             )
             if isinstance(response, RoomTypingError):
                 logger.debug("Matrix typing failed for {}: {}", room_id, response)
@@ -586,7 +617,9 @@ class MatrixChannel(BaseChannel):
         return meta
 
     @staticmethod
-    def _build_thread_relates_to(metadata: dict[str, Any] | None) -> dict[str, Any] | None:
+    def _build_thread_relates_to(
+        metadata: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
         if not metadata:
             return None
         root_id = metadata.get("thread_root_event_id")
@@ -634,7 +667,11 @@ class MatrixChannel(BaseChannel):
         return _DEFAULT_ATTACH_NAME if attachment_type == "file" else attachment_type
 
     def _build_attachment_path(
-        self, event: MatrixMediaEvent, attachment_type: str, filename: str, mime: str | None,
+        self,
+        event: MatrixMediaEvent,
+        attachment_type: str,
+        filename: str,
+        mime: str | None,
     ) -> Path:
         safe_name = safe_filename(Path(filename).name) or _DEFAULT_ATTACH_NAME
         suffix = Path(safe_name).suffix
@@ -643,7 +680,9 @@ class MatrixChannel(BaseChannel):
                 safe_name, suffix = f"{safe_name}{guessed}", guessed
         stem = (Path(safe_name).stem or attachment_type)[:72]
         suffix = suffix[:16]
-        event_id = safe_filename(str(getattr(event, "event_id", "") or "evt").lstrip("$"))
+        event_id = safe_filename(
+            str(getattr(event, "event_id", "") or "evt").lstrip("$")
+        )
         event_prefix = (event_id[:24] or "evt").strip("_")
         return self._media_dir() / f"{event_prefix}_{stem}{suffix}"
 
@@ -668,7 +707,9 @@ class MatrixChannel(BaseChannel):
                     return None
         return None
 
-    def _decrypt_media_bytes(self, event: MatrixMediaEvent, ciphertext: bytes) -> bytes | None:
+    def _decrypt_media_bytes(
+        self, event: MatrixMediaEvent, ciphertext: bytes
+    ) -> bytes | None:
         key_obj, hashes, iv = (
             getattr(event, "key", None),
             getattr(event, "hashes", None),
@@ -681,7 +722,9 @@ class MatrixChannel(BaseChannel):
         try:
             return decrypt_attachment(ciphertext, key, sha256, iv)
         except (EncryptionError, ValueError, TypeError):
-            logger.warning("Matrix decrypt failed for event {}", getattr(event, "event_id", ""))
+            logger.warning(
+                "Matrix decrypt failed for event {}", getattr(event, "event_id", "")
+            )
             return None
 
     async def _fetch_media_attachment(
@@ -745,7 +788,9 @@ class MatrixChannel(BaseChannel):
         return meta
 
     async def _on_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
-        if event.sender == self.config.user_id or not self._should_process_message(room, event):
+        if event.sender == self.config.user_id or not self._should_process_message(
+            room, event
+        ):
             return
         await self._start_typing_keepalive(room.room_id)
         try:
@@ -759,8 +804,12 @@ class MatrixChannel(BaseChannel):
             await self._stop_typing_keepalive(room.room_id, clear_typing=True)
             raise
 
-    async def _on_media_message(self, room: MatrixRoom, event: MatrixMediaEvent) -> None:
-        if event.sender == self.config.user_id or not self._should_process_message(room, event):
+    async def _on_media_message(
+        self, room: MatrixRoom, event: MatrixMediaEvent
+    ) -> None:
+        if event.sender == self.config.user_id or not self._should_process_message(
+            room, event
+        ):
             return
         attachment, marker = await self._fetch_media_attachment(room, event)
         parts: list[str] = []

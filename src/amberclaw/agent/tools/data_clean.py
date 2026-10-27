@@ -19,6 +19,7 @@ class CleanArgs(BaseModel):
 def _load_data(path: str) -> Any:
     """Load CSV or Excel into DataFrame."""
     import pandas as pd
+
     if path.endswith((".xlsx", ".xls")):
         return pd.read_excel(path)
     return pd.read_csv(path)
@@ -57,7 +58,9 @@ class DataCleanTool(PydanticTool):
             df = await asyncio.to_thread(_load_data, args.file_path)
 
             agent = DataCleaningAgent(
-                model=self._model, bypass_recommended_steps=True, bypass_explain_code=True,
+                model=self._model,
+                bypass_recommended_steps=True,
+                bypass_explain_code=True,
             )
 
             # Offload the heavy AI/Data processing to a thread
@@ -73,7 +76,9 @@ class DataCleanTool(PydanticTool):
                 out_path = args.file_path.rsplit(".", 1)[0] + "_cleaned.csv"
                 await asyncio.to_thread(cleaned.to_csv, out_path, index=False)
 
-                summary = agent.response.get("data_cleaning_summary", "Cleaning complete.")
+                summary = agent.response.get(
+                    "data_cleaning_summary", "Cleaning complete."
+                )
                 return f"{summary}\n\nCleaned data saved to: {out_path}\nRows: {len(df)} → {len(cleaned)}"
 
             error = agent.response.get("data_cleaner_error", "Unknown error")

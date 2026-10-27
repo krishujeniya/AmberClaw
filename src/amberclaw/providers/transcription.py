@@ -50,7 +50,10 @@ class GroqTranscriptionProvider:
                     }
 
                     response = await client.post(
-                        self.api_url, headers=headers, files=files, timeout=60.0,
+                        self.api_url,
+                        headers=headers,
+                        files=files,
+                        timeout=60.0,
                     )
 
                     response.raise_for_status()
@@ -94,7 +97,10 @@ class OpenAITranscriptionProvider:
                     }
 
                     response = await client.post(
-                        self.api_url, headers=headers, files=files, timeout=60.0,
+                        self.api_url,
+                        headers=headers,
+                        files=files,
+                        timeout=60.0,
                     )
 
                     response.raise_for_status()
@@ -104,4 +110,3 @@ class OpenAITranscriptionProvider:
         except Exception as e:
             logger.error("OpenAI transcription error: {}", e)
             return ""
-

@@ -1,4 +1,4 @@
-# ruff: noqa: E501, ARG002, PLR0913
+# ruff: noqa: ARG002, PLR0913
 """Honcho Dialectic User Modeling Provider for AmberClaw.
 
 Integrates with the Honcho API/SDK to represent separate user/AI peers,
@@ -17,6 +17,7 @@ try:
     from honcho import Honcho, MessageCreateParams
     from honcho.peer import PeerConfig
     from honcho.session import SessionPeerConfig
+
     HONCHO_AVAILABLE = True
 except ImportError:
     HONCHO_AVAILABLE = False
@@ -44,7 +45,9 @@ class HonchoProvider:
             except Exception as e:
                 logger.error(f"Failed to initialize Honcho client: {e}")
         else:
-            logger.warning("Honcho API key not provided or SDK not available. Running in Mock/Local mode.")
+            logger.warning(
+                "Honcho API key not provided or SDK not available. Running in Mock/Local mode."
+            )
 
     async def get_or_create_peer(self, peer_id: str, observe_me: bool = True) -> Any:
         """Retrieve or create a Honcho peer with specified configuration."""
@@ -80,12 +83,20 @@ class HonchoProvider:
             # Determine SessionPeerConfig based on mutual observation mode
             if observation_mode.lower() == "directional":
                 # Directional: Agent observes User (observe_others=True), User does not observe Agent
-                user_session_config = SessionPeerConfig(observe_me=observe_me, observe_others=False)
-                agent_session_config = SessionPeerConfig(observe_me=False, observe_others=observe_others)
+                user_session_config = SessionPeerConfig(
+                    observe_me=observe_me, observe_others=False
+                )
+                agent_session_config = SessionPeerConfig(
+                    observe_me=False, observe_others=observe_others
+                )
             else:
                 # Unified: Shared mutual observations
-                user_session_config = SessionPeerConfig(observe_me=observe_me, observe_others=observe_others)
-                agent_session_config = SessionPeerConfig(observe_me=observe_me, observe_others=observe_others)
+                user_session_config = SessionPeerConfig(
+                    observe_me=observe_me, observe_others=observe_others
+                )
+                agent_session_config = SessionPeerConfig(
+                    observe_me=observe_me, observe_others=observe_others
+                )
 
             # Create or fetch session with the peers attached
             session_peers = [
@@ -173,7 +184,9 @@ class HonchoProvider:
             try:
                 # Update peer card or session metadata with reconciliation results
                 user_peer = self.client.peer(id=user_id)
-                user_peer.set_metadata({"last_reconciliation": reasoning["reconciliation"]})
+                user_peer.set_metadata(
+                    {"last_reconciliation": reasoning["reconciliation"]}
+                )
             except Exception as e:
                 logger.debug(f"Failed to set peer metadata on Honcho: {e}")
 

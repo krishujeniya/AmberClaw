@@ -3,7 +3,9 @@ import sys
 import zipfile
 from pathlib import Path
 
-SCRIPT_DIR = (Path("src") / "amberclaw" / "skills" / "skill-creator" / "scripts").resolve()
+SCRIPT_DIR = (
+    Path("src") / "amberclaw" / "skills" / "skill-creator" / "scripts"
+).resolve()
 if not SCRIPT_DIR.exists():
     SCRIPT_DIR = Path("amberclaw/skills/skill-creator/scripts").resolve()
 if str(SCRIPT_DIR) not in sys.path:

@@ -27,6 +27,7 @@ def run_bash(command: str, cwd: str = "/workspace") -> dict[str, Any]:
     """Execute bash command inside the Modal container."""
     import subprocess
     import time
+
     start_time = time.perf_counter()
     try:
         res = subprocess.run(  # noqa: S602
@@ -57,7 +58,9 @@ def run_bash(command: str, cwd: str = "/workspace") -> dict[str, Any]:
     image=image,
     network_file_systems={"/workspace": nfs},
 )
-def run_python(code: str, env: dict[str, str] | None = None, cwd: str = "/workspace") -> dict[str, Any]:
+def run_python(
+    code: str, env: dict[str, str] | None = None, cwd: str = "/workspace"
+) -> dict[str, Any]:
     """Execute python script inside the Modal container."""
     import io
     import os
@@ -82,6 +85,7 @@ def run_python(code: str, env: dict[str, str] | None = None, cwd: str = "/worksp
         exit_code = e.code if isinstance(e.code, int) else 0
     except Exception:
         import traceback
+
         traceback.print_exc(file=stderr_buffer)
         exit_code = 1
     finally:
@@ -112,7 +116,9 @@ class ModalTerminalBackend(BaseTerminalBackend):
 
         try:
             # Test if we can look up the deployed functions
-            await asyncio.to_thread(lambda: modal.Function.from_name(self.app_name, "run_bash"))
+            await asyncio.to_thread(
+                lambda: modal.Function.from_name(self.app_name, "run_bash")
+            )
             self._connected = True
         except Exception:
             # Deploy the app if lookup fails
@@ -158,9 +164,7 @@ class ModalTerminalBackend(BaseTerminalBackend):
         )
         await asyncio.to_thread(self._sync_workspace_sync, volume)
 
-    async def execute_bash(
-        self, command: str, timeout: int = 30
-    ) -> dict[str, Any]:
+    async def execute_bash(self, command: str, timeout: int = 30) -> dict[str, Any]:
         """Execute a bash command in the remote Modal sandbox container."""
         start_time = time.perf_counter()
         await self._sync_workspace()

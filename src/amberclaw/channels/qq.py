@@ -83,7 +83,9 @@ class QQChannel(BaseChannel):
         """Run the bot connection with auto-reconnect."""
         while self._running:
             try:
-                await self._client.start(appid=self.config.app_id, secret=self.config.secret)
+                await self._client.start(
+                    appid=self.config.app_id, secret=self.config.secret
+                )
             except Exception as e:
                 logger.warning("QQ bot error: {}", e)
             if self._running:
@@ -129,7 +131,9 @@ class QQChannel(BaseChannel):
         except Exception as e:
             logger.error("Error sending QQ message: {}", e)
 
-    async def _on_message(self, data: "C2CMessage | GroupMessage", is_group: bool = False) -> None:
+    async def _on_message(
+        self, data: "C2CMessage | GroupMessage", is_group: bool = False
+    ) -> None:
         """Handle incoming message from QQ."""
         try:
             # Dedup by message ID

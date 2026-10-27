@@ -4,29 +4,40 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   pypi-publish:
     name: Build and publish Python package
     runs-on: ubuntu-latest
+    environment: release
     
-    # Needs trusted publisher setup on PyPI
+    # Needs trusted publisher setup on PyPI + attestation permissions
     permissions:
       id-token: write
       contents: read
+      attestations: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@0b93645e9fea7318edeed2796c01d3ab981718e0 # v5.3.0
         with:
           python-version: '3.11'
           
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@1edb512832cc572a6b147611031914328fb043ae # v5.1.0
         
-      - name: Build package
+      - name: Build package distribution
         run: uv build
         
-      - name: Publish package
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Generate SLSA Build Provenance Attestation
+        uses: actions/attest-build-provenance@c074443f1a5fb4aee83904b711843e9ec8353943 # v2.2.2
+        with:
+          subject-path: 'dist/*'
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # release/v1

@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1.4
+FROM python:3.11-slim as builder
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project --no-dev
+
+# ---------------------------------------------------
+FROM python:3.11-slim as runtime
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Hardened non-root security identity (UID 10001)
+RUN groupadd -g 10001 amberclaw && \
+    useradd -u 10001 -g amberclaw -s /bin/false -m amberclaw
+
+WORKDIR /app
+
+COPY --from=builder --chown=amberclaw:amberclaw /app/.venv /app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+COPY --chown=amberclaw:amberclaw src/ ./src/
+COPY --chown=amberclaw:amberclaw pyproject.toml ./
+
+RUN uv pip install -e . --no-deps
+
+USER 10001:10001
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+CMD ["amberclaw", "start", "--host", "0.0.0.0", "--port", "8000"]

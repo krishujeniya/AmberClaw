@@ -54,7 +54,10 @@ async def handle_a2a_request(request: Request) -> JsonRpcResponse:
 
     if method == "execute_task":
         if not isinstance(params, dict) or "task" not in params:
-            error = {"code": -32602, "message": "Invalid params: 'task' parameter is required"}
+            error = {
+                "code": -32602,
+                "message": "Invalid params: 'task' parameter is required",
+            }
         else:
             task = params["task"]
             try:

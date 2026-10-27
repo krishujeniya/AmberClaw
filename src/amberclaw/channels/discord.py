@@ -90,7 +90,9 @@ class DiscordChannel(BaseChannel):
 
             # Send file attachments first
             for media_path in msg.media or []:
-                if await self._send_file(url, headers, media_path, reply_to=msg.reply_to):
+                if await self._send_file(
+                    url, headers, media_path, reply_to=msg.reply_to
+                ):
                     sent_media = True
                 else:
                     failed_media.append(Path(media_path).name)
@@ -99,7 +101,9 @@ class DiscordChannel(BaseChannel):
             chunks = split_message(msg.content or "", MAX_MESSAGE_LEN)
             if not chunks and failed_media and not sent_media:
                 chunks = split_message(
-                    "\n".join(f"[attachment: {name} - send failed]" for name in failed_media),
+                    "\n".join(
+                        f"[attachment: {name} - send failed]" for name in failed_media
+                    ),
                     MAX_MESSAGE_LEN,
                 )
             if not chunks:
@@ -119,7 +123,10 @@ class DiscordChannel(BaseChannel):
             await self._stop_typing(msg.chat_id)
 
     async def _send_payload(
-        self, url: str, headers: dict[str, str], payload: dict[str, Any],
+        self,
+        url: str,
+        headers: dict[str, str],
+        payload: dict[str, Any],
     ) -> bool:
         """Send a single Discord API payload with retry on rate-limit. Returns True on success."""
         for attempt in range(3):
@@ -169,7 +176,9 @@ class DiscordChannel(BaseChannel):
                     data: dict[str, Any] = {}
                     if payload_json:
                         data["payload_json"] = json.dumps(payload_json)
-                    response = await self._http.post(url, headers=headers, files=files, data=data)
+                    response = await self._http.post(
+                        url, headers=headers, files=files, data=data
+                    )
                 if response.status_code == 429:
                     resp_data = response.json()
                     retry_after = float(resp_data.get("retry_after", 1.0))
@@ -302,7 +311,8 @@ class DiscordChannel(BaseChannel):
             try:
                 media_dir.mkdir(parents=True, exist_ok=True)
                 file_path = (
-                    media_dir / f"{attachment.get('id', 'file')}_{filename.replace('/', '_')}"
+                    media_dir
+                    / f"{attachment.get('id', 'file')}_{filename.replace('/', '_')}"
                 )
                 resp = await self._http.get(url)
                 resp.raise_for_status()
@@ -343,10 +353,14 @@ class DiscordChannel(BaseChannel):
                     if str(mention.get("id")) == self._bot_user_id:
                         return True
                 # Also check content for mention format <@USER_ID>
-                if f"<@{self._bot_user_id}>" in content or f"<@!{self._bot_user_id}>" in content:
+                if (
+                    f"<@{self._bot_user_id}>" in content
+                    or f"<@!{self._bot_user_id}>" in content
+                ):
                     return True
             logger.debug(
-                "Discord message in {} ignored (bot not mentioned)", payload.get("channel_id"),
+                "Discord message in {} ignored (bot not mentioned)",
+                payload.get("channel_id"),
             )
             return False
 
@@ -365,7 +379,9 @@ class DiscordChannel(BaseChannel):
                 except asyncio.CancelledError:
                     return
                 except Exception as e:
-                    logger.debug("Discord typing indicator failed for {}: {}", channel_id, e)
+                    logger.debug(
+                        "Discord typing indicator failed for {}: {}", channel_id, e
+                    )
                     return
                 await asyncio.sleep(8)
 

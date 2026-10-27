@@ -1,0 +1,85 @@
+version: "3.9"
+
+services:
+  amberclaw-gateway:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.gateway
+    image: amberclaw/gateway:airgapped
+    container_name: amberclaw_gateway_airgapped
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    user: "10001:10001"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - OFFLINE_MODE=true
+      - LOG_LEVEL=INFO
+      - LITELLM_API_BASE=http://ollama:11434
+      - OPENAI_API_BASE=http://ollama:11434/v1
+      - DEFAULT_MODEL=ollama/llama3.2:3b
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+    volumes:
+      - ./data/amberclaw:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      ollama:
+        condition: service_started
+      chromadb:
+        condition: service_started
+    networks:
+      - amberclaw-airgap-net
+
+  # Local LLM Inference Server (Zero external internet required)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: amberclaw_ollama_local
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "4.0"
+          memory: 8G
+    volumes:
+      - ./data/ollama:/root/.ollama
+    networks:
+      - amberclaw-airgap-net
+
+  # Local Vector DB for Long-Term Memory
+  chromadb:
+    image: chromadb/chroma:0.4.24
+    container_name: amberclaw_memory_db_airgapped
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1G
+    volumes:
+      - ./data/chroma:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+    networks:
+      - amberclaw-airgap-net
+
+networks:
+  amberclaw-airgap-net:
+    driver: bridge
+    internal: true

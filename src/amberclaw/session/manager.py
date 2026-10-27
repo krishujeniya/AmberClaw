@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from loguru import logger
-from sqlalchemy import Column, DateTime, Integer, JSON, String
+from sqlalchemy import JSON, Column, DateTime, Integer, String
 from sqlalchemy.future import select
 
 from amberclaw.config.paths import get_legacy_sessions_dir
@@ -144,7 +144,10 @@ class SessionManager:
                 run_async_as_sync(create_tables())
                 logger.info("Session PostgreSQL tables verified.")
             except Exception as e:
-                logger.error("Failed to initialize PostgreSQL session tables: {}. Falling back.", e)
+                logger.error(
+                    "Failed to initialize PostgreSQL session tables: {}. Falling back.",
+                    e,
+                )
                 self.db_active = False
 
     def _get_session_path(self, key: str) -> Path:
@@ -329,7 +332,9 @@ class SessionManager:
 
             async def _save_db():
                 async for db_sess in get_db_session():
-                    stmt = select(DBSessionModel).where(DBSessionModel.key == session.key)
+                    stmt = select(DBSessionModel).where(
+                        DBSessionModel.key == session.key
+                    )
                     res = await db_sess.execute(stmt)
                     item = res.scalar_one_or_none()
                     if not item:
@@ -354,7 +359,9 @@ class SessionManager:
                 run_async_as_sync(_save_db())
                 return
             except Exception as e:
-                logger.error("Failed to save session {} to PostgreSQL: {}", session.key, e)
+                logger.error(
+                    "Failed to save session {} to PostgreSQL: {}", session.key, e
+                )
 
         # Fallback to local files
         path = self._get_session_path(session.key)
@@ -377,8 +384,10 @@ class SessionManager:
         if self.redis_active:
             client = get_redis()
             if client:
+
                 async def _delete():
                     await client.delete(f"session_cache:{key}")
+
                 try:
                     run_async_as_sync(_delete())
                 except Exception as e:
@@ -395,7 +404,9 @@ class SessionManager:
 
             async def _list_db():
                 async for db_sess in get_db_session():
-                    stmt = select(DBSessionModel).order_by(DBSessionModel.updated_at.desc())
+                    stmt = select(DBSessionModel).order_by(
+                        DBSessionModel.updated_at.desc()
+                    )
                     res = await db_sess.execute(stmt)
                     items = res.scalars().all()
                     return [

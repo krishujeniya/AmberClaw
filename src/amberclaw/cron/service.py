@@ -43,7 +43,11 @@ def _compute_next_run(schedule: CronSchedule, now_ms: int) -> int | None:
 
             # Use caller-provided reference time for deterministic scheduling
             base_time = now_ms / 1000
-            tz = ZoneInfo(schedule.tz) if schedule.tz else datetime.now().astimezone().tzinfo
+            tz = (
+                ZoneInfo(schedule.tz)
+                if schedule.tz
+                else datetime.now().astimezone().tzinfo
+            )
             base_dt = datetime.fromtimestamp(base_time, tz=tz)
             cron = croniter(schedule.expr, base_dt)
             next_dt = cron.get_next(datetime)
@@ -179,7 +183,9 @@ class CronService:
             ],
         }
 
-        self.store_path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+        self.store_path.write_text(
+            json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
         self._last_mtime = self.store_path.stat().st_mtime
 
     async def start(self) -> None:
@@ -190,7 +196,8 @@ class CronService:
         self._save_store()
         self._arm_timer()
         logger.info(
-            "Cron service started with {} jobs", len(self._store.jobs if self._store else []),
+            "Cron service started with {} jobs",
+            len(self._store.jobs if self._store else []),
         )
 
     def stop(self) -> None:
@@ -214,7 +221,9 @@ class CronService:
         if not self._store:
             return None
         times = [
-            j.state.next_run_at_ms for j in self._store.jobs if j.enabled and j.state.next_run_at_ms
+            j.state.next_run_at_ms
+            for j in self._store.jobs
+            if j.enabled and j.state.next_run_at_ms
         ]
         return min(times) if times else None
 
@@ -359,7 +368,9 @@ class CronService:
                 job.enabled = enabled
                 job.updated_at_ms = _now_ms()
                 if enabled:
-                    job.state.next_run_at_ms = _compute_next_run(job.schedule, _now_ms())
+                    job.state.next_run_at_ms = _compute_next_run(
+                        job.schedule, _now_ms()
+                    )
                 else:
                     job.state.next_run_at_ms = None
                 self._save_store()

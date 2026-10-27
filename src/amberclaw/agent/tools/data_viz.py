@@ -14,7 +14,8 @@ class VizArgs(BaseModel):
 
     file_path: str = Field(..., description="Path to CSV or Excel file to visualize.")
     instructions: str = Field(
-        ..., description="Visualization instructions (e.g. 'scatter plot of age vs salary').",
+        ...,
+        description="Visualization instructions (e.g. 'scatter plot of age vs salary').",
     )
 
 
@@ -51,10 +52,15 @@ class DataVizTool(PydanticTool):
             df = await asyncio.to_thread(load_data, file_path)
 
             agent = DataVisualizationAgent(
-                model=self._model, bypass_recommended_steps=True, bypass_explain_code=True,
+                model=self._model,
+                bypass_recommended_steps=True,
+                bypass_explain_code=True,
             )
             await asyncio.to_thread(
-                agent.invoke_agent, data_raw=df, user_instructions=args.instructions, max_retries=2,
+                agent.invoke_agent,
+                data_raw=df,
+                user_instructions=args.instructions,
+                max_retries=2,
             )
 
             plot = agent.get_plotly_graph()
@@ -63,12 +69,16 @@ class DataVizTool(PydanticTool):
 
                 def _save_json(path, data):
                     with open(path, "w") as f:
-                        json.dump(data.to_dict() if hasattr(data, "to_dict") else data, f)
+                        json.dump(
+                            data.to_dict() if hasattr(data, "to_dict") else data, f
+                        )
 
                 await asyncio.to_thread(_save_json, out_path, plot)
                 return f"Visualization generated and saved to: {out_path}"
 
-            error = (agent.response or {}).get("data_visualization_error", "Unknown error")
+            error = (agent.response or {}).get(
+                "data_visualization_error", "Unknown error"
+            )
             return f"Visualization failed: {error}"
         except Exception as e:
             logger.error("DataVizTool error: {}", e)

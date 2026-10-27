@@ -12,7 +12,9 @@ def test_add_job_rejects_unknown_timezone(tmp_path) -> None:
     with pytest.raises(ValueError, match="unknown timezone 'America/Vancovuer'"):
         service.add_job(
             name="tz typo",
-            schedule=CronSchedule(kind="cron", expr="0 9 * * *", tz="America/Vancovuer"),
+            schedule=CronSchedule(
+                kind="cron", expr="0 9 * * *", tz="America/Vancovuer"
+            ),
             message="hello",
         )
 

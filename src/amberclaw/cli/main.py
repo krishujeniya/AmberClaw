@@ -1,9 +1,11 @@
 import typer
 import uvicorn
 from rich.console import Console
+
 from amberclaw.cli.commands import app
 
 console = Console()
+
 
 @app.command()
 def start(
@@ -14,9 +16,12 @@ def start(
     """
     Starts the AmberClaw AI OS core engine and API Gateway.
     """
-    console.print(f"[bold green]Starting AmberClaw AI OS on {host}:{port}...[/bold green]")
+    console.print(
+        f"[bold green]Starting AmberClaw AI OS on {host}:{port}...[/bold green]"
+    )
     # uvicorn run points to our FastAPI app
     uvicorn.run("amberclaw.api.main:app", host=host, port=port, reload=reload)
+
 
 if __name__ == "__main__":
     app()

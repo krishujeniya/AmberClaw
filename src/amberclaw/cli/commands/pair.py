@@ -1,5 +1,6 @@
 import typer
 from rich.console import Console
+
 from amberclaw.security.dm_pairing import generate_pairing_code
 
 console = Console()

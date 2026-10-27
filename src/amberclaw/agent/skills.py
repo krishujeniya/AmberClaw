@@ -43,7 +43,11 @@ class SkillsLoader:
                     skill_file = skill_dir / "SKILL.md"
                     if skill_file.exists():
                         skills.append(
-                            {"name": skill_dir.name, "path": str(skill_file), "source": "workspace"},
+                            {
+                                "name": skill_dir.name,
+                                "path": str(skill_file),
+                                "source": "workspace",
+                            },
                         )
 
         # Built-in skills
@@ -51,14 +55,24 @@ class SkillsLoader:
             for skill_dir in self.builtin_skills.iterdir():
                 if skill_dir.is_dir():
                     skill_file = skill_dir / "SKILL.md"
-                    if skill_file.exists() and not any(s["name"] == skill_dir.name for s in skills):
+                    if skill_file.exists() and not any(
+                        s["name"] == skill_dir.name for s in skills
+                    ):
                         skills.append(
-                            {"name": skill_dir.name, "path": str(skill_file), "source": "builtin"},
+                            {
+                                "name": skill_dir.name,
+                                "path": str(skill_file),
+                                "source": "builtin",
+                            },
                         )
 
         # Filter by requirements
         if filter_unavailable:
-            return [s for s in skills if self._check_requirements(self._get_skill_meta(s["name"]))]
+            return [
+                s
+                for s in skills
+                if self._check_requirements(self._get_skill_meta(s["name"]))
+            ]
         return skills
 
     def load_skill(self, name: str) -> str | None:

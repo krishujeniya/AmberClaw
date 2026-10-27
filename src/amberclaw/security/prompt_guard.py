@@ -221,3 +221,79 @@ class UntrustedContentFormatter:
             f"{escaped_body}\n"
             f"</{cls.TAG_NAME}>"
         )
+
+
+class PolicyLockViolationError(PermissionError):
+    """Raised when an action violates an immutable runtime policy lock."""
+
+
+class PolicyLock(BaseModel):
+    """Immutable policy configuration locked at agent invocation start.
+
+    Prevents untrusted retrieved content or prompt injection from mutating
+    permitted tools, escalating privileges, or bypassing execution constraints.
+    """
+
+    model_config = {"frozen": True}
+
+    tenant_id: str
+    session_id: str
+    allowed_tools: frozenset[str] = Field(default_factory=frozenset)
+    denied_tools: frozenset[str] = Field(default_factory=frozenset)
+    allow_code_execution: bool = False
+    allow_data_mutation: bool = False
+    max_budget: float = 10.0
+
+
+class PolicyLockEngine:
+    """Enforces that execution remains strictly governed by immutable policy locks."""
+
+    @classmethod
+    def enforce_tool_execution(
+        cls,
+        lock: PolicyLock,
+        tool_name: str,
+        _arguments: dict[str, Any] | None = None,
+        is_mutating: bool = False,
+        is_code_exec: bool = False,
+    ) -> bool:
+        """Evaluates tool execution against the policy lock.
+
+        Raises PolicyLockViolationError if unauthorized or conflicting.
+        """
+        cleaned_tool = tool_name.strip()
+
+        # 1. Check explicit denylist
+        if cleaned_tool in lock.denied_tools:
+            logger.warning(
+                "Policy lock violation: Tool '%s' is explicitly denied for session '%s'",
+                cleaned_tool,
+                lock.session_id,
+            )
+            raise PolicyLockViolationError(
+                f"Tool '{cleaned_tool}' is blocked by policy lock for session '{lock.session_id}'"
+            )
+
+        # 2. Check allowlist (if allowlist is populated)
+        if lock.allowed_tools and cleaned_tool not in lock.allowed_tools:
+            logger.warning(
+                "Policy lock violation: Tool '%s' is not in allowed tools list",
+                cleaned_tool,
+            )
+            raise PolicyLockViolationError(
+                f"Tool '{cleaned_tool}' is not permitted under session policy lock"
+            )
+
+        # 3. Check code execution capability
+        if is_code_exec and not lock.allow_code_execution:
+            raise PolicyLockViolationError(
+                f"Code execution is prohibited by policy lock for session '{lock.session_id}'"
+            )
+
+        # 4. Check data mutation capability
+        if is_mutating and not lock.allow_data_mutation:
+            raise PolicyLockViolationError(
+                f"Data mutation is prohibited by policy lock for session '{lock.session_id}'"
+            )
+
+        return True

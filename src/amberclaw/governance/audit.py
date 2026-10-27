@@ -1,159 +1,222 @@
-"""AmberClaw Governance: Cryptographically Verifiable Audit System.
-
-Ensures agent action logs are tamper-evident via SHA-256 hash chaining.
-"""
-
 import hashlib
 import json
-from datetime import datetime, timezone
+import threading
+from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
+
 from loguru import logger
+from pydantic import BaseModel, Field
+
+
+class AuditAction(StrEnum):
+    AGENT_DECISION = "agent_decision"
+    TOOL_EXECUTION = "tool_execution"
+    GOVERNANCE_APPROVAL = "governance_approval"
+    GOVERNANCE_REJECTION = "governance_rejection"
+    POLICY_VIOLATION = "policy_violation"
+    SYSTEM_ALERT = "system_alert"
+
+
+class AuditRecord(BaseModel):
+    index: int
+    timestamp: str
+    action: str
+    actor_id: str
+    target_id: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    previous_hash: str
+    hash: str
+
+    @property
+    def prev_hash(self) -> str:
+        return self.previous_hash
+
+    @property
+    def record_hash(self) -> str:
+        return self.hash
+
+
+class AuditQuery(BaseModel):
+    action: AuditAction | None = None
+    actor_id: str | None = None
+    start_time: str | None = None
+    end_time: str | None = None
+    limit: int = 100
 
 
 class AuditLogger:
-    """Logs all agent actions for compliance and forensics with tamper-evidence."""
+    """An immutable, append-only tamper-evident audit logger."""
 
-    def __init__(self, log_dir: str = "data/audit"):
+    def __init__(self, log_dir: str | Path = "logs/audit") -> None:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
 
     def _calculate_hash(
         self,
-        index: int,
-        timestamp: str,
-        agent_id: str,
-        action: str,
-        details: dict[str, Any],
-        previous_hash: str,
+        entry_data: dict[str, Any],
     ) -> str:
-        """Calculate SHA-256 hash for a log entry deterministically."""
-        details_str = json.dumps(details, sort_keys=True)
-        payload = f"{index}|{timestamp}|{agent_id}|{action}|{details_str}|{previous_hash}"
-        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+        data = f"{entry_data['index']}|{entry_data['timestamp']}|{entry_data['action']}|{entry_data['actor_id']}|{entry_data.get('target_id')}|{json.dumps(entry_data['details'], sort_keys=True)}|{entry_data['previous_hash']}"
+        return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
-    def _get_last_entry(self, log_file: Path) -> tuple[int, str]:
-        """Read the last line of the log file to get the last index and hash."""
-        if not log_file.exists() or log_file.stat().st_size == 0:
-            return -1, "0" * 64
+    def _get_log_file_for_date(self, date_str: str) -> Path:
+        return self.log_dir / f"{date_str}.jsonl"
+
+    def _get_last_record(self, log_file: Path) -> AuditRecord | None:
+        if not log_file.exists():
+            return None
 
         try:
-            with open(log_file, "r", encoding="utf-8") as f:
-                # Seek to end of file, read last chunk
-                f.seek(0, 2)
-                size = f.tell()
-                f.seek(max(0, size - 4096))
-                lines = f.readlines()
+            with log_file.open(encoding="utf-8") as f:
+                lines = [line.strip() for line in f if line.strip()]
                 if lines:
-                    last_line = lines[-1].strip()
-                    if last_line:
-                        data = json.loads(last_line)
-                        return data.get("index", 0), data.get("hash", "0" * 64)
-        except Exception as e:
-            logger.error("Failed to read last entry from log: {}", e)
-
-        return -1, "0" * 64
+                    return AuditRecord.model_validate_json(lines[-1])
+        except Exception:
+            return None
+        return None
 
     def log_action(
-        self, agent_id: str, action: str, details: dict[str, Any]
-    ) -> str:
-        """Log an agent action, appending to the cryptographic hash chain."""
-        timestamp = datetime.now(timezone.utc).isoformat()
-        log_file = (
-            self.log_dir / f"{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.jsonl"
+        self,
+        actor_id: str,
+        action: str,
+        details: dict[str, Any] | None = None,
+        target_id: str | None = None,
+    ) -> AuditRecord:
+        """Appends a new audit record to the daily audit log in a tamper-evident manner."""
+        with self._lock:
+            now = datetime.now(UTC)
+            date_str = now.strftime("%Y-%m-%d")
+            timestamp = now.isoformat()
+
+            log_file = self._get_log_file_for_date(date_str)
+            last_record = self._get_last_record(log_file)
+
+            index = (last_record.index + 1) if last_record else 0
+            previous_hash = (
+                last_record.hash
+                if last_record
+                else "0000000000000000000000000000000000000000000000000000000000000000"
+            )
+
+            record_details = details or {}
+            entry_data = {
+                "index": index,
+                "timestamp": timestamp,
+                "action": action,
+                "actor_id": actor_id,
+                "target_id": target_id,
+                "details": record_details,
+                "previous_hash": previous_hash,
+            }
+            record_hash = self._calculate_hash(entry_data)
+
+            log_entry = {
+                **entry_data,
+                "hash": record_hash,
+            }
+
+            with log_file.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(log_entry) + "\n")
+
+            return AuditRecord.model_validate(log_entry)
+
+    def log(
+        self,
+        action: AuditAction | str,
+        actor_id: str,
+        target_id: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> AuditRecord:
+        """Alias for log_action."""
+        act_str = action.value if isinstance(action, AuditAction) else str(action)
+        return self.log_action(
+            actor_id=actor_id,
+            action=act_str,
+            details=details,
+            target_id=target_id,
         )
 
-        last_index, previous_hash = self._get_last_entry(log_file)
-        next_index = last_index + 1
-
-        entry_hash = self._calculate_hash(
-            next_index, timestamp, agent_id, action, details, previous_hash
-        )
-
-        log_entry = {
-            "index": next_index,
-            "timestamp": timestamp,
-            "agent_id": agent_id,
-            "action": action,
-            "details": details,
-            "previous_hash": previous_hash,
-            "hash": entry_hash,
-        }
-
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(log_entry) + "\n")
-
-        logger.debug(
-            "Verifiable audit log entry created for {}: {} (index={})",
-            agent_id,
-            action,
-            next_index,
-        )
-        return entry_hash
-
-    def verify_chain(self, log_file: Path) -> bool:
-        """Verify the cryptographic integrity of the audit log file."""
-        if not log_file.exists():
+    def verify_chain(self, log_file: Path | str) -> bool:
+        """Verifies the hash chain integrity for a specific log file."""
+        file_path = Path(log_file)
+        if not file_path.exists():
             return True
 
-        try:
-            expected_prev_hash = "0" * 64
-            expected_index = 0
+        expected_previous_hash = (
+            "0000000000000000000000000000000000000000000000000000000000000000"
+        )
+        expected_index = 0
 
-            with open(log_file, "r", encoding="utf-8") as f:
-                for line_num, line in enumerate(f, 1):
-                    line = line.strip()
-                    if not line:
+        with file_path.open(encoding="utf-8") as f:
+            for line_raw in f:
+                line_str = line_raw.strip()
+                if not line_str:
+                    continue
+
+                try:
+                    entry = json.loads(line_str)
+                except json.JSONDecodeError:
+                    return False
+
+                if entry.get("index") != expected_index:
+                    return False
+
+                if entry.get("previous_hash") != expected_previous_hash:
+                    return False
+
+                entry_data = {
+                    "index": entry.get("index", 0),
+                    "timestamp": entry.get("timestamp", ""),
+                    "actor_id": entry.get("actor_id", ""),
+                    "action": entry.get("action", ""),
+                    "target_id": entry.get("target_id"),
+                    "details": entry.get("details", {}),
+                    "previous_hash": entry.get("previous_hash", ""),
+                }
+                calculated_hash = self._calculate_hash(entry_data)
+
+                if entry.get("hash") != calculated_hash:
+                    return False
+
+                expected_previous_hash = calculated_hash
+                expected_index += 1
+
+        return True
+
+    def verify_integrity(self, date_str: str | None = None) -> bool:
+        """Verify chain integrity for a given date or today."""
+        d_str = date_str or datetime.now(UTC).strftime("%Y-%m-%d")
+        return self.verify_chain(self._get_log_file_for_date(d_str))
+
+    def query(self, query: AuditQuery) -> list[AuditRecord]:
+        """Query audit log records matching criteria across log files."""
+        records: list[AuditRecord] = []
+        log_files = sorted(self.log_dir.glob("*.jsonl"), reverse=True)
+        for log_file in log_files:
+            with log_file.open(encoding="utf-8") as f:
+                for line in f:
+                    line_str = line.strip()
+                    if not line_str:
                         continue
-
-                    data = json.loads(line)
-
-                    # 1. Check index
-                    idx = data.get("index")
-                    if idx != expected_index:
-                        logger.error(
-                            "Verification failed at line {}: expected index {}, got {}",
-                            line_num,
-                            expected_index,
-                            idx,
-                        )
-                        return False
-
-                    # 2. Check previous hash link
-                    prev_hash = data.get("previous_hash")
-                    if prev_hash != expected_prev_hash:
-                        logger.error(
-                            "Verification failed at line {}: expected previous_hash {}, got {}",
-                            line_num,
-                            expected_prev_hash,
-                            prev_hash,
-                        )
-                        return False
-
-                    # 3. Recalculate and verify hash
-                    timestamp = data.get("timestamp", "")
-                    agent_id = data.get("agent_id", "")
-                    action = data.get("action", "")
-                    details = data.get("details", {})
-                    current_hash = data.get("hash")
-
-                    recalculated = self._calculate_hash(
-                        idx, timestamp, agent_id, action, details, prev_hash
-                    )
-                    if current_hash != recalculated:
-                        logger.error(
-                            "Verification failed at line {}: hash mismatch", line_num
-                        )
-                        return False
-
-                    expected_prev_hash = current_hash
-                    expected_index += 1
-
-            return True
-        except Exception as e:
-            logger.error("Error verifying audit log chain: {}", e)
-            return False
+                    try:
+                        record = AuditRecord.model_validate_json(line_str)
+                        if query.action and record.action != query.action:
+                            continue
+                        if query.actor_id and record.actor_id != query.actor_id:
+                            continue
+                        if query.start_time and record.timestamp < query.start_time:
+                            continue
+                        if query.end_time and record.timestamp > query.end_time:
+                            continue
+                        records.append(record)
+                        if len(records) >= query.limit:
+                            return records
+                    except Exception as e:
+                        logger.debug("Failed to parse audit record line: {}", e)
+                        continue
+        return records
 
 
-# Global audit logger
-auditor = AuditLogger()
+audit_logger = AuditLogger()

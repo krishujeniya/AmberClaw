@@ -1,263 +1,112 @@
-# Security Policy
+# Security Policy & Architecture
 
 ## Reporting Vulnerabilities
 
 Found a security hole in AmberClaw? Here is how to report it:
 
 1. **Do not** open a public GitHub issue.
-2. File a private security advisory on GitHub, or reach out directly to the maintainer (Krish Ujeniya).
+2. File a private security advisory on GitHub, or reach out directly to the maintainers.
 3. Include in your report:
-   - What the vulnerability is
-   - How to reproduce it
-   - What damage it could cause
-   - A fix suggestion, if you have one
+   - Vulnerability classification (e.g., SSRF, privilege escalation, bypass)
+   - Step-by-step reproduction instructions or proof-of-concept
+   - Impact assessment
+   - Remediation suggestion
 
-We target a 48-hour response time.
+We target a 24 to 48-hour initial response time for all security inquiries.
 
-## Security Best Practices
+---
 
-### 1. API Key Management
+## Zero-Trust Security Architecture & Threat Model
 
-**Never commit API keys to version control.**
+AmberClaw implements a layered **Zero-Trust Security Stack**:
 
-```bash
-# Correct: lock down the config file
-chmod 600 ~/.AmberClaw/config.json
-
-# Wrong: hard-coding keys or checking them in
+```
+[ Untrusted External Ingress ] -> (Channel Quarantine / PromptGuard / DLP)
+                                       │
+                                       ▼
+                             [ API Gateway (mTLS 1.3) ]
+                                       │
+                                       ▼
+                       [ RBAC / ABAC + Policy Lock Engine ]
+                                       │
+                                       ▼
+                         [ Subagent Runtime Sandbox ]
+                         ├─ Linux Namespaces (unshare)
+                         ├─ Seccomp BPF Syscall Filters
+                         ├─ Ephemeral Filesystem Isolation
+                         ├─ DecompressionGuard (Anti-Zip Bomb)
+                         └─ HostSocket & Metadata Filter (SSRF/IMDS)
+                                       │
+                                       ▼
+                          [ Data & Secret Layer ]
+                          ├─ Envelope Encryption (AES-256-GCM)
+                          ├─ Pluggable KMS (AWS/GCP/Azure/Local)
+                          ├─ Memory Safety & Wiping (memset)
+                          └─ Tamper-Evident SHA-256 Hash Chain
 ```
 
-Recommendations:
-- Keep API keys in `~/.AmberClaw/config.json` with permissions set to `0600`
-- Environment variables work too for sensitive values
-- Use an OS keyring or credential manager in production
-- Rotate your keys on a regular schedule
-- Maintain separate keys for dev and prod environments
+### Trust Boundaries
+1. **User & External Ingress**: All prompts, documents, web pages, MCP tools, and external channel inputs are treated as untrusted data (`<untrusted_content>` quarantine).
+2. **Control vs Data vs Sandbox Networks**: Pods and containers run on segmented networks. Sandboxes have no network access by default (`CLONE_NEWNET`, K8s NetworkPolicy default-deny).
+3. **Host Isolation**: Ephemeral workspaces prevent path traversal; Unix sockets (`docker.sock`) and cloud instance metadata (`169.254.169.254`) are systematically denied.
+4. **Supply Chain**: Dependency lock pinning via `uv.lock`, automated CycloneDX and SPDX SBOM generation, and container image signing via Sigstore/Cosign.
 
-### 2. Channel Access Control
+---
 
-**Always set up `allowFrom` lists before going live.**
+## Security Features & Controls
 
-```json
-{
-  "channels": {
-    "telegram": {
-      "enabled": true,
-      "token": "YOUR_BOT_TOKEN",
-      "allowFrom": ["123456789", "987654321"]
-    },
-    "whatsapp": {
-      "enabled": true,
-      "allowFrom": ["+1234567890"]
-    }
-  }
-}
-```
+### 1. Identity, Access Management & Admin MFA
+- **OIDC / OAuth 2.1**: User authentication with rotating short-lived JWT access tokens and revocation store.
+- **Hardware-Backed Admin MFA**: WebAuthn / FIDO2 security keys (YubiKey) with monotonic counter rollback detection, user presence, and single-use TOTP fallback.
+- **Service-to-Service mTLS**: TLS 1.3 mutual authentication across all internal services and A2A agents.
+- **Just-in-Time Elevation & Break-Glass**: Audited administrative privilege escalation with mandatory justification.
 
-Notes:
-- Before version 0.1.4.post4, leaving `allowFrom` empty meant anyone could connect. From 0.1.4.post4 onward, an empty list blocks everyone — set `["*"]` if you actually want open access.
-- Grab your Telegram user ID from `@userinfobot`
-- WhatsApp numbers need the full country code
-- Check access logs regularly for unauthorized attempts
+### 2. Sandbox Hardening
+- **Process Isolation**: Linux user, network, mount, IPC, and UTS namespaces.
+- **Syscall Blocking**: Seccomp BPF filters blocking unauthorized `execve` and `ptrace` syscalls.
+- **Decompression Guard**: Defense against zip bombs, tar bombs, zip-slip directory traversal, and malicious symlink attacks.
+- **Host Socket & SSRF Filter**: Blocks Unix domain sockets (`/var/run/docker.sock`) and RFC 1918 / cloud metadata IP addresses (`169.254.169.254`).
 
-### 3. Shell Command Execution
+### 3. Data Protection, DLP & Retention
+- **Policy Lock Engine**: Prevents untrusted retrieved content or indirect prompt injection from expanding tool permissions.
+- **Data Loss Prevention (DLP)**: Automatic in-flight redaction of API keys, tokens, credit cards, and SSNs. Outbound transmission of private data requires operator confirmation tokens.
+- **Envelope Encryption**: AES-256-GCM per-record encryption with pluggable KMS backends (AWS KMS, GCP Cloud KMS, Azure Key Vault, Local).
+- **Memory Zeroing**: Sensitive credentials and cryptographic keys are explicitly overwritten with zeros (`ctypes.memset`) immediately after use.
+- **GDPR / CCPA & Legal Hold**: Right-to-be-forgotten deletion cascades and cryptographic export archives, with evidentiary legal hold safeguards.
 
-The `exec` tool runs shell commands. Dangerous patterns are filtered, but you should still:
+### 4. Supply Chain & CI/CD Security
+- **Pinned Dependencies**: Pinned via deterministic `uv.lock`.
+- **SBOM Generation**: Automated CycloneDX 1.5 and SPDX 2.3 bill of materials.
+- **Signed Releases**: Sigstore / Cosign container image signatures and SLSA build provenance attestations.
+- **Restricted CI**: GitHub Actions workflows run with `permissions: contents: read` and action versions pinned to commit SHAs.
 
-- ✅ Review tool usage in agent logs
-- ✅ Know what commands the agent is running
-- ✅ Run under a dedicated, low-privilege user account
-- ✅ Never run AmberClaw as root
-- ❌ Do not disable built-in security checks
-- ❌ Do not run on machines with sensitive data unless you have reviewed the risks
+---
 
-Blocked command patterns:
-- `rm -rf /` and similar root-level deletions
-- Fork bombs
-- Filesystem formatting (`mkfs.*`)
-- Direct disk writes
-- Other obviously destructive operations
+## Incident Response Procedures
 
-### 4. File System Access
+If a security incident or compromised credential is suspected:
 
-File operations include path traversal protection. Additional precautions:
-
-- ✅ Run with a dedicated user account
-- ✅ Use filesystem permissions to fence off sensitive directories
-- ✅ Audit file operations in your logs periodically
-- ❌ Do not hand the agent unrestricted access to important files
-
-### 5. Network Security
-
-**API traffic:**
-- All outbound API calls default to HTTPS
-- Timeouts are configured to prevent hung requests
-- Consider firewall rules to limit outbound connections if your threat model calls for it
-
-**WhatsApp bridge:**
-- Binds to `127.0.0.1:3001` only — not reachable from the network
-- Set `bridgeToken` in config for shared-secret auth between Python and Node.js
-- Keep `~/.AmberClaw/whatsapp-auth` secured at mode `0700`
-
-### 6. Dependency Security
-
-**Keep your dependencies current.**
-
-```bash
-# Check for known vulnerabilities
-pip install pip-audit
-pip-audit
-
-# Pull the latest version
-pip install --upgrade amberclaw-ai
-```
-
-For Node.js components (WhatsApp bridge):
-```bash
-cd bridge
-npm audit
-npm audit fix
-```
-
-Notes:
-- Always use the latest `litellm` release for security patches
-- The `ws` dependency was bumped to 8.17.1 or later to close a DoS vector
-- Run `pip-audit` or `npm audit` as part of your routine
-- Subscribe to security advisories for AmberClaw and its dependencies
-
-### 7. Production Deployment
-
-For production environments:
-
-1. **Isolate the runtime**
+1. **Immediate Revocation**:
    ```bash
-   # Run inside a container or VM
-   docker run --rm -it python:3.11
-   pip install amberclaw-ai
+   # Revoke all active API keys and tokens
+   amberclaw auth revoke-all --user <user_id>
    ```
-
-2. **Use a dedicated user**
+2. **Rotate Secrets Without Restart**:
    ```bash
-   sudo useradd -m -s /bin/bash amberclaw
-   sudo -u amberclaw amberclaw gateway
+   amberclaw vault rotate --secret-name <NAME>
    ```
-
-3. **Set permissions**
+3. **Inspect Tamper-Evident Audit Chains**:
    ```bash
-   chmod 700 ~/.AmberClaw
-   chmod 600 ~/.AmberClaw/config.json
-   chmod 700 ~/.AmberClaw/whatsapp-auth
+   amberclaw audit verify --log-file logs/audit.jsonl
    ```
-
-4. **Enable logging**
+4. **Trigger Emergency Break-Glass**:
    ```bash
-   tail -f ~/.AmberClaw/logs/AmberClaw.log
+   amberclaw admin break-glass --reason "Investigating security incident"
    ```
+5. **Contact Security Team**: File a private advisory on GitHub or email security@amberclaw.ai.
 
-5. **Enforce rate limits**
-   - Configure limits on your API providers
-   - Watch for usage anomalies
-   - Set spending caps on LLM APIs
-
-6. **Stay updated**
-   ```bash
-   # Check for updates weekly
-   pip install --upgrade amberclaw-ai
-   ```
-
-### 8. Dev vs Prod
-
-**Development:**
-- Use throwaway API keys
-- Work with non-sensitive data only
-- Turn on verbose logging
-- Use a test bot on Telegram
-
-**Production:**
-- Use dedicated keys with spending caps
-- Lock down filesystem access
-- Enable audit-level logging
-- Review security posture on a regular cadence
-- Monitor for anomalous behavior
-
-### 9. Data Privacy
-
-- Log files can contain sensitive content — protect them accordingly
-- LLM providers see your prompts — read their privacy policies
-- Chat history is stored locally in `~/.AmberClaw` — protect that directory
-- API keys sit in plain text — use an OS keyring in production
-
-### 10. Incident Response
-
-If you suspect a breach:
-
-1. **Revoke any compromised API keys immediately**
-2. **Search logs for unauthorized access**
-   ```bash
-   grep "Access denied" ~/.AmberClaw/logs/AmberClaw.log
-   ```
-3. **Check for unexpected file modifications**
-4. **Rotate every credential**
-5. **Update to the latest release**
-6. **Notify the maintainers**
-
-## Security Features
-
-### Built-in controls
-
-✅ **Input validation**
-- Path traversal protection on file operations
-- Detection of dangerous command patterns
-- Length limits on HTTP request inputs
-
-✅ **Authentication**
-- Allow-list access control — empty `allowFrom` blocks all since 0.1.4.post4 (use `["*"]` to open it)
-- Failed auth attempts are logged
-
-✅ **Resource limits**
-- Command execution timeout: 60 seconds by default
-- Output truncation at 10 KB
-- HTTP request timeouts: 10–30 seconds
-
-✅ **Encrypted transport**
-- HTTPS for every external API call
-- TLS for the Telegram API
-- WhatsApp bridge: localhost-only binding plus optional token auth
-
-## Known Limitations
-
-⚠️ Current gaps:
-
-1. **No rate limiting** — users can send unlimited messages (add your own if needed)
-2. **Plain-text config** — API keys are not encrypted at rest (use a keyring in production)
-3. **No session expiry** — sessions do not time out automatically
-4. **Basic command filtering** — only catches obvious destructive patterns
-5. **Limited audit trail** — security event logging is minimal (extend as needed)
-6. **WhatsApp Subprocess Risk** — the WhatsApp integration spawns an unaudited Node.js subprocess to bridge communications. This process runs with the same privileges as AmberClaw. Users are advised to run AmberClaw in an isolated environment (container or VM) if this risk is unacceptable.
-
-## Pre-Deployment Checklist
-
-Before putting AmberClaw into production:
-
-- [ ] API keys stored outside of source code
-- [ ] Config file permissions set to 0600
-- [ ] `allowFrom` configured for every channel
-- [ ] Running under a non-root account
-- [ ] File system permissions locked down
-- [ ] Dependencies updated to latest secure versions
-- [ ] Log monitoring in place
-- [ ] Rate limits set on API providers
-- [ ] Backup and recovery plan documented
-- [ ] Custom skills and tools reviewed for security
-
-## Updates
-
-**Last revised**: 2026-04-25
-
-Stay current:
-- GitHub Security Advisories: https://github.com/krishujeniya/AmberClaw/security/advisories
-- Release Notes: https://github.com/krishujeniya/AmberClaw/releases
+---
 
 ## License
 
-See the LICENSE file for details.
+See [LICENSE](file:///home/ai/Documents/projects/Freelance/AmberClaw/LICENSE) for details.

@@ -1,0 +1,22 @@
+name: paranoid
+version: "1.0.0"
+description: "Ultra-hardened air-gapped security profile with zero external egress and mandatory approvals."
+agent:
+  model_name: "ollama/llama3.3"
+  temperature: 0.1
+  system_prompt: "You are AmberClaw Air-Gapped Sentinel. Strict security rules apply."
+  max_turns: 30
+  memory_nudge_enabled: true
+security:
+  sandbox_type: "docker"
+  allow_network_egress: false
+  restricted_paths:
+    - "/etc"
+    - "/root"
+    - "~/.ssh"
+    - "~/.aws"
+    - "~/.gnupg"
+  require_human_approval_for_destructive: true
+skills:
+  - "summarize"
+channels: []

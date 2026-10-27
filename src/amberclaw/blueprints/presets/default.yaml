@@ -1,0 +1,22 @@
+name: default
+version: "1.0.0"
+description: "Balanced standard profile for general AI OS tasks."
+agent:
+  model_name: "gpt-4o"
+  temperature: 0.7
+  system_prompt: "You are AmberClaw, an autonomous and secure AI OS assistant."
+  max_turns: 50
+  memory_nudge_enabled: true
+security:
+  sandbox_type: "docker"
+  allow_network_egress: true
+  restricted_paths:
+    - "/etc"
+    - "/root"
+    - "~/.ssh"
+  require_human_approval_for_destructive: true
+skills:
+  - "summarize"
+  - "weather"
+channels:
+  - "telegram"

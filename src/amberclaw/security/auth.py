@@ -24,6 +24,18 @@ class RBACPermissionDenied(PermissionError):
         self.tool_name = tool_name
 
 
+class ObjectPermissionDenied(PermissionError):
+    """Exception raised when a user is not authorized to access a specific object or resource."""
+
+    def __init__(self, sender_id: str | None, resource_owner_id: str, action: str):
+        super().__init__(
+            f"Object Access Denied: User '{sender_id}' is not authorized to '{action}' resource owned by '{resource_owner_id}'"
+        )
+        self.sender_id = sender_id
+        self.resource_owner_id = resource_owner_id
+        self.action = action
+
+
 @contextlib.contextmanager
 def active_sender_context(sender_id: str | None) -> Generator[None, None, None]:
     """Context manager to set the active sender ID in context variables."""
@@ -73,3 +85,37 @@ def check_tool_permission(tool_name: str) -> None:
         tool_name,
     )
     raise RBACPermissionDenied(sender_id, role, tool_name)
+
+
+def check_object_permission(
+    resource_owner_id: str,
+    action: str = "access",
+    explicit_sender_id: str | None = None,
+) -> None:
+    """
+    Check if the current sender has object-level authorization for a resource owned by resource_owner_id.
+
+    Raises ObjectPermissionDenied if unauthorized.
+    """
+    from amberclaw.config.schema import settings
+
+    sender_id = explicit_sender_id or _current_sender_id.get()
+
+    # System and admin operations bypass object authorization
+    if sender_id is None or sender_id in ("system", "admin"):
+        return
+
+    if settings.security.rbac.enabled:
+        rbac_cfg = settings.security.rbac
+        role = rbac_cfg.user_roles.get(sender_id, rbac_cfg.default_role)
+        if role == "admin" or "*" in rbac_cfg.role_permissions.get(role, []):
+            return
+
+    if sender_id != resource_owner_id:
+        logger.warning(
+            "User '{}' blocked from accessing resource owned by '{}' (action: {})",
+            sender_id,
+            resource_owner_id,
+            action,
+        )
+        raise ObjectPermissionDenied(sender_id, resource_owner_id, action)

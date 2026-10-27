@@ -98,6 +98,7 @@ class CustomProvider(LLMProvider):
         """Convert this provider to a LangChain ChatOpenAI model."""
         from langchain_openai import ChatOpenAI
         from pydantic import SecretStr
+
         from amberclaw.security.vault import vault
 
         resolved_key = vault.resolve_secret(self.api_key)

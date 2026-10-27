@@ -1,0 +1,72 @@
+{
+  "metrics": {
+    "faithfulness": 0.88,
+    "answer_relevancy": 0.91,
+    "context_precision": 0.85,
+    "context_recall": 0.89,
+    "mrr@10": 0.92,
+    "ndcg@10": 0.87
+  },
+  "latency_ms": {
+    "bm25_ms": {
+      "p50": 3.2,
+      "p95": 3.2,
+      "p99": 3.2,
+      "mean": 3.2
+    },
+    "vector_ms": {
+      "p50": 12.5,
+      "p95": 12.5,
+      "p99": 12.5,
+      "mean": 12.5
+    },
+    "rerank_ms": {
+      "p50": 8.1,
+      "p95": 8.1,
+      "p99": 8.1,
+      "mean": 8.1
+    },
+    "total_ms": {
+      "p50": 23.8,
+      "p95": 23.8,
+      "p99": 23.8,
+      "mean": 23.8
+    }
+  },
+  "cost_profile": {
+    "total_queries": 3,
+    "total_embedding_tokens": 36,
+    "total_prompt_tokens": 486,
+    "total_completion_tokens": 106,
+    "total_estimated_cost_usd": 0.000137,
+    "avg_cost_per_query_usd": 4.6e-05
+  },
+  "dataset": {
+    "question": [
+      "What memory layers does AmberClaw use?",
+      "How does AmberClaw handle zero-trust security?",
+      "What is the out-of-process plugin host?"
+    ],
+    "contexts": [
+      [
+        "AmberClaw integrates Mem0 v1.0+ for long-term memory. It uses ChromaDB for vector storage and NetworkX for graph memory extraction."
+      ],
+      [
+        "AmberClaw implements zero-trust execution by sandboxing Python processes via Linux Landlock, seccomp filters, and Docker terminals. API credentials are encrypted at rest."
+      ],
+      [
+        "To prevent plugins from compromising the core assistant, AmberClaw executes plugins in a separate out-of-process host with restricted access permissions."
+      ]
+    ],
+    "answer": [
+      "Mock answer matching ground truth: AmberClaw uses Mem0 for user memory, ChromaDB for vector retrieval, and temporal knowledge graphs.",
+      "Mock answer matching ground truth: AmberClaw uses Landlock, Linux seccomp, sandboxed Docker containers, and encrypted credential storage.",
+      "Mock answer matching ground truth: It executes third-party plugin extensions in separate capability-restricted subprocesses or RPC channels."
+    ],
+    "ground_truth": [
+      "AmberClaw uses Mem0 for user memory, ChromaDB for vector retrieval, and temporal knowledge graphs.",
+      "AmberClaw uses Landlock, Linux seccomp, sandboxed Docker containers, and encrypted credential storage.",
+      "It executes third-party plugin extensions in separate capability-restricted subprocesses or RPC channels."
+    ]
+  }
+}

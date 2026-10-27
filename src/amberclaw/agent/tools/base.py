@@ -85,7 +85,11 @@ class Tool(ABC):
 
         if target_type == "boolean" and isinstance(val, bool):
             return val
-        if target_type == "integer" and isinstance(val, int) and not isinstance(val, bool):
+        if (
+            target_type == "integer"
+            and isinstance(val, int)
+            and not isinstance(val, bool)
+        ):
             return val
         if target_type in self._TYPE_MAP and target_type not in (
             "boolean",
@@ -122,7 +126,11 @@ class Tool(ABC):
 
         if target_type == "array" and isinstance(val, list):
             item_schema = schema.get("items")
-            return [self._cast_value(item, item_schema) for item in val] if item_schema else val
+            return (
+                [self._cast_value(item, item_schema) for item in val]
+                if item_schema
+                else val
+            )
 
         if target_type == "object" and isinstance(val, dict):
             return self._cast_object(val, schema)
@@ -144,7 +152,9 @@ class Tool(ABC):
         t, label = schema.get("type"), path or "parameter"
         if t == "integer" and (not isinstance(val, int) or isinstance(val, bool)):
             return [f"{label} should be integer"]
-        if t == "number" and (not isinstance(val, (int, float)) or isinstance(val, bool)):
+        if t == "number" and (
+            not isinstance(val, (int, float)) or isinstance(val, bool)
+        ):
             return [f"{label} should be number"]
         if (
             t in self._TYPE_MAP
@@ -173,11 +183,15 @@ class Tool(ABC):
                     errors.append(f"missing required {path + '.' + k if path else k}")
             for k, v in val.items():
                 if k in props:
-                    errors.extend(self._validate(v, props[k], path + "." + k if path else k))
+                    errors.extend(
+                        self._validate(v, props[k], path + "." + k if path else k)
+                    )
         if t == "array" and "items" in schema and isinstance(val, Iterable):
             for i, item in enumerate(val):
                 errors.extend(
-                    self._validate(item, schema["items"], f"{path}[{i}]" if path else f"[{i}]"),
+                    self._validate(
+                        item, schema["items"], f"{path}[{i}]" if path else f"[{i}]"
+                    ),
                 )
         return errors
 
@@ -188,7 +202,9 @@ class Tool(ABC):
         class WrappedTool(BaseTool):
             name: str = outer_self.name
             description: str = outer_self.description
-            args_schema: type[BaseModel] | None = getattr(outer_self, "args_schema", None)
+            args_schema: type[BaseModel] | None = getattr(
+                outer_self, "args_schema", None
+            )
 
             async def _arun(self, *args: Any, **kwargs: Any) -> str:
                 from amberclaw.security.auth import check_tool_permission

@@ -46,7 +46,9 @@ class SlackChannel(BaseChannel):
             web_client=self._web_client,
         )
 
-        self._socket_client.socket_mode_request_listeners.append(self._on_socket_request)
+        self._socket_client.socket_mode_request_listeners.append(
+            self._on_socket_request
+        )
 
         # Resolve bot user ID for mention handling
         try:
@@ -115,7 +117,9 @@ class SlackChannel(BaseChannel):
             return
 
         # Acknowledge right away
-        await client.send_socket_mode_response(SocketModeResponse(envelope_id=req.envelope_id))
+        await client.send_socket_mode_response(
+            SocketModeResponse(envelope_id=req.envelope_id)
+        )
 
         payload = req.payload or {}
         event = payload.get("event") or {}
@@ -137,7 +141,11 @@ class SlackChannel(BaseChannel):
         # Avoid double-processing: Slack sends both `message` and `app_mention`
         # for mentions in channels. Prefer `app_mention`.
         text = event.get("text") or ""
-        if event_type == "message" and self._bot_user_id and f"<@{self._bot_user_id}>" in text:
+        if (
+            event_type == "message"
+            and self._bot_user_id
+            and f"<@{self._bot_user_id}>" in text
+        ):
             return
 
         # Debug: log basic event shape
@@ -158,7 +166,9 @@ class SlackChannel(BaseChannel):
         if not self._is_allowed(sender_id, chat_id, channel_type):
             return
 
-        if channel_type != "im" and not self._should_respond_in_channel(event_type, text, chat_id):
+        if channel_type != "im" and not self._should_respond_in_channel(
+            event_type, text, chat_id
+        ):
             return
 
         text = self._strip_bot_mention(text)
@@ -178,12 +188,17 @@ class SlackChannel(BaseChannel):
             logger.debug("Slack reactions_add failed: {}", e)
 
         # Thread-scoped session key for channel/group messages
-        session_key = f"slack:{chat_id}:{thread_ts}" if thread_ts and channel_type != "im" else None
+        session_key = (
+            f"slack:{chat_id}:{thread_ts}"
+            if thread_ts and channel_type != "im"
+            else None
+        )
 
         # Handle attachments (AC-074)
         media_paths: list[str] = []
         if event.get("files"):
             from amberclaw.config.paths import get_media_dir
+
             media_dir = get_media_dir("slack")
             media_dir.mkdir(parents=True, exist_ok=True)
 
@@ -200,7 +215,9 @@ class SlackChannel(BaseChannel):
                         resp = await client.get(file_url, headers=headers)
                         resp.raise_for_status()
 
-                        file_path = media_dir / f"{file_info.get('id', 'file')}_{filename}"
+                        file_path = (
+                            media_dir / f"{file_info.get('id', 'file')}_{filename}"
+                        )
                         file_path.write_bytes(resp.content)
                         media_paths.append(str(file_path))
                         text += f"\n[attachment: {file_path}]"
@@ -225,7 +242,6 @@ class SlackChannel(BaseChannel):
         except Exception:
             logger.exception("Error handling Slack message from {}", sender_id)
 
-
     def _is_allowed(self, sender_id: str, chat_id: str, channel_type: str) -> bool:
         if channel_type == "im":
             if not self.config.dm.enabled:
@@ -239,7 +255,9 @@ class SlackChannel(BaseChannel):
             return chat_id in self.config.group_allow_from
         return True
 
-    def _should_respond_in_channel(self, event_type: str, text: str, chat_id: str) -> bool:
+    def _should_respond_in_channel(
+        self, event_type: str, text: str, chat_id: str
+    ) -> bool:
         if self.config.group_policy == "open":
             return True
         if self.config.group_policy == "mention":
@@ -301,7 +319,9 @@ class SlackChannel(BaseChannel):
         for line in lines[start:]:
             cells = [c.strip() for c in line.strip("|").split("|")]
             cells = (cells + [""] * len(headers))[: len(headers)]
-            parts = [f"**{headers[i]}**: {cells[i]}" for i in range(len(headers)) if cells[i]]
+            parts = [
+                f"**{headers[i]}**: {cells[i]}" for i in range(len(headers)) if cells[i]
+            ]
             if parts:
                 rows.append(" · ".join(parts))
         return "\n".join(rows)

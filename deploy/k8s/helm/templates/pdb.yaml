@@ -1,0 +1,11 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "amberclaw.fullname" . }}-pdb
+  labels:
+    {{- include "amberclaw.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "amberclaw.selectorLabels" . | nindent 6 }}

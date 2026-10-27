@@ -7,10 +7,23 @@ Version numbers follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ## [Unreleased]
 
-- Prepared documentation site structure (MkDocs)
-- Added API reference using mkdocstrings
-- Expanded README with comparison tables and extra instructions
-- Added examples directory and sample configurations
+## [0.9.1-alpha] - 2026-08-16
+
+### Added
+- **Zero-Trust Security Engine:** Linux Landlock process isolation, symlink escape boundary controls, and ExecTool dangerous command pattern filtering.
+- **Cryptographic Audit Logger:** Structured append-only SHA-256 hash-chained JSONL security audit logger (`src/amberclaw/security/audit.py`) with secret and PII redactor.
+- **Prometheus Telemetry & OpenAPI Spec:** `GET /metrics` Prometheus exposition endpoint, API request counters, token usage tracking, and OpenAPI 3.1.0 JSON contract exporter (`docs/openapi.json`).
+- **FastAPI Web Dashboard SPA:** Dark glassmorphism web interface at `/` with cookie session authentication management (`src/amberclaw/web/server.py`).
+- **GDPR Memory Deletion API:** Authenticated `DELETE /api/v1/memory/sessions/{session_id}` and right-to-be-forgotten `DELETE /api/v1/memory/purge` endpoints.
+- **Reproducible Performance Benchmark Suite:** `benchmarks/benchmark_suite.py` measuring p50/p95/p99 latencies and throughput across secret scanning, audit logging, FTS5 search, and template rendering.
+- **Workspace Template Engine & CLI Wizards:** `TemplateManager` prompt renderer, `amberclaw doctor` health diagnostic tool, and `amberclaw init` guided setup wizard.
+- **Planning & RFC Discipline Structure:** Canonical `.planning/` directory structure with `PRODUCT_VISION.md`, `SECURITY_ROADMAP.md`, `TECHNICAL_DEBT.md`, `DEFINITION_OF_DONE.md`, and Architecture RFC Index (`RFC-001` through `RFC-005`).
+
+### Security
+- Replaced all pickle deserialization paths with Google Auth JSON format and JSON document storage.
+- Enforced Bearer JWT / API Key authentication across all v1 routes (`/agents`, `/a2a`, `/tickets`, `/providers`, `/memory`).
+- Hardened Docker Compose stack, Systemd service units, and Helm templates with non-root UID `10001:10001` and internal network isolation.
+- Prohibited wildcard `*` CORS origins in production mode and injected HSTS, CSP, X-Frame-Options security headers.
 
 ## [1.0.0] - 2026-04-25
 

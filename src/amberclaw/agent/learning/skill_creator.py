@@ -58,7 +58,10 @@ class SkillCreator:
         )
 
         # Thresholds check
-        if assistant_turns <= self.TURNS_THRESHOLD and tool_calls_count <= self.TOOL_CALLS_THRESHOLD:
+        if (
+            assistant_turns <= self.TURNS_THRESHOLD
+            and tool_calls_count <= self.TOOL_CALLS_THRESHOLD
+        ):
             return None
 
         logger.info(
@@ -76,13 +79,16 @@ class SkillCreator:
 
             # Clean thinking blocks
             if "<think>" in content:
-                content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+                content = re.sub(
+                    r"<think>.*?</think>", "", content, flags=re.DOTALL
+                ).strip()
 
             trajectory_str += f"\n[{i}] {role.upper()}: {content[:1000]}"
             if tcs:
                 trajectory_str += f"\n    (Tool Calls: {tcs})"
 
         from amberclaw.security.secret_scanner import SecretScanner
+
         trajectory_str = SecretScanner.redact_text(trajectory_str)
 
         prompt = (
@@ -122,7 +128,9 @@ class SkillCreator:
 
             # Clean markdown code blocks wrappers if the model returned them
             if content.strip().startswith("```markdown"):
-                content = content.strip().replace("```markdown", "", 1).rstrip("`").strip()
+                content = (
+                    content.strip().replace("```markdown", "", 1).rstrip("`").strip()
+                )
             elif content.strip().startswith("```"):
                 content = content.strip().replace("```", "", 1).rstrip("`").strip()
 

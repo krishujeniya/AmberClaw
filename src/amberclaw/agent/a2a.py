@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 class AgentCard(BaseModel):
     """Machine-readable agent manifest."""
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     version: str = "1.0.0"
@@ -18,19 +19,24 @@ class AgentCard(BaseModel):
     endpoints: dict[str, str] = {}
     metadata: dict[str, Any] = {}
 
+
 class A2AMessage(BaseModel):
     """JSON-RPC 2.0 based message."""
+
     jsonrpc: str = "2.0"
     method: str
     params: dict[str, Any] = {}
     id: str | None = None
 
+
 class A2AResponse(BaseModel):
     """JSON-RPC 2.0 based response."""
+
     jsonrpc: str = "2.0"
     result: Any | None = None
     error: dict[str, Any] | None = None
     id: str | None = None
+
 
 class A2AManager:
     """Manages A2A communication and peer discovery."""
@@ -44,12 +50,16 @@ class A2AManager:
         """Register a handler for an incoming A2A method."""
         self._handlers[method] = handler
 
-    async def send_message(self, target_url: str, method: str, params: dict[str, Any]) -> Any:
+    async def send_message(
+        self, target_url: str, method: str, params: dict[str, Any]
+    ) -> Any:
         """Send an A2A message to a remote agent."""
         msg = A2AMessage(method=method, params=params, id=str(uuid.uuid4()))
         async with httpx.AsyncClient() as client:
             try:
-                resp = await client.post(target_url, json=msg.model_dump(), timeout=30.0)
+                resp = await client.post(
+                    target_url, json=msg.model_dump(), timeout=30.0
+                )
                 if resp.status_code == 200:
                     data = resp.json()
                     response = A2AResponse.model_validate(data)

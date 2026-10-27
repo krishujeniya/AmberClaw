@@ -16,6 +16,7 @@ async def test_sandbox_python_basic_execution() -> None:
     assert result.stdout.strip() == "hello from sandbox"
     assert result.stderr == ""
 
+
 @pytest.mark.asyncio
 @pytest.mark.skipif(not IS_LINUX, reason="Linux-specific sandboxing features")
 async def test_sandbox_python_blocks_execve() -> None:
@@ -33,17 +34,18 @@ except Exception as e:
     # The output should show permission denied/errno 13
     assert "Permission denied" in result.stdout or "Permission denied" in result.stderr
 
+
 @pytest.mark.asyncio
 @pytest.mark.skipif(not IS_LINUX, reason="Linux-specific sandboxing features")
 async def test_sandbox_python_blocks_outside_workspace_write() -> None:
     # Use a temporary directory as the workspace
     with tempfile.TemporaryDirectory() as ws_dir:
         sandbox = CodeSandbox(use_docker=False, workspace=ws_dir)
-        
+
         # Create an outside temp directory
         with tempfile.TemporaryDirectory(dir=str(Path.home())) as outside_dir:
             outside_file = Path(outside_dir) / "test.txt"
-            
+
             code = f"""
 try:
     with open({str(outside_file)!r}, "w") as f:
@@ -56,6 +58,7 @@ except Exception as e:
 """
             result = await sandbox.execute_python(code)
             assert result.stdout.strip() == "permission_denied"
+
 
 @pytest.mark.asyncio
 async def test_sandbox_bash_execution() -> None:

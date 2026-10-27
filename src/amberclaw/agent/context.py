@@ -144,7 +144,9 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
             {"role": "user", "content": merged},
         ]
 
-    def _build_user_content(self, text: str, media: list[str] | None) -> str | list[dict[str, Any]]:
+    def _build_user_content(
+        self, text: str, media: list[str] | None
+    ) -> str | list[dict[str, Any]]:
         """Build user message content with optional base64-encoded images."""
         if not media:
             return text
@@ -160,7 +162,9 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
             if not mime or not mime.startswith("image/"):
                 continue
             b64 = base64.b64encode(raw).decode()
-            images.append({"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}})
+            images.append(
+                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
+            )
 
         if not images:
             return text
@@ -175,7 +179,12 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
     ) -> list[dict[str, Any]]:
         """Add a tool result to the message list."""
         messages.append(
-            {"role": "tool", "tool_call_id": tool_call_id, "name": tool_name, "content": result},
+            {
+                "role": "tool",
+                "tool_call_id": tool_call_id,
+                "name": tool_name,
+                "content": result,
+            },
         )
         return messages
 

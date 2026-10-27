@@ -35,7 +35,9 @@ class TestHandleStop:
         from amberclaw.bus.events import InboundMessage
 
         loop, bus = _make_loop()
-        msg = InboundMessage(channel="test", sender_id="u1", chat_id="c1", content="/stop")
+        msg = InboundMessage(
+            channel="test", sender_id="u1", chat_id="c1", content="/stop"
+        )
         await loop._handle_stop(msg)
         out = await asyncio.wait_for(bus.consume_outbound(), timeout=1.0)
         assert "No active task" in out.content
@@ -58,7 +60,9 @@ class TestHandleStop:
         await asyncio.sleep(0)
         loop._active_tasks["test:c1"] = [task]
 
-        msg = InboundMessage(channel="test", sender_id="u1", chat_id="c1", content="/stop")
+        msg = InboundMessage(
+            channel="test", sender_id="u1", chat_id="c1", content="/stop"
+        )
         await loop._handle_stop(msg)
 
         assert cancelled.is_set()
@@ -83,7 +87,9 @@ class TestHandleStop:
         await asyncio.sleep(0)
         loop._active_tasks["test:c1"] = tasks
 
-        msg = InboundMessage(channel="test", sender_id="u1", chat_id="c1", content="/stop")
+        msg = InboundMessage(
+            channel="test", sender_id="u1", chat_id="c1", content="/stop"
+        )
         await loop._handle_stop(msg)
 
         assert all(e.is_set() for e in events)
@@ -97,7 +103,9 @@ class TestDispatch:
         from amberclaw.bus.events import InboundMessage, OutboundMessage
 
         loop, bus = _make_loop()
-        msg = InboundMessage(channel="test", sender_id="u1", chat_id="c1", content="hello")
+        msg = InboundMessage(
+            channel="test", sender_id="u1", chat_id="c1", content="hello"
+        )
         loop._process_message = AsyncMock(
             return_value=OutboundMessage(channel="test", chat_id="c1", content="hi"),
         )

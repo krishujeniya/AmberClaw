@@ -39,7 +39,9 @@ class SkillImprover:
                 """
             )
 
-    def log_execution(self, skill_name: str, outcome: str, error_message: str | None = None) -> None:
+    def log_execution(
+        self, skill_name: str, outcome: str, error_message: str | None = None
+    ) -> None:
         """
         Record a skill execution outcome.
 
@@ -53,7 +55,9 @@ class SkillImprover:
                 "INSERT INTO skill_telemetry (skill_name, outcome, error_message) VALUES (?, ?, ?)",
                 (skill_name, outcome, error_message),
             )
-        logger.info("SkillImprover: Logged execution for skill '{}': {}", skill_name, outcome)
+        logger.info(
+            "SkillImprover: Logged execution for skill '{}': {}", skill_name, outcome
+        )
 
     def get_success_rate(self, skill_name: str) -> float | None:
         """Calculate success rate for a skill. Returns None if never run."""
@@ -108,7 +112,9 @@ class SkillImprover:
         # Load existing skill content
         skill_content = self._load_skill_content(skill_name)
         if not skill_content:
-            logger.warning("SkillImprover: Could not locate skill content for '{}'", skill_name)
+            logger.warning(
+                "SkillImprover: Could not locate skill content for '{}'", skill_name
+            )
             return False
 
         # Build refinement prompt
@@ -140,9 +146,16 @@ class SkillImprover:
 
             # Clean markdown code blocks wrappers
             if refined_content.strip().startswith("```markdown"):
-                refined_content = refined_content.strip().replace("```markdown", "", 1).rstrip("`").strip()
+                refined_content = (
+                    refined_content.strip()
+                    .replace("```markdown", "", 1)
+                    .rstrip("`")
+                    .strip()
+                )
             elif refined_content.strip().startswith("```"):
-                refined_content = refined_content.strip().replace("```", "", 1).rstrip("`").strip()
+                refined_content = (
+                    refined_content.strip().replace("```", "", 1).rstrip("`").strip()
+                )
 
             # Save refined skill back
             self._save_skill_content(skill_name, refined_content)
@@ -150,7 +163,9 @@ class SkillImprover:
             return True
 
         except Exception as e:
-            logger.error("SkillImprover: Failed to refine skill '{}': {}", skill_name, e)
+            logger.error(
+                "SkillImprover: Failed to refine skill '{}': {}", skill_name, e
+            )
             return False
 
     def _load_skill_content(self, skill_name: str) -> str | None:

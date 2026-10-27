@@ -17,10 +17,10 @@ class BackendFactory:
         Instantiate a terminal execution backend based on the type.
 
         Args:
-            backend_type: One of 'local', 'docker', 'ssh', 'daytona', 'singularity', 'modal', 'vercel', 'wasm'.
+            backend_type: One of 'local', 'docker', 'ssh', 'daytona', 'singularity', 'modal', 'vercel', 'wasm', 'e2b'.
             workspace_dir: Directory context for execution.
             **kwargs: Backend-specific arguments:
-                - image (str) for docker and singularity backends.
+                - image (str), gpu (bool), gpu_type (str) for docker and singularity backends.
                 - host (str), port (int), username (str), password (str),
                   key_filename (str), agent_forwarding (bool) for SSH backend.
                 - api_key (str), api_url (str), target (str), create_kwargs (dict) for Daytona backend.
@@ -28,6 +28,7 @@ class BackendFactory:
                 - runtime (str), token (str), project_id (str), team_id (str),
                   sandbox_timeout_ms (int) for Vercel Sandbox backend.
                 - memory_bytes (int), fuel (int), host_result_bytes (int) for WASM backend.
+                - api_key (str), template (str) for E2B backend.
         """
         backend_type = backend_type.lower()
         if backend_type == "local":
@@ -39,7 +40,12 @@ class BackendFactory:
             from amberclaw.terminal.docker import DockerTerminalBackend
 
             image = kwargs.get("image", "python:3.11-slim")
-            return DockerTerminalBackend(workspace_dir=workspace_dir, image=image)
+            return DockerTerminalBackend(
+                workspace_dir=workspace_dir,
+                image=image,
+                gpu=kwargs.get("gpu", False),
+                gpu_type=kwargs.get("gpu_type", "nvidia"),
+            )
 
         if backend_type == "ssh":
             from amberclaw.terminal.ssh import SSHTerminalBackend
@@ -76,6 +82,8 @@ class BackendFactory:
             return SingularityTerminalBackend(
                 workspace_dir=workspace_dir,
                 image=image,
+                gpu=kwargs.get("gpu", False),
+                gpu_type=kwargs.get("gpu_type", "nvidia"),
             )
 
         if backend_type == "modal":
@@ -115,4 +123,32 @@ class BackendFactory:
                 host_result_bytes=kwargs.get("host_result_bytes", 256 * 1024),
             )
 
+        if backend_type == "e2b":
+            from amberclaw.terminal.e2b import (
+                E2BTerminalBackend,
+            )
+
+            return E2BTerminalBackend(
+                workspace_dir=workspace_dir,
+                api_key=kwargs.get("api_key"),
+                template=kwargs.get("template"),
+            )
+
+        if backend_type == "enclave":
+            from amberclaw.terminal.enclave import (
+                EnclaveTerminalBackend,
+            )
+
+            return EnclaveTerminalBackend(
+                workspace_dir=workspace_dir,
+                platform=kwargs.get("platform", "simulated"),
+                memory_mb=kwargs.get("memory_mb", 512),
+                vcpu_count=kwargs.get("vcpu_count", 2),
+                strict_attestation=kwargs.get("strict_attestation", True),
+                allowed_pcr0_measurements=kwargs.get("allowed_pcr0_measurements"),
+                zero_egress=kwargs.get("zero_egress", True),
+                command_timeout_sec=kwargs.get("command_timeout_sec", 30),
+            )
+
         raise ValueError(f"Unknown terminal backend type: '{backend_type}'")
+

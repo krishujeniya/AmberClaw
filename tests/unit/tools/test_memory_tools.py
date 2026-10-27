@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """Unit tests for AmberClaw Memory Agent Tools."""
 
 import uuid
@@ -18,7 +17,9 @@ from amberclaw.tools.memory_tools import (
 @pytest.mark.asyncio
 async def test_remember_tool():
     tool = RememberTool()
-    res = await tool.run(fact="The user prefers Python", entity="user", entity_type="Person")
+    res = await tool.run(
+        fact="The user prefers Python", entity="user", entity_type="Person"
+    )
     assert "Successfully remembered fact" in res
     assert "The user prefers Python" in res
     assert "user" in res

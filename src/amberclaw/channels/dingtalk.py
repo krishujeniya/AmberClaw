@@ -76,7 +76,10 @@ class AmberClawDingTalkHandler(CallbackHandler):
             )
 
             logger.info(
-                "Received DingTalk message from {} ({}): {}", sender_name, sender_id, content,
+                "Received DingTalk message from {} ({}): {}",
+                sender_name,
+                sender_id,
+                content,
             )
 
             # Forward to AmberClaw via _on_message (non-blocking).
@@ -134,7 +137,9 @@ class DingTalkChannel(BaseChannel):
         """Start the DingTalk bot with Stream Mode."""
         try:
             if not DINGTALK_AVAILABLE:
-                logger.error("DingTalk Stream SDK not installed. Run: pip install dingtalk-stream")
+                logger.error(
+                    "DingTalk Stream SDK not installed. Run: pip install dingtalk-stream"
+                )
                 return
 
             if not self.config.client_id or not self.config.client_secret:
@@ -225,8 +230,13 @@ class DingTalkChannel(BaseChannel):
 
     def _guess_filename(self, media_ref: str, upload_type: str) -> str:
         name = os.path.basename(urlparse(media_ref).path)
-        return name or {"image": "image.jpg", "voice": "audio.amr", "video": "video.mp4"}.get(
-            upload_type, "file.bin",
+        return name or {
+            "image": "image.jpg",
+            "voice": "audio.amr",
+            "video": "video.mp4",
+        }.get(
+            upload_type,
+            "file.bin",
         )
 
     async def _read_media_bytes(
@@ -248,11 +258,17 @@ class DingTalkChannel(BaseChannel):
                         media_ref,
                     )
                     return None, None, None
-                content_type = (resp.headers.get("content-type") or "").split(";")[0].strip()
-                filename = self._guess_filename(media_ref, self._guess_upload_type(media_ref))
+                content_type = (
+                    (resp.headers.get("content-type") or "").split(";")[0].strip()
+                )
+                filename = self._guess_filename(
+                    media_ref, self._guess_upload_type(media_ref)
+                )
                 return resp.content, filename, content_type or None
             except Exception as e:
-                logger.error("DingTalk media download error ref={} err={}", media_ref, e)
+                logger.error(
+                    "DingTalk media download error ref={} err={}", media_ref, e
+                )
                 return None, None, None
 
         try:
@@ -282,7 +298,11 @@ class DingTalkChannel(BaseChannel):
         if not self._http:
             return None
         url = f"https://oapi.dingtalk.com/media/upload?access_token={token}&type={media_type}"
-        mime = content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+        mime = (
+            content_type
+            or mimetypes.guess_type(filename)[0]
+            or "application/octet-stream"
+        )
         files = {"media": (filename, data, mime)}
 
         try:
@@ -318,7 +338,9 @@ class DingTalkChannel(BaseChannel):
                 or sub.get("mediaId")
             )
             if not media_id:
-                logger.error("DingTalk media upload missing media_id body={}", text[:500])
+                logger.error(
+                    "DingTalk media upload missing media_id body={}", text[:500]
+                )
                 return None
             return str(media_id)
         except Exception as e:
@@ -409,7 +431,9 @@ class DingTalkChannel(BaseChannel):
             )
             if ok:
                 return True
-            logger.warning("DingTalk image url send failed, trying upload fallback: {}", media_ref)
+            logger.warning(
+                "DingTalk image url send failed, trying upload fallback: {}", media_ref
+            )
 
         data, filename, content_type = await self._read_media_bytes(media_ref)
         if not data:
@@ -445,7 +469,8 @@ class DingTalkChannel(BaseChannel):
             if ok:
                 return True
             logger.warning(
-                "DingTalk image media_id send failed, falling back to file: {}", media_ref,
+                "DingTalk image media_id send failed, falling back to file: {}",
+                media_ref,
             )
 
         return await self._send_batch_message(
@@ -470,7 +495,9 @@ class DingTalkChannel(BaseChannel):
                 continue
             logger.error("DingTalk media send failed for {}", media_ref)
             # Send visible fallback so failures are observable by the user.
-            filename = self._guess_filename(media_ref, self._guess_upload_type(media_ref))
+            filename = self._guess_filename(
+                media_ref, self._guess_upload_type(media_ref)
+            )
             await self._send_markdown_text(
                 token,
                 msg.chat_id,

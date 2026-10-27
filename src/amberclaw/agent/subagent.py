@@ -127,11 +127,19 @@ class SubagentManager:
             has_web = role in ("researcher", "general")
 
             if has_files:
-                tools.register(ReadFileTool(workspace=self.workspace, allowed_dir=allowed_dir))
-                tools.register(ListDirTool(workspace=self.workspace, allowed_dir=allowed_dir))
+                tools.register(
+                    ReadFileTool(workspace=self.workspace, allowed_dir=allowed_dir)
+                )
+                tools.register(
+                    ListDirTool(workspace=self.workspace, allowed_dir=allowed_dir)
+                )
                 if has_write:
-                    tools.register(WriteFileTool(workspace=self.workspace, allowed_dir=allowed_dir))
-                    tools.register(EditFileTool(workspace=self.workspace, allowed_dir=allowed_dir))
+                    tools.register(
+                        WriteFileTool(workspace=self.workspace, allowed_dir=allowed_dir)
+                    )
+                    tools.register(
+                        EditFileTool(workspace=self.workspace, allowed_dir=allowed_dir)
+                    )
 
             if has_exec:
                 tools.register(
@@ -144,7 +152,9 @@ class SubagentManager:
                 )
 
             if has_web:
-                tools.register(WebSearchTool(api_key=self.brave_api_key, proxy=self.web_proxy))
+                tools.register(
+                    WebSearchTool(api_key=self.brave_api_key, proxy=self.web_proxy)
+                )
                 tools.register(WebFetchTool(proxy=self.web_proxy))
 
             system_prompt = self._build_subagent_prompt(role)
@@ -178,6 +188,7 @@ class SubagentManager:
             }
 
             from typing import cast  # noqa: PLC0415
+
             final_state = await graph.runnable.ainvoke(cast(AgentState, inputs))
             final_msg = final_state["messages"][-1]
             final_result = str(final_msg.content) if final_msg.content else None
@@ -186,12 +197,16 @@ class SubagentManager:
                 final_result = "Task completed but no final response was generated."
 
             logger.info("Subagent [{}] completed successfully", task_id)
-            await self._announce_result(task_id, label, task, final_result, origin, "ok")
+            await self._announce_result(
+                task_id, label, task, final_result, origin, "ok"
+            )
 
         except Exception as e:
             error_msg = f"Error: {e!s}"
             logger.error("Subagent [{}] failed: {}", task_id, e)
-            await self._announce_result(task_id, label, task, error_msg, origin, "error")
+            await self._announce_result(
+                task_id, label, task, error_msg, origin, "error"
+            )
 
     async def _announce_result(  # noqa: PLR0913
         self,
@@ -224,7 +239,10 @@ Summarize this naturally for the user. Keep it brief (1-2 sentences). Do not men
 
         await self.bus.publish_inbound(msg)
         logger.debug(
-            "Subagent [{}] announced result to {}:{}", task_id, origin["channel"], origin["chat_id"],
+            "Subagent [{}] announced result to {}:{}",
+            task_id,
+            origin["channel"],
+            origin["chat_id"],
         )
 
     def _build_subagent_prompt(self, role: str = "general") -> str:

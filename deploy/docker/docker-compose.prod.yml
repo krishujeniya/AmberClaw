@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+  amberclaw-gateway:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.gateway
+    image: amberclaw/gateway:2026.0.1
+    container_name: amberclaw_gateway_prod
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    user: "10001:10001"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - MEM0_API_KEY=${MEM0_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+    volumes:
+      - ./data/amberclaw:/app/data
+      - ./logs:/app/logs
+    depends_on:
+      chromadb:
+        condition: service_started
+    networks:
+      - amberclaw-control
+      - amberclaw-internal
+
+  chromadb:
+    image: chromadb/chroma:0.4.24
+    container_name: amberclaw_memory_db_prod
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.5"
+          memory: 1G
+    volumes:
+      - ./data/chroma:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - CHROMA_SERVER_AUTH_PROVIDER=chromadb.auth.token.TokenAuthServerProvider
+      - CHROMA_SERVER_AUTH_CREDENTIALS=${CHROMA_AUTH_TOKEN:-amberclaw_internal_secret_token}
+    networks:
+      - amberclaw-internal
+
+networks:
+  amberclaw-control:
+    driver: bridge
+  amberclaw-internal:
+    driver: bridge
+    internal: true
+  amberclaw-sandbox:
+    driver: bridge
+    internal: true

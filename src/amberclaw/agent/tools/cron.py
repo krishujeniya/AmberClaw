@@ -14,19 +14,25 @@ from amberclaw.cron.types import CronSchedule
 class CronArgs(BaseModel):
     """Arguments for the cron tool."""
 
-    action: Literal["add", "list", "remove"] = Field(..., description="Action to perform")
+    action: Literal["add", "list", "remove"] = Field(
+        ..., description="Action to perform"
+    )
     message: str | None = Field(None, description="Reminder message (for add)")
     every_seconds: int | None = Field(
-        None, description="Interval in seconds (for recurring tasks)",
+        None,
+        description="Interval in seconds (for recurring tasks)",
     )
     cron_expr: str | None = Field(
-        None, description="Cron expression like '0 9 * * *' (for scheduled tasks)",
+        None,
+        description="Cron expression like '0 9 * * *' (for scheduled tasks)",
     )
     tz: str | None = Field(
-        None, description="IANA timezone for cron expressions (e.g. 'America/Vancouver')",
+        None,
+        description="IANA timezone for cron expressions (e.g. 'America/Vancouver')",
     )
     at: str | None = Field(
-        None, description="ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')",
+        None,
+        description="ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')",
     )
     job_id: str | None = Field(None, description="Job ID (for remove)")
 
@@ -51,7 +57,9 @@ class CronTool(PydanticTool):
         self._cron = cron_service
         self._channel = ""
         self._chat_id = ""
-        self._in_cron_context: ContextVar[bool] = ContextVar("cron_in_context", default=False)
+        self._in_cron_context: ContextVar[bool] = ContextVar(
+            "cron_in_context", default=False
+        )
 
     def set_context(self, channel: str, chat_id: str) -> None:
         """Set the current session context for delivery."""
@@ -69,7 +77,9 @@ class CronTool(PydanticTool):
     async def run(self, args: CronArgs) -> str:
         if args.action == "add":
             if self._in_cron_context.get():
-                return "Error: cannot schedule new jobs from within a cron job execution"
+                return (
+                    "Error: cannot schedule new jobs from within a cron job execution"
+                )
             return self._add_job(args)
         if args.action == "list":
             return self._list_jobs()

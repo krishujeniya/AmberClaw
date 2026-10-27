@@ -72,6 +72,7 @@ coverage.xml
 
 # Logs and databases
 *.log
+logs/
 *.sqlite3
 data/
 !data/.keep
@@ -82,3 +83,5 @@ deploy/docker/data/
 # OS / Misc
 .DS_Store
 Thumbs.db.amberclaw_old/
+site/
+docs/site/

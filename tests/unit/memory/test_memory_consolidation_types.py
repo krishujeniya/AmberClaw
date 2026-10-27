@@ -75,7 +75,9 @@ class TestMemoryConsolidationTypeHandling:
         )
         session = _make_session(message_count=60)
 
-        result = await store.consolidate(session, provider, "test-model", memory_window=50)
+        result = await store.consolidate(
+            session, provider, "test-model", memory_window=50
+        )
 
         assert result is True
         assert store.history_file.exists()
@@ -89,13 +91,18 @@ class TestMemoryConsolidationTypeHandling:
         provider = AsyncMock()
         provider.chat_with_retry = AsyncMock(
             return_value=_make_tool_response(
-                history_entry={"timestamp": "2026-01-01", "summary": "User discussed testing."},
+                history_entry={
+                    "timestamp": "2026-01-01",
+                    "summary": "User discussed testing.",
+                },
                 memory_update={"facts": ["User likes testing"], "topics": ["testing"]},
             ),
         )
         session = _make_session(message_count=60)
 
-        result = await store.consolidate(session, provider, "test-model", memory_window=50)
+        result = await store.consolidate(
+            session, provider, "test-model", memory_window=50
+        )
 
         assert result is True
         assert store.history_file.exists()
@@ -132,7 +139,9 @@ class TestMemoryConsolidationTypeHandling:
         provider.chat_with_retry = AsyncMock(return_value=response)
         session = _make_session(message_count=60)
 
-        result = await store.consolidate(session, provider, "test-model", memory_window=50)
+        result = await store.consolidate(
+            session, provider, "test-model", memory_window=50
+        )
 
         assert result is True
         assert "User discussed testing." in store.history_file.read_text()
@@ -143,11 +152,15 @@ class TestMemoryConsolidationTypeHandling:
         store = MemoryStore(tmp_path)
         provider = AsyncMock()
         provider.chat_with_retry = AsyncMock(
-            return_value=LLMResponse(content="I summarized the conversation.", tool_calls=[]),
+            return_value=LLMResponse(
+                content="I summarized the conversation.", tool_calls=[]
+            ),
         )
         session = _make_session(message_count=60)
 
-        result = await store.consolidate(session, provider, "test-model", memory_window=50)
+        result = await store.consolidate(
+            session, provider, "test-model", memory_window=50
+        )
 
         assert result is False
         assert not store.history_file.exists()
@@ -159,7 +172,9 @@ class TestMemoryConsolidationTypeHandling:
         provider = AsyncMock()
         session = _make_session(message_count=10)
 
-        result = await store.consolidate(session, provider, "test-model", memory_window=50)
+        result = await store.consolidate(
+            session, provider, "test-model", memory_window=50
+        )
 
         assert result is True
         provider.chat.assert_not_called()
@@ -189,14 +204,18 @@ class TestMemoryConsolidationTypeHandling:
         provider.chat_with_retry = AsyncMock(return_value=response)
         session = _make_session(message_count=60)
 
-        result = await store.consolidate(session, provider, "test-model", memory_window=50)
+        result = await store.consolidate(
+            session, provider, "test-model", memory_window=50
+        )
 
         assert result is True
         assert "User discussed testing." in store.history_file.read_text()
         assert "User likes testing." in store.memory_file.read_text()
 
     @pytest.mark.asyncio
-    async def test_list_arguments_empty_list_returns_false(self, tmp_path: Path) -> None:
+    async def test_list_arguments_empty_list_returns_false(
+        self, tmp_path: Path
+    ) -> None:
         """Empty list arguments should return False."""
         store = MemoryStore(tmp_path)
         provider = AsyncMock()
@@ -214,12 +233,16 @@ class TestMemoryConsolidationTypeHandling:
         provider.chat_with_retry = AsyncMock(return_value=response)
         session = _make_session(message_count=60)
 
-        result = await store.consolidate(session, provider, "test-model", memory_window=50)
+        result = await store.consolidate(
+            session, provider, "test-model", memory_window=50
+        )
 
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_list_arguments_non_dict_content_returns_false(self, tmp_path: Path) -> None:
+    async def test_list_arguments_non_dict_content_returns_false(
+        self, tmp_path: Path
+    ) -> None:
         """List with non-dict content should return False."""
         store = MemoryStore(tmp_path)
         provider = AsyncMock()
@@ -237,12 +260,16 @@ class TestMemoryConsolidationTypeHandling:
         provider.chat_with_retry = AsyncMock(return_value=response)
         session = _make_session(message_count=60)
 
-        result = await store.consolidate(session, provider, "test-model", memory_window=50)
+        result = await store.consolidate(
+            session, provider, "test-model", memory_window=50
+        )
 
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_retries_transient_error_then_succeeds(self, tmp_path: Path, monkeypatch) -> None:
+    async def test_retries_transient_error_then_succeeds(
+        self, tmp_path: Path, monkeypatch
+    ) -> None:
         store = MemoryStore(tmp_path)
         provider = ScriptedProvider(
             [
@@ -261,7 +288,9 @@ class TestMemoryConsolidationTypeHandling:
 
         monkeypatch.setattr("amberclaw.providers.base.asyncio.sleep", _fake_sleep)
 
-        result = await store.consolidate(session, provider, "test-model", memory_window=50)
+        result = await store.consolidate(
+            session, provider, "test-model", memory_window=50
+        )
 
         assert result is True
         assert provider.calls == 2

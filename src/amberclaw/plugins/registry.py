@@ -1,11 +1,10 @@
 """Plugin registry and manifest schema validation."""
 
 from pathlib import Path
-from typing import Optional
 
 import yaml
-from pydantic import BaseModel, Field
 from loguru import logger
+from pydantic import BaseModel, Field
 
 from amberclaw.plugins.capabilities import PluginCapability
 
@@ -15,10 +14,16 @@ class PluginManifest(BaseModel):
 
     name: str = Field(..., description="Unique name identifier of the plugin")
     version: str = Field(..., description="Semantic version of the plugin")
-    description: str = Field("", description="Human-readable description of the plugin's tools")
-    entrypoint: str = Field(..., description="Entrypoint python script path relative to plugin dir (e.g. main.py)")
+    description: str = Field(
+        "", description="Human-readable description of the plugin's tools"
+    )
+    entrypoint: str = Field(
+        ...,
+        description="Entrypoint python script path relative to plugin dir (e.g. main.py)",
+    )
     capabilities: list[PluginCapability] = Field(
-        default_factory=list, description="Explicit sandbox permissions requested by this plugin"
+        default_factory=list,
+        description="Explicit sandbox permissions requested by this plugin",
     )
 
 

@@ -10,9 +10,7 @@ class LocalTerminalBackend(BaseTerminalBackend):
     def __init__(self, workspace_dir: str):
         self.sandbox = CodeSandbox(use_docker=False, workspace=workspace_dir)
 
-    async def execute_bash(
-        self, command: str, timeout: int = 30
-    ) -> dict[str, Any]:
+    async def execute_bash(self, command: str, timeout: int = 30) -> dict[str, Any]:
         self.sandbox.default_timeout_sec = timeout
         res = await self.sandbox.execute_bash(command)
         return res.model_dump()

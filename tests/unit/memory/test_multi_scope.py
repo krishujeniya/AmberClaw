@@ -1,4 +1,3 @@
-
 # ruff: noqa: PLR2004
 import pytest
 
@@ -76,7 +75,9 @@ def test_session_db_multi_scope_writes_and_reads(tmp_path):
     results_fts_hierarchical = db.search_turns(
         query="User", org_id="org-1", session_id="sess-4", hierarchical=True
     )
-    assert len(results_fts_hierarchical) == 4  # Turn 1, Turn 2, Turn 3 (org-1) + Turn 4 (sess-4)
+    assert (
+        len(results_fts_hierarchical) == 4
+    )  # Turn 1, Turn 2, Turn 3 (org-1) + Turn 4 (sess-4)
 
     db.close()
 

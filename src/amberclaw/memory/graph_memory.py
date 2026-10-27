@@ -1,4 +1,3 @@
-# ruff: noqa: E501
 """Temporal Graph Memory for AmberClaw.
 
 Implements a hybrid vector + knowledge graph memory store tracking time-aware
@@ -53,7 +52,9 @@ class TemporalGraphMemory:
                     updated_at=edge.get("updated_at"),
                     properties=edge.get("properties", {}),
                 )
-            logger.info(f"Loaded graph memory with {self.graph.number_of_nodes()} nodes and {self.graph.number_of_edges()} edges.")
+            logger.info(
+                f"Loaded graph memory with {self.graph.number_of_nodes()} nodes and {self.graph.number_of_edges()} edges."
+            )
         except Exception as e:
             logger.error(f"Failed to load graph memory: {e}")
 
@@ -65,15 +66,17 @@ class TemporalGraphMemory:
             edges_data = []
 
             for u, v, key, data in self.graph.edges(keys=True, data=True):
-                edges_data.append({
-                    "source": u,
-                    "target": v,
-                    "key": key,
-                    "relation": data.get("relation"),
-                    "created_at": data.get("created_at"),
-                    "updated_at": data.get("updated_at"),
-                    "properties": data.get("properties", {}),
-                })
+                edges_data.append(
+                    {
+                        "source": u,
+                        "target": v,
+                        "key": key,
+                        "relation": data.get("relation"),
+                        "created_at": data.get("created_at"),
+                        "updated_at": data.get("updated_at"),
+                        "properties": data.get("properties", {}),
+                    }
+                )
 
             with self.db_path.open("w", encoding="utf-8") as f:
                 json.dump({"nodes": nodes_data, "edges": edges_data}, f, indent=2)
@@ -81,7 +84,9 @@ class TemporalGraphMemory:
         except Exception as e:
             logger.error(f"Failed to save graph memory: {e}")
 
-    def add_entity(self, name: str, entity_type: str, properties: dict[str, Any] | None = None) -> str:
+    def add_entity(
+        self, name: str, entity_type: str, properties: dict[str, Any] | None = None
+    ) -> str:
         """Add or update an entity in the graph."""
         node_id = name.lower().replace(" ", "_")
         now = datetime.now(UTC).isoformat()
@@ -97,7 +102,11 @@ class TemporalGraphMemory:
             changed = {}
             for k, v in new_properties.items():
                 if old_properties.get(k) != v:
-                    changed[k] = {"old": old_properties.get(k), "new": v, "timestamp": now}
+                    changed[k] = {
+                        "old": old_properties.get(k),
+                        "new": v,
+                        "timestamp": now,
+                    }
 
             if changed:
                 history.append({"changes": changed, "timestamp": now})
@@ -181,21 +190,25 @@ class TemporalGraphMemory:
 
         # Outgoing relationships
         for _, target, data in self.graph.out_edges(node_id, data=True):
-            relationships.append({
-                "type": "outgoing",
-                "relation": data.get("relation"),
-                "target": target,
-                "properties": data.get("properties"),
-            })
+            relationships.append(
+                {
+                    "type": "outgoing",
+                    "relation": data.get("relation"),
+                    "target": target,
+                    "properties": data.get("properties"),
+                }
+            )
 
         # Incoming relationships
         for source, _, data in self.graph.in_edges(node_id, data=True):
-            relationships.append({
-                "type": "incoming",
-                "relation": data.get("relation"),
-                "source": source,
-                "properties": data.get("properties"),
-            })
+            relationships.append(
+                {
+                    "type": "incoming",
+                    "relation": data.get("relation"),
+                    "source": source,
+                    "properties": data.get("properties"),
+                }
+            )
 
         node_data["relationships"] = relationships
         return node_data

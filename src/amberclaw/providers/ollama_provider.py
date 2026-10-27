@@ -199,7 +199,10 @@ class OllamaProvider(LLMProvider):
             )
 
         return LLMResponse(
-            content=full_content, tool_calls=tool_calls, finish_reason=finish_reason, usage=usage,
+            content=full_content,
+            tool_calls=tool_calls,
+            finish_reason=finish_reason,
+            usage=usage,
         )
 
     def _parse_ollama_response(self, data: dict[str, Any]) -> LLMResponse:
@@ -219,14 +222,17 @@ class OllamaProvider(LLMProvider):
                     ToolCallRequest(
                         id=tc.get("id", f"call_{len(tool_calls)}"),
                         name=func.get("name"),
-                        arguments=args if isinstance(args, dict) else {"raw": str(args)},
+                        arguments=args
+                        if isinstance(args, dict)
+                        else {"raw": str(args)},
                     ),
                 )
 
         usage = {
             "prompt_tokens": data.get("prompt_eval_count", 0),
             "completion_tokens": data.get("eval_count", 0),
-            "total_tokens": data.get("prompt_eval_count", 0) + data.get("eval_count", 0),
+            "total_tokens": data.get("prompt_eval_count", 0)
+            + data.get("eval_count", 0),
         }
 
         return LLMResponse(

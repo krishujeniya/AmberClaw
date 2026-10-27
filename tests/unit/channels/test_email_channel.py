@@ -66,7 +66,9 @@ def test_fetch_new_messages_parses_unseen_and_marks_seen(monkeypatch) -> None:
             return "BYE", [b""]
 
     fake = FakeIMAP()
-    monkeypatch.setattr("amberclaw.channels.email.imaplib.IMAP4_SSL", lambda _h, _p: fake)
+    monkeypatch.setattr(
+        "amberclaw.channels.email.imaplib.IMAP4_SSL", lambda _h, _p: fake
+    )
 
     channel = EmailChannel(_make_config(), MessageBus())
     items = channel._fetch_new_messages()
@@ -324,7 +326,9 @@ async def test_send_skips_when_consent_not_granted(monkeypatch) -> None:
     assert called["smtp"] is False
 
 
-def test_fetch_messages_between_dates_uses_imap_since_before_without_mark_seen(monkeypatch) -> None:
+def test_fetch_messages_between_dates_uses_imap_since_before_without_mark_seen(
+    monkeypatch,
+) -> None:
     raw = _make_raw_email(subject="Status", body="Yesterday update")
 
     class FakeIMAP:
@@ -353,7 +357,9 @@ def test_fetch_messages_between_dates_uses_imap_since_before_without_mark_seen(m
             return "BYE", [b""]
 
     fake = FakeIMAP()
-    monkeypatch.setattr("amberclaw.channels.email.imaplib.IMAP4_SSL", lambda _h, _p: fake)
+    monkeypatch.setattr(
+        "amberclaw.channels.email.imaplib.IMAP4_SSL", lambda _h, _p: fake
+    )
 
     channel = EmailChannel(_make_config(), MessageBus())
     items = channel.fetch_messages_between_dates(

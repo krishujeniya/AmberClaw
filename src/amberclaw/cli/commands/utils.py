@@ -1,14 +1,15 @@
 import os
 import select
 import sys
-import signal
-from typing import Any, Iterator, cast
+from typing import cast
+
+from prompt_toolkit import HTML, PromptSession
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.patch_stdout import patch_stdout
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.text import Text
-from prompt_toolkit import PromptSession, HTML
-from prompt_toolkit.history import FileHistory
-from prompt_toolkit.patch_stdout import patch_stdout
+
 from amberclaw import __logo__
 
 console = Console()
@@ -16,6 +17,7 @@ EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q"}
 
 _PROMPT_SESSION: PromptSession | None = None
 _SAVED_TERM_ATTRS = None
+
 
 def _flush_pending_tty_input() -> None:
     try:
@@ -27,6 +29,7 @@ def _flush_pending_tty_input() -> None:
 
     try:
         import termios
+
         termios.tcflush(fd, termios.TCIFLUSH)
         return
     except Exception:
@@ -42,18 +45,22 @@ def _flush_pending_tty_input() -> None:
     except Exception:
         return
 
+
 def _restore_terminal() -> None:
     if _SAVED_TERM_ATTRS is None:
         return
     try:
         import termios
+
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, _SAVED_TERM_ATTRS)
     except Exception:
         pass
 
+
 def _init_prompt_session() -> None:
     global _PROMPT_SESSION
     from amberclaw.config.paths import get_cli_history_path
+
     history_file = get_cli_history_path()
     history_file.parent.mkdir(parents=True, exist_ok=True)
     _PROMPT_SESSION = PromptSession(
@@ -62,13 +69,16 @@ def _init_prompt_session() -> None:
         multiline=False,
     )
 
+
 def _setup_terminal() -> None:
     global _SAVED_TERM_ATTRS
     try:
         import termios
+
         _SAVED_TERM_ATTRS = termios.tcgetattr(sys.stdin.fileno())
     except Exception:
         pass
+
 
 def _print_agent_response(response: str, render_markdown: bool) -> None:
     content = response or ""
@@ -77,6 +87,7 @@ def _print_agent_response(response: str, render_markdown: bool) -> None:
     console.print(f"[cyan]{__logo__} AmberClaw[/cyan]")
     console.print(body)
     console.print()
+
 
 class TokenStreamer:
     def __init__(self, console: Console, render_markdown: bool) -> None:
@@ -91,7 +102,10 @@ class TokenStreamer:
             self.console.print()
             self.console.print(f"[cyan]{__logo__} AmberClaw[/cyan]")
             from rich.live import Live
-            self.live = Live("", console=self.console, refresh_per_second=12, auto_refresh=True)
+
+            self.live = Live(
+                "", console=self.console, refresh_per_second=12, auto_refresh=True
+            )
             self.live.start()
             self.header_printed = True
 
@@ -99,6 +113,7 @@ class TokenStreamer:
         if self.live:
             if self.render_markdown:
                 from rich.markdown import Markdown
+
                 self.live.update(Markdown(self.content))
             else:
                 self.live.update(self.content)
@@ -109,8 +124,10 @@ class TokenStreamer:
             self.live = None
             self.console.print()
 
+
 def _is_exit_command(command: str) -> bool:
     return command.lower() in EXIT_COMMANDS
+
 
 async def _read_interactive_input_async() -> str:
     if _PROMPT_SESSION is None:

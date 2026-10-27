@@ -12,6 +12,7 @@ IS_LINUX = platform.system() == "Linux"
 
 # Landlock structures
 if IS_LINUX:
+
     class LandlockRulesetAttr(ctypes.Structure):
         _fields_ = [("handled_access_fs", ctypes.c_uint64)]
 
@@ -21,6 +22,7 @@ if IS_LINUX:
             ("parent_fd", ctypes.c_int32),
         ]
 else:
+
     class LandlockRulesetAttr:
         pass
 
@@ -130,7 +132,13 @@ def apply_sandbox(workspace_path: str | Path) -> bool:
 
     try:
         # Set workspace path as read/write
-        paths_read_write = [str(workspace_path), "/tmp", "/dev/null", "/dev/urandom", "/dev/zero"]
+        paths_read_write = [
+            str(workspace_path),
+            "/tmp",
+            "/dev/null",
+            "/dev/urandom",
+            "/dev/zero",
+        ]
         paths_read_only = ["/usr", "/lib", "/lib64", "/etc", "/bin", "/sbin", "/proc"]
 
         # Add virtual environment paths to allowed reads

@@ -50,11 +50,19 @@ class AgentState(TypedDict):
 class AgentGraph:
     """Wrapper for the LangGraph compilation and execution."""
 
-    def __init__(self, provider: Any, tools: list[Any], max_iterations: int = 10, mode: str = "react"):
+    def __init__(
+        self,
+        provider: Any,
+        tools: list[Any],
+        max_iterations: int = 10,
+        mode: str = "react",
+    ):
         self.provider = provider
         # Keep original AC tools for OpenAI tool format; wrap for LangChain ToolNode
         self.ac_tools = list(tools)  # original AmberClaw PydanticTool instances
-        self.tools = [t.to_langchain_tool() for t in tools]  # LangChain-wrapped for ToolNode
+        self.tools = [
+            t.to_langchain_tool() for t in tools
+        ]  # LangChain-wrapped for ToolNode
         self.max_iterations = max_iterations
         self.mode = mode
         self.runnable = self._build_graph()
@@ -71,32 +79,46 @@ class AgentGraph:
 
             workflow.set_entry_point("planner")
             workflow.add_edge("planner", "executor")
-            workflow.add_conditional_edges("executor", self.should_continue, {"continue": "tools", "end": "reflect"})
+            workflow.add_conditional_edges(
+                "executor",
+                self.should_continue,
+                {"continue": "tools", "end": "reflect"},
+            )
             workflow.add_edge("tools", "executor")
-            workflow.add_conditional_edges("reflect", self.reflect_router, {"replan": "planner", "end": END})
+            workflow.add_conditional_edges(
+                "reflect", self.reflect_router, {"replan": "planner", "end": END}
+            )
         elif self.mode == "react_reflect":
             workflow.add_node("llm", self.llm_node)
             workflow.add_node("tools", ToolNode(self.tools))
             workflow.add_node("reflect", self.reflect_node)
 
             workflow.set_entry_point("llm")
-            workflow.add_conditional_edges("llm", self.should_continue, {"continue": "tools", "end": "reflect"})
+            workflow.add_conditional_edges(
+                "llm", self.should_continue, {"continue": "tools", "end": "reflect"}
+            )
             workflow.add_edge("tools", "llm")
-            workflow.add_conditional_edges("reflect", self.reflect_router, {"replan": "llm", "end": END})
+            workflow.add_conditional_edges(
+                "reflect", self.reflect_router, {"replan": "llm", "end": END}
+            )
         elif self.mode == "simple":
             workflow.add_node("llm", self.llm_node)
             workflow.set_entry_point("llm")
             workflow.add_edge("llm", END)
-        else: # default react
+        else:  # default react
             workflow.add_node("llm", self.llm_node)
             workflow.add_node("tools", ToolNode(self.tools))
             workflow.set_entry_point("llm")
-            workflow.add_conditional_edges("llm", self.should_continue, {"continue": "tools", "end": END})
+            workflow.add_conditional_edges(
+                "llm", self.should_continue, {"continue": "tools", "end": END}
+            )
             workflow.add_edge("tools", "llm")
 
         return workflow.compile()
 
-    async def _call_llm_with_state(self, state: AgentState, prompt_modifier: str | None = None) -> AIMessage:
+    async def _call_llm_with_state(
+        self, state: AgentState, prompt_modifier: str | None = None
+    ) -> AIMessage:
         messages = list(state["messages"])
         if prompt_modifier:
             messages.append(SystemMessage(content=prompt_modifier))
@@ -118,14 +140,20 @@ class AgentGraph:
                 )
             elif isinstance(m, ToolMessage):
                 processed_msgs.append(
-                    {"role": "tool", "content": m.content, "tool_call_id": m.tool_call_id},
+                    {
+                        "role": "tool",
+                        "content": m.content,
+                        "tool_call_id": m.tool_call_id,
+                    },
                 )
             elif isinstance(m, SystemMessage):
                 processed_msgs.append({"role": "system", "content": m.content})
 
         resp = await self.provider.chat_with_retry(
             messages=processed_msgs,
-            tools=[t.to_openai_tool() for t in self.ac_tools] if self.ac_tools and self.mode != "simple" else None,
+            tools=[t.to_openai_tool() for t in self.ac_tools]
+            if self.ac_tools and self.mode != "simple"
+            else None,
             model=state["config"].get("model"),
             **state["config"].get("llm_kwargs", {}),
         )
@@ -133,10 +161,17 @@ class AgentGraph:
         content = resp.content or ""
         scratch_pad = None
         if "<scratch_pad>" in content:
-            match = re.search(r"<scratch_pad>(.*?)(?:</scratch_pad>|$)", content, flags=re.DOTALL)
+            match = re.search(
+                r"<scratch_pad>(.*?)(?:</scratch_pad>|$)", content, flags=re.DOTALL
+            )
             if match:
                 scratch_pad = match.group(1).strip()
-                content = re.sub(r"<scratch_pad>.*?(?:</scratch_pad>|$)", "", content, flags=re.DOTALL).strip()
+                content = re.sub(
+                    r"<scratch_pad>.*?(?:</scratch_pad>|$)",
+                    "",
+                    content,
+                    flags=re.DOTALL,
+                ).strip()
                 logger.info("🧠 [Scratchpad thoughts]:\n{}", scratch_pad)
 
         ai_msg = AIMessage(content=content)
@@ -148,8 +183,12 @@ class AgentGraph:
                 {
                     "id": tc.id,
                     "name": tc.name,
-                    "args": tc.arguments if isinstance(tc.arguments, dict) else (
-                        _json.loads(tc.arguments) if isinstance(tc.arguments, str) else {}
+                    "args": tc.arguments
+                    if isinstance(tc.arguments, dict)
+                    else (
+                        _json.loads(tc.arguments)
+                        if isinstance(tc.arguments, str)
+                        else {}
                     ),
                     "type": "tool_call",
                 }
@@ -173,8 +212,16 @@ class AgentGraph:
         prompt = "Create a detailed step-by-step plan to satisfy the user request. Output a numbered list of steps."
         resp = await self._call_llm_with_state(state, prompt_modifier=prompt)
         # Parse plan out of text (simple approach for now)
-        plan = [line.strip() for line in str(resp.content).split("\\n") if line.strip() and line[0].isdigit()]
-        return {"plan": plan, "iterations": state.get("iterations", 0) + 1, "messages": [resp]}
+        plan = [
+            line.strip()
+            for line in str(resp.content).split("\\n")
+            if line.strip() and line[0].isdigit()
+        ]
+        return {
+            "plan": plan,
+            "iterations": state.get("iterations", 0) + 1,
+            "messages": [resp],
+        }
 
     async def reflect_node(self, state: AgentState) -> dict[str, Any]:
         """Evaluate the previous output and self-correct if needed."""
@@ -198,7 +245,11 @@ class AgentGraph:
                 )
             elif isinstance(m, ToolMessage):
                 processed_msgs.append(
-                    {"role": "tool", "content": m.content, "tool_call_id": m.tool_call_id},
+                    {
+                        "role": "tool",
+                        "content": m.content,
+                        "tool_call_id": m.tool_call_id,
+                    },
                 )
             elif isinstance(m, SystemMessage):
                 processed_msgs.append({"role": "system", "content": m.content})
@@ -210,15 +261,15 @@ class AgentGraph:
         )
 
         status_str = "PASS" if result.is_successful else "FAIL"
-        content_str = (
-            f"Reflection Result:\n"
-            f"Status: {status_str}\n"
-            f"Critique: {result.critique}\n"
-        )
+        content_str = f"Reflection Result:\nStatus: {status_str}\nQuality Score: {result.quality_score:.2f}\nCritique: {result.critique}\n"
         if result.missing_information:
-            content_str += f"Missing Information: {', '.join(result.missing_information)}\n"
+            content_str += (
+                f"Missing Information: {', '.join(result.missing_information)}\n"
+            )
         if result.correction_steps:
-            content_str += "Correction Steps:\n" + "\n".join(f"- {step}" for step in result.correction_steps)
+            content_str += "Correction Steps:\n" + "\n".join(
+                f"- {step}" for step in result.correction_steps
+            )
 
         resp = AIMessage(content=content_str)
         return {"messages": [resp], "iterations": state.get("iterations", 0) + 1}
@@ -252,7 +303,9 @@ class AgentGraph:
             logger.warning("Graph: Max iterations reached")
             return "end"
 
-        if isinstance(last_message, AIMessage) and last_message.additional_kwargs.get("tool_calls"):
+        if isinstance(last_message, AIMessage) and last_message.additional_kwargs.get(
+            "tool_calls"
+        ):
             return "continue"
 
         return "end"

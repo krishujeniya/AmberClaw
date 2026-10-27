@@ -17,7 +17,11 @@ def _make_loop(tmp_path: Path) -> AgentLoop:
     provider = MagicMock()
     provider.get_default_model.return_value = "test-model"
     return AgentLoop(
-        bus=bus, provider=provider, workspace=tmp_path, model="test-model", memory_window=10,
+        bus=bus,
+        provider=provider,
+        workspace=tmp_path,
+        model="test-model",
+        memory_window=10,
     )
 
 
@@ -38,7 +42,9 @@ class TestMessageToolSuppressLogic:
                 LLMResponse(content="Done", tool_calls=[]),
             ],
         )
-        loop.provider.chat_with_retry = AsyncMock(side_effect=lambda *a, **kw: next(calls))
+        loop.provider.chat_with_retry = AsyncMock(
+            side_effect=lambda *a, **kw: next(calls)
+        )
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         sent: list[OutboundMessage] = []
@@ -46,14 +52,18 @@ class TestMessageToolSuppressLogic:
         if isinstance(mt, MessageTool):
             mt.set_send_callback(AsyncMock(side_effect=lambda m: sent.append(m)))
 
-        msg = InboundMessage(channel="feishu", sender_id="user1", chat_id="chat123", content="Send")
+        msg = InboundMessage(
+            channel="feishu", sender_id="user1", chat_id="chat123", content="Send"
+        )
         result = await loop._process_message(msg)
 
         assert len(sent) == 1
         assert result is None  # suppressed
 
     @pytest.mark.asyncio
-    async def test_not_suppress_when_sent_to_different_target(self, tmp_path: Path) -> None:
+    async def test_not_suppress_when_sent_to_different_target(
+        self, tmp_path: Path
+    ) -> None:
         loop = _make_loop(tmp_path)
         tool_call = ToolCallRequest(
             id="call1",
@@ -70,7 +80,9 @@ class TestMessageToolSuppressLogic:
                 LLMResponse(content="I've sent the email.", tool_calls=[]),
             ],
         )
-        loop.provider.chat_with_retry = AsyncMock(side_effect=lambda *a, **kw: next(calls))
+        loop.provider.chat_with_retry = AsyncMock(
+            side_effect=lambda *a, **kw: next(calls)
+        )
         loop.tools.get_definitions = MagicMock(return_value=[])
 
         sent: list[OutboundMessage] = []
@@ -79,7 +91,10 @@ class TestMessageToolSuppressLogic:
             mt.set_send_callback(AsyncMock(side_effect=lambda m: sent.append(m)))
 
         msg = InboundMessage(
-            channel="feishu", sender_id="user1", chat_id="chat123", content="Send email",
+            channel="feishu",
+            sender_id="user1",
+            chat_id="chat123",
+            content="Send email",
         )
         result = await loop._process_message(msg)
 
@@ -91,10 +106,14 @@ class TestMessageToolSuppressLogic:
     @pytest.mark.asyncio
     async def test_not_suppress_when_no_message_tool_used(self, tmp_path: Path) -> None:
         loop = _make_loop(tmp_path)
-        loop.provider.chat_with_retry = AsyncMock(return_value=LLMResponse(content="Hello!", tool_calls=[]))
+        loop.provider.chat_with_retry = AsyncMock(
+            return_value=LLMResponse(content="Hello!", tool_calls=[])
+        )
         loop.tools.get_definitions = MagicMock(return_value=[])
 
-        msg = InboundMessage(channel="feishu", sender_id="user1", chat_id="chat123", content="Hi")
+        msg = InboundMessage(
+            channel="feishu", sender_id="user1", chat_id="chat123", content="Hi"
+        )
         result = await loop._process_message(msg)
 
         assert result is not None
@@ -103,7 +122,9 @@ class TestMessageToolSuppressLogic:
     @pytest.mark.asyncio
     async def test_progress_hides_internal_reasoning(self, tmp_path: Path) -> None:
         loop = _make_loop(tmp_path)
-        tool_call = ToolCallRequest(id="call1", name="read_file", arguments={"path": "foo.txt"})
+        tool_call = ToolCallRequest(
+            id="call1", name="read_file", arguments={"path": "foo.txt"}
+        )
         calls = iter(
             [
                 LLMResponse(
@@ -115,7 +136,9 @@ class TestMessageToolSuppressLogic:
                 LLMResponse(content="Done", tool_calls=[]),
             ],
         )
-        loop.provider.chat_with_retry = AsyncMock(side_effect=lambda *a, **kw: next(calls))
+        loop.provider.chat_with_retry = AsyncMock(
+            side_effect=lambda *a, **kw: next(calls)
+        )
         loop.tools.get_definitions = MagicMock(return_value=[])
         loop.tools.execute = AsyncMock(return_value="ok")
 

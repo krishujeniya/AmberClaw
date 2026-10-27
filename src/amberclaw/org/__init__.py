@@ -1,14 +1,21 @@
-"""
-AmberClaw amberclaw.org module.
-"""
+"""AmberClaw Organizational Hierarchy and Multitenancy Engine."""
 
-from pydantic import BaseModel, Field
+from amberclaw.org.agent_node import AgentNode
+from amberclaw.org.chart import OrgChart
+from amberclaw.org.permissions import (
+    DEFAULT_ROLE_PERMISSIONS,
+    ROLE_HIERARCHY_LEVELS,
+    OrgPermission,
+    OrgPolicy,
+    OrgRole,
+)
 
-
-class OrgModuleConfig(BaseModel):
-    """Configuration for the amberclaw.org module."""
-    enabled: bool = Field(default=True, description="Whether the module is enabled")
-    version: str = Field(default="2026.0.1", description="Module version")
-
-
-__all__ = ["OrgModuleConfig"]
+__all__ = [
+    "DEFAULT_ROLE_PERMISSIONS",
+    "ROLE_HIERARCHY_LEVELS",
+    "AgentNode",
+    "OrgChart",
+    "OrgPermission",
+    "OrgPolicy",
+    "OrgRole",
+]

@@ -1,6 +1,8 @@
 import asyncio
+
 import typer
 from rich.console import Console
+
 from amberclaw import __logo__
 from amberclaw.config import loader, paths
 from amberclaw.providers import factory
@@ -8,23 +10,29 @@ from amberclaw.utils import helpers
 
 console = Console()
 
+
 def gateway(
     port: int | None = typer.Option(None, "--port", "-p", help="Gateway port"),
-    workspace: str | None = typer.Option(None, "--workspace", "-w", help="Workspace directory"),
+    workspace: str | None = typer.Option(
+        None, "--workspace", "-w", help="Workspace directory"
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
-    config: str | None = typer.Option(None, "--config", "-c", help="Path to config file"),
+    config: str | None = typer.Option(
+        None, "--config", "-c", help="Path to config file"
+    ),
 ) -> None:
     """Start the AmberClaw gateway."""
     from amberclaw.agent.loop import AgentLoop
     from amberclaw.bus.queue import MessageBus
+    from amberclaw.channels.manager import ChannelManager
+    from amberclaw.cron import HeartbeatService
     from amberclaw.cron.service import CronService
     from amberclaw.cron.types import CronJob
     from amberclaw.session.manager import SessionManager
-    from amberclaw.channels.manager import ChannelManager
-    from amberclaw.cron import HeartbeatService
 
     if verbose:
         import logging
+
         logging.basicConfig(level=logging.DEBUG)
 
     try:
@@ -96,9 +104,12 @@ def gateway(
 
         if job.payload.deliver and job.payload.to and response:
             from amberclaw.bus.events import OutboundMessage
+
             await bus.publish_outbound(
                 OutboundMessage(
-                    channel=job.payload.channel or "cli", chat_id=job.payload.to, content=response
+                    channel=job.payload.channel or "cli",
+                    chat_id=job.payload.to,
+                    content=response,
                 )
             )
         return response
@@ -121,8 +132,10 @@ def gateway(
 
     async def on_heartbeat_execute(tasks: str) -> str:
         channel, chat_id = _pick_heartbeat_target()
+
         async def _silent(*_args, **_kwargs) -> None:
             pass
+
         return await agent.process_direct(
             tasks,
             session_key="heartbeat",
@@ -133,6 +146,7 @@ def gateway(
 
     async def on_heartbeat_notify(response: str) -> None:
         from amberclaw.bus.events import OutboundMessage
+
         channel, chat_id = _pick_heartbeat_target()
         if channel == "cli":
             return
@@ -152,7 +166,9 @@ def gateway(
     )
 
     if channels.enabled_channels:
-        console.print(f"[green]✓[/green] Channels enabled: {', '.join(channels.enabled_channels)}")
+        console.print(
+            f"[green]✓[/green] Channels enabled: {', '.join(channels.enabled_channels)}"
+        )
     else:
         console.print("[yellow]Warning: No channels enabled[/yellow]")
 

@@ -22,7 +22,9 @@ from amberclaw.agent.tools.base import PydanticTool
 class AssistantArgs(BaseModel):
     """Arguments for the personal_assistant tool."""
 
-    message: str = Field(..., description="Your question, instruction, or note to the assistant.")
+    message: str = Field(
+        ..., description="Your question, instruction, or note to the assistant."
+    )
     session_id: str = Field(
         default="default",
         description="Session thread ID — used for session-specific conversational context.",
@@ -68,6 +70,7 @@ class AssistantTool(PydanticTool):
         )
 
         from amberclaw.memory.memory_manager import MemoryManager
+
         self._memory = MemoryManager(workspace=workspace, provider="chroma")
 
         # Basic session history (JSON fallback/short-term)
@@ -101,7 +104,9 @@ class AssistantTool(PydanticTool):
             data = json.loads(raw)
             return data.get("messages", [])
         except Exception as e:
-            logger.debug("PersonalAssistant: failed to load history (check key?): {}", e)
+            logger.debug(
+                "PersonalAssistant: failed to load history (check key?): {}", e
+            )
             return []
 
     def _save_session_history(self, session_id: str, messages: list[dict]) -> None:

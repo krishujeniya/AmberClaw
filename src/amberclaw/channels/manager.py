@@ -52,7 +52,9 @@ class ChannelManager:
             try:
                 from amberclaw.channels.whatsapp import WhatsAppChannel
 
-                self.channels["whatsapp"] = WhatsAppChannel(self.config.channels.whatsapp, self.bus)
+                self.channels["whatsapp"] = WhatsAppChannel(
+                    self.config.channels.whatsapp, self.bus
+                )
                 logger.info("WhatsApp channel enabled")
             except ImportError as e:
                 logger.warning("WhatsApp channel not available: {}", e)
@@ -62,7 +64,9 @@ class ChannelManager:
             try:
                 from amberclaw.channels.discord import DiscordChannel
 
-                self.channels["discord"] = DiscordChannel(self.config.channels.discord, self.bus)
+                self.channels["discord"] = DiscordChannel(
+                    self.config.channels.discord, self.bus
+                )
                 logger.info("Discord channel enabled")
             except ImportError as e:
                 logger.warning("Discord channel not available: {}", e)
@@ -86,7 +90,9 @@ class ChannelManager:
             try:
                 from amberclaw.channels.mochat import MochatChannel
 
-                self.channels["mochat"] = MochatChannel(self.config.channels.mochat, self.bus)
+                self.channels["mochat"] = MochatChannel(
+                    self.config.channels.mochat, self.bus
+                )
                 logger.info("Mochat channel enabled")
             except ImportError as e:
                 logger.warning("Mochat channel not available: {}", e)
@@ -96,7 +102,9 @@ class ChannelManager:
             try:
                 from amberclaw.channels.dingtalk import DingTalkChannel
 
-                self.channels["dingtalk"] = DingTalkChannel(self.config.channels.dingtalk, self.bus)
+                self.channels["dingtalk"] = DingTalkChannel(
+                    self.config.channels.dingtalk, self.bus
+                )
                 logger.info("DingTalk channel enabled")
             except ImportError as e:
                 logger.warning("DingTalk channel not available: {}", e)
@@ -106,7 +114,9 @@ class ChannelManager:
             try:
                 from amberclaw.channels.email import EmailChannel
 
-                self.channels["email"] = EmailChannel(self.config.channels.email, self.bus)
+                self.channels["email"] = EmailChannel(
+                    self.config.channels.email, self.bus
+                )
                 logger.info("Email channel enabled")
             except ImportError as e:
                 logger.warning("Email channel not available: {}", e)
@@ -116,7 +126,9 @@ class ChannelManager:
             try:
                 from amberclaw.channels.slack import SlackChannel
 
-                self.channels["slack"] = SlackChannel(self.config.channels.slack, self.bus)
+                self.channels["slack"] = SlackChannel(
+                    self.config.channels.slack, self.bus
+                )
                 logger.info("Slack channel enabled")
             except ImportError as e:
                 logger.warning("Slack channel not available: {}", e)
@@ -211,7 +223,10 @@ class ChannelManager:
                 msg = await asyncio.wait_for(self.bus.consume_outbound(), timeout=1.0)
 
                 if msg.metadata.get("_progress"):
-                    if msg.metadata.get("_tool_hint") and not self.config.channels.send_tool_hints:
+                    if (
+                        msg.metadata.get("_tool_hint")
+                        and not self.config.channels.send_tool_hints
+                    ):
                         continue
                     if (
                         not msg.metadata.get("_tool_hint")

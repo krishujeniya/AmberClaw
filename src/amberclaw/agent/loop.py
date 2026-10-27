@@ -17,6 +17,7 @@ from amberclaw.agent.context import ContextBuilder
 from amberclaw.agent.graph import AgentGraph
 from amberclaw.agent.memory import MemoryStore
 from amberclaw.agent.subagent import SubagentManager
+from amberclaw.agent.tools.a2a import A2ADelegateTool
 from amberclaw.agent.tools.council import CouncilTool
 from amberclaw.agent.tools.cron import CronTool
 from amberclaw.agent.tools.data_clean import DataCleanTool
@@ -52,12 +53,13 @@ from amberclaw.agent.tools.skills import (
     SkillSearchTool,
 )
 from amberclaw.agent.tools.spawn import SpawnTool
-from amberclaw.agent.tools.a2a import A2ADelegateTool
 from amberclaw.agent.tools.web import WebFetchTool, WebSearchTool
+from amberclaw.agent.token_counter import count_tokens
 from amberclaw.bus.events import InboundMessage, OutboundMessage
 from amberclaw.bus.queue import MessageBus
 from amberclaw.providers.base import LLMProvider
 from amberclaw.session.manager import Session, SessionManager
+
 
 if TYPE_CHECKING:
     from amberclaw.config.schema import ChannelsConfig, ExecToolConfig
@@ -131,6 +133,7 @@ class AgentLoop:
         self.sessions = session_manager or SessionManager(workspace)
         self.tools = ToolRegistry()
         from amberclaw.plugins.manager import PluginManager
+
         self.plugin_manager = PluginManager(workspace=self.workspace)
         self.subagents = SubagentManager(
             provider=provider,
@@ -675,6 +678,7 @@ class AgentLoop:
 
         code = parts[1].strip()
         from amberclaw.security.dm_pairing import verify_and_consume_code
+
         if verify_and_consume_code(code):
             paired = False
             if self.channels_config:
@@ -688,6 +692,7 @@ class AgentLoop:
 
             try:
                 from amberclaw.config import loader
+
                 config_path = loader.get_config_path()
                 if config_path.exists():
                     cfg = loader.load_config(config_path)
@@ -940,6 +945,7 @@ class AgentLoop:
         # Trigger Proactive MemoryNudgeSystem (AC-061)
         try:
             from amberclaw.agent.learning.nudge_system import MemoryNudgeSystem
+
             nudge_sys = MemoryNudgeSystem(self.workspace)
             if nudge_msg := nudge_sys.should_nudge(history, msg.content):
                 initial_messages.append({"role": "system", "content": nudge_msg})
@@ -947,10 +953,7 @@ class AgentLoop:
             logger.error("Failed to run MemoryNudgeSystem: {}", e)
 
         # Token and Context Budget System (AC-059)
-        # Rough estimation: 1 token ~= 4 chars
-        approx_tokens = (
-            sum(len(str(m.get("content", ""))) for m in initial_messages) // 4
-        )
+        approx_tokens = count_tokens(initial_messages, model=getattr(self, "model", "gpt-4o"))
         limit = self.max_tokens or 128000
 
         warning_msg = None
@@ -967,6 +970,8 @@ class AgentLoop:
             meta = dict(msg.metadata or {})
             meta["_progress"] = True
             meta["_tool_hint"] = tool_hint
+            if "correlation_id" in meta:
+                meta["correlation_id"] = meta["correlation_id"]
             if settings.security.pii_redaction:
                 content = self.pii_redactor.redact(content)
             await self.bus.publish_outbound(
@@ -1002,6 +1007,7 @@ class AgentLoop:
         # Trigger Autonomous SkillCreator (AC-060)
         try:
             from amberclaw.agent.learning.skill_creator import SkillCreator
+
             skill_creator = SkillCreator(self.provider, self.workspace)
             await skill_creator.monitor_and_create(all_msgs, model=self.model)
         except Exception as e:

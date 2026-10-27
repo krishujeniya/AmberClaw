@@ -23,7 +23,9 @@ class ScriptedProvider(LLMProvider):
 
 
 @pytest.mark.asyncio
-async def test_chat_with_retry_retries_transient_error_then_succeeds(monkeypatch) -> None:
+async def test_chat_with_retry_retries_transient_error_then_succeeds(
+    monkeypatch,
+) -> None:
     provider = ScriptedProvider(
         [
             LLMResponse(content="429 rate limit", finish_reason="error"),
@@ -37,7 +39,9 @@ async def test_chat_with_retry_retries_transient_error_then_succeeds(monkeypatch
 
     monkeypatch.setattr("amberclaw.providers.base.asyncio.sleep", _fake_sleep)
 
-    response = await provider.chat_with_retry(messages=[{"role": "user", "content": "hello"}])
+    response = await provider.chat_with_retry(
+        messages=[{"role": "user", "content": "hello"}]
+    )
 
     assert response.finish_reason == "stop"
     assert response.content == "ok"
@@ -59,7 +63,9 @@ async def test_chat_with_retry_does_not_retry_non_transient_error(monkeypatch) -
 
     monkeypatch.setattr("amberclaw.providers.base.asyncio.sleep", _fake_sleep)
 
-    response = await provider.chat_with_retry(messages=[{"role": "user", "content": "hello"}])
+    response = await provider.chat_with_retry(
+        messages=[{"role": "user", "content": "hello"}]
+    )
 
     assert response.content == "401 unauthorized"
     assert provider.calls == 1
@@ -83,7 +89,9 @@ async def test_chat_with_retry_returns_final_error_after_retries(monkeypatch) ->
 
     monkeypatch.setattr("amberclaw.providers.base.asyncio.sleep", _fake_sleep)
 
-    response = await provider.chat_with_retry(messages=[{"role": "user", "content": "hello"}])
+    response = await provider.chat_with_retry(
+        messages=[{"role": "user", "content": "hello"}]
+    )
 
     assert response.content == "503 final server error"
     assert provider.calls == 4

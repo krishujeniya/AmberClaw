@@ -19,7 +19,10 @@ class DescribeImageArgs(BaseModel):
     """Arguments for the describe_image tool."""
 
     path: str = Field(..., description="Local path to the image file.")
-    prompt: str = Field("Describe this image in detail.", description="Question or prompt about the image.")
+    prompt: str = Field(
+        "Describe this image in detail.",
+        description="Question or prompt about the image.",
+    )
 
 
 class VisionTool(PydanticTool):
@@ -65,7 +68,10 @@ class VisionTool(PydanticTool):
                     "role": "user",
                     "content": [
                         {"type": "text", "text": args.prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{mime};base64,{b64}"},
+                        },
                     ],
                 },
             ]
@@ -84,7 +90,10 @@ class AnalyzeVideoArgs(BaseModel):
 
     path: str = Field(..., description="Path to the video file.")
     num_frames: int = Field(5, description="Number of frames to extract and analyze.")
-    prompt: str = Field("Describe what happens in this video.", description="Question or prompt about the video.")
+    prompt: str = Field(
+        "Describe what happens in this video.",
+        description="Question or prompt about the video.",
+    )
 
 
 class VideoAnalysisTool(PydanticTool):
@@ -137,7 +146,10 @@ class VideoAnalysisTool(PydanticTool):
                 _, buffer = cv2.imencode(".jpg", frame)
                 b64 = base64.b64encode(buffer).decode()
                 frames.append(
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+                    },
                 )
 
             cap.release()
@@ -161,7 +173,9 @@ class VideoAnalysisTool(PydanticTool):
 class CaptureSensorArgs(BaseModel):
     """Arguments for the capture_sensor tool."""
 
-    sensor_type: Literal["webcam", "microphone"] = Field(..., description="Type of sensor to capture.")
+    sensor_type: Literal["webcam", "microphone"] = Field(
+        ..., description="Type of sensor to capture."
+    )
     duration: int = Field(3, description="Duration in seconds (for microphone).")
     output_path: str = Field("capture.jpg", description="Path to save the capture.")
 
@@ -212,11 +226,12 @@ class SensorInputTool(PydanticTool):
 
 
 class TranscribeAudioArgs(BaseModel):
-
     """Arguments for the transcribe_audio tool."""
 
     path: str = Field(..., description="Local path to the audio file.")
-    provider: Literal["groq", "openai"] = Field("groq", description="Transcription provider to use.")
+    provider: Literal["groq", "openai"] = Field(
+        "groq", description="Transcription provider to use."
+    )
 
 
 class TranscriptionTool(PydanticTool):
@@ -256,7 +271,9 @@ class TextToSpeechArgs(BaseModel):
 
     text: str = Field(..., description="Text to convert to speech.")
     output_path: str = Field("output.mp3", description="Path to save the audio file.")
-    provider: Literal["openai", "elevenlabs"] = Field("openai", description="TTS provider to use.")
+    provider: Literal["openai", "elevenlabs"] = Field(
+        "openai", description="TTS provider to use."
+    )
 
 
 class TTSTool(PydanticTool):
@@ -290,7 +307,9 @@ class IngestDocumentArgs(BaseModel):
     """Arguments for the ingest_document tool."""
 
     path: str = Field(..., description="Path to the document (PDF, Docx, etc.)")
-    strategy: str = Field("auto", description="Ingestion strategy (auto, fast, ocr_only, hi_res)")
+    strategy: str = Field(
+        "auto", description="Ingestion strategy (auto, fast, ocr_only, hi_res)"
+    )
 
 
 class DocumentIngestionTool(PydanticTool):

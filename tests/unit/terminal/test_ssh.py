@@ -1,4 +1,3 @@
-import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -118,7 +117,7 @@ async def test_ssh_backend_timeout() -> None:
     mock_transport.open_session.return_value = mock_channel
 
     # Simulate socket timeout during execution
-    mock_channel.exec_command.side_effect = socket.timeout("Command timed out")
+    mock_channel.exec_command.side_effect = TimeoutError("Command timed out")
 
     with patch("paramiko.SSHClient", return_value=mock_client):
         backend = SSHTerminalBackend(host="1.2.3.4", username="testuser")

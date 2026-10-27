@@ -14,6 +14,7 @@ from amberclaw.agent.tools.base import PydanticTool
 
 class SkillSearchArgs(BaseModel):
     """Arguments for skill_search."""
+
     query: str = Field(..., description="Search query (natural language)")
 
 
@@ -36,7 +37,9 @@ class SkillSearchTool(PydanticTool):
         try:
             cmd = ["npx", "--yes", "clawhub@latest", "search", args.query]
             proc = await asyncio.create_subprocess_exec(
-                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await proc.communicate()
             if proc.returncode != 0:
@@ -52,6 +55,7 @@ class SkillSearchTool(PydanticTool):
 
 class SkillInstallArgs(BaseModel):
     """Arguments for skill_install."""
+
     slug: str = Field(..., description="The unique name/slug of the skill to install")
 
 
@@ -81,9 +85,19 @@ class SkillInstallTool(PydanticTool):
             os.makedirs(self.workspace, exist_ok=True)
 
             logger.info("Installing skill '{}' to {}", args.slug, self.workspace)
-            cmd = ["npx", "--yes", "clawhub@latest", "install", args.slug, "--workdir", self.workspace]
+            cmd = [
+                "npx",
+                "--yes",
+                "clawhub@latest",
+                "install",
+                args.slug,
+                "--workdir",
+                self.workspace,
+            ]
             proc = await asyncio.create_subprocess_exec(
-                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await proc.communicate()
 
@@ -97,7 +111,10 @@ class SkillInstallTool(PydanticTool):
             if self.loader:
                 warnings = self.loader.scan_skill(args.slug)
                 if warnings:
-                    security_info = "\n\n[WARNING] Security scan found risks:\n- " + "\n- ".join(warnings)
+                    security_info = (
+                        "\n\n[WARNING] Security scan found risks:\n- "
+                        + "\n- ".join(warnings)
+                    )
                 else:
                     security_info = "\n\n[SAFE] Security scan passed."
 
@@ -114,6 +131,7 @@ class SkillInstallTool(PydanticTool):
 
 class SkillListArgs(BaseModel):
     """Arguments for skill_list."""
+
     pass
 
 
@@ -138,9 +156,18 @@ class SkillListTool(PydanticTool):
 
     async def run(self, args: SkillListArgs) -> str:
         try:
-            cmd = ["npx", "--yes", "clawhub@latest", "list", "--workdir", self.workspace]
+            cmd = [
+                "npx",
+                "--yes",
+                "clawhub@latest",
+                "list",
+                "--workdir",
+                self.workspace,
+            ]
             proc = await asyncio.create_subprocess_exec(
-                *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
             )
             stdout, stderr = await proc.communicate()
 
@@ -217,10 +244,12 @@ class SkillManageTool(PydanticTool):
                 deleted_paths.append(str(root_dir))
 
             if deleted_paths:
-                return f"Successfully deleted skill '{skill_name}' from:\n" + "\n".join(deleted_paths)
+                return f"Successfully deleted skill '{skill_name}' from:\n" + "\n".join(
+                    deleted_paths
+                )
             return f"Skill '{skill_name}' not found."
 
-        elif action == "edit":
+        if action == "edit":
             if not args.content:
                 return "Error: Content is required for the 'edit' action."
 
@@ -238,7 +267,7 @@ class SkillManageTool(PydanticTool):
 
             return f"Successfully updated/created skill '{skill_name}' content."
 
-        elif action == "merge":
+        if action == "merge":
             target = args.target_skill_name
             if not target:
                 return "Error: target_skill_name is required for the 'merge' action."

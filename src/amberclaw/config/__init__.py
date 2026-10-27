@@ -12,10 +12,12 @@ from amberclaw.config.paths import (
     get_runtime_subdir,
     get_workspace_path,
 )
-from amberclaw.config.schema import Config
+from amberclaw.config.schema import Config, ControlPlaneConfig, DataPlaneConfig
 
 __all__ = [
     "Config",
+    "ControlPlaneConfig",
+    "DataPlaneConfig",
     "get_bridge_install_dir",
     "get_cli_history_path",
     "get_config_path",

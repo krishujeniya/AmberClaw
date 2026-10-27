@@ -1,4 +1,5 @@
 import pytest
+
 pytest.importorskip("nh3")
 pytest.importorskip("nio")
 
@@ -57,7 +58,9 @@ class _FakeAsyncClient:
         self.download_content_type: str = "application/octet-stream"
         self.download_filename: str | None = None
         self.upload_response: object | None = None
-        self.content_repository_config_response: object = SimpleNamespace(upload_size=None)
+        self.content_repository_config_response: object = SimpleNamespace(
+            upload_size=None
+        )
         self.raise_on_send = False
         self.raise_on_typing = False
         self.raise_on_upload = False
@@ -172,7 +175,9 @@ def _make_config(**kwargs) -> MatrixConfig:
 
 
 @pytest.mark.asyncio
-async def test_start_skips_load_store_when_device_id_missing(monkeypatch, tmp_path) -> None:
+async def test_start_skips_load_store_when_device_id_missing(
+    monkeypatch, tmp_path
+) -> None:
     clients: list[_FakeAsyncClient] = []
 
     def _fake_client(*args, **kwargs) -> _FakeAsyncClient:
@@ -190,7 +195,9 @@ async def test_start_skips_load_store_when_device_id_missing(monkeypatch, tmp_pa
         lambda **kwargs: SimpleNamespace(**kwargs),
     )
     monkeypatch.setattr("amberclaw.channels.matrix.AsyncClient", _fake_client)
-    monkeypatch.setattr("amberclaw.channels.matrix.asyncio.create_task", _fake_create_task)
+    monkeypatch.setattr(
+        "amberclaw.channels.matrix.asyncio.create_task", _fake_create_task
+    )
 
     channel = MatrixChannel(_make_config(device_id=""), MessageBus())
     await channel.start()
@@ -218,7 +225,9 @@ async def test_register_event_callbacks_uses_media_base_filter() -> None:
 
 
 def test_media_event_filter_does_not_match_text_events() -> None:
-    assert not issubclass(matrix_module.RoomMessageText, matrix_module.MATRIX_MEDIA_EVENT_FILTER)
+    assert not issubclass(
+        matrix_module.RoomMessageText, matrix_module.MATRIX_MEDIA_EVENT_FILTER
+    )
 
 
 @pytest.mark.asyncio
@@ -240,9 +249,13 @@ async def test_start_disables_e2ee_when_configured(monkeypatch, tmp_path) -> Non
         lambda **kwargs: SimpleNamespace(**kwargs),
     )
     monkeypatch.setattr("amberclaw.channels.matrix.AsyncClient", _fake_client)
-    monkeypatch.setattr("amberclaw.channels.matrix.asyncio.create_task", _fake_create_task)
+    monkeypatch.setattr(
+        "amberclaw.channels.matrix.asyncio.create_task", _fake_create_task
+    )
 
-    channel = MatrixChannel(_make_config(device_id="", e2ee_enabled=False), MessageBus())
+    channel = MatrixChannel(
+        _make_config(device_id="", e2ee_enabled=False), MessageBus()
+    )
     await channel.start()
 
     assert len(clients) == 1
@@ -284,7 +297,9 @@ async def test_room_invite_ignores_when_allow_list_is_empty() -> None:
 
 @pytest.mark.asyncio
 async def test_room_invite_joins_when_sender_allowed() -> None:
-    channel = MatrixChannel(_make_config(allow_from=["@alice:matrix.org"]), MessageBus())
+    channel = MatrixChannel(
+        _make_config(allow_from=["@alice:matrix.org"]), MessageBus()
+    )
     client = _FakeAsyncClient("", "", "", None)
     channel.client = client
 
@@ -349,7 +364,11 @@ async def test_typing_keepalive_refreshes_periodically(monkeypatch) -> None:
 
     true_updates = [call for call in client.typing_calls if call[1] is True]
     assert len(true_updates) >= 2
-    assert client.typing_calls[-1] == ("!room:matrix.org", False, TYPING_NOTICE_TIMEOUT_MS)
+    assert client.typing_calls[-1] == (
+        "!room:matrix.org",
+        False,
+        TYPING_NOTICE_TIMEOUT_MS,
+    )
 
 
 @pytest.mark.asyncio
@@ -401,8 +420,12 @@ async def test_on_message_mention_policy_requires_mx_mentions() -> None:
 
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
-    room = SimpleNamespace(room_id="!room:matrix.org", display_name="Test room", member_count=3)
-    event = SimpleNamespace(sender="@alice:matrix.org", body="Hello", source={"content": {}})
+    room = SimpleNamespace(
+        room_id="!room:matrix.org", display_name="Test room", member_count=3
+    )
+    event = SimpleNamespace(
+        sender="@alice:matrix.org", body="Hello", source={"content": {}}
+    )
 
     await channel._on_message(room, event)
 
@@ -423,7 +446,9 @@ async def test_on_message_mention_policy_accepts_bot_user_mentions() -> None:
 
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
-    room = SimpleNamespace(room_id="!room:matrix.org", display_name="Test room", member_count=3)
+    room = SimpleNamespace(
+        room_id="!room:matrix.org", display_name="Test room", member_count=3
+    )
     event = SimpleNamespace(
         sender="@alice:matrix.org",
         body="Hello",
@@ -450,7 +475,9 @@ async def test_on_message_mention_policy_allows_direct_room_without_mentions() -
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
     room = SimpleNamespace(room_id="!dm:matrix.org", display_name="DM", member_count=2)
-    event = SimpleNamespace(sender="@alice:matrix.org", body="Hello", source={"content": {}})
+    event = SimpleNamespace(
+        sender="@alice:matrix.org", body="Hello", source={"content": {}}
+    )
 
     await channel._on_message(room, event)
 
@@ -461,7 +488,9 @@ async def test_on_message_mention_policy_allows_direct_room_without_mentions() -
 @pytest.mark.asyncio
 async def test_on_message_allowlist_policy_requires_room_id() -> None:
     channel = MatrixChannel(
-        _make_config(group_policy="allowlist", group_allow_from=["!allowed:matrix.org"]),
+        _make_config(
+            group_policy="allowlist", group_allow_from=["!allowed:matrix.org"]
+        ),
         MessageBus(),
     )
     client = _FakeAsyncClient("", "", "", None)
@@ -475,9 +504,13 @@ async def test_on_message_allowlist_policy_requires_room_id() -> None:
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
     denied_room = SimpleNamespace(
-        room_id="!denied:matrix.org", display_name="Denied", member_count=3,
+        room_id="!denied:matrix.org",
+        display_name="Denied",
+        member_count=3,
     )
-    event = SimpleNamespace(sender="@alice:matrix.org", body="Hello", source={"content": {}})
+    event = SimpleNamespace(
+        sender="@alice:matrix.org", body="Hello", source={"content": {}}
+    )
     await channel._on_message(denied_room, event)
 
     allowed_room = SimpleNamespace(
@@ -488,7 +521,9 @@ async def test_on_message_allowlist_policy_requires_room_id() -> None:
     await channel._on_message(allowed_room, event)
 
     assert handled == ["!allowed:matrix.org"]
-    assert client.typing_calls == [("!allowed:matrix.org", True, TYPING_NOTICE_TIMEOUT_MS)]
+    assert client.typing_calls == [
+        ("!allowed:matrix.org", True, TYPING_NOTICE_TIMEOUT_MS)
+    ]
 
 
 @pytest.mark.asyncio
@@ -504,7 +539,9 @@ async def test_on_message_room_mention_requires_opt_in() -> None:
 
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
-    room = SimpleNamespace(room_id="!room:matrix.org", display_name="Test room", member_count=3)
+    room = SimpleNamespace(
+        room_id="!room:matrix.org", display_name="Test room", member_count=3
+    )
     room_mention_event = SimpleNamespace(
         sender="@alice:matrix.org",
         body="Hello everyone",
@@ -534,7 +571,9 @@ async def test_on_message_sets_thread_metadata_when_threaded_event() -> None:
 
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
-    room = SimpleNamespace(room_id="!room:matrix.org", display_name="Test room", member_count=3)
+    room = SimpleNamespace(
+        room_id="!room:matrix.org", display_name="Test room", member_count=3
+    )
     event = SimpleNamespace(
         sender="@alice:matrix.org",
         body="Hello",
@@ -560,7 +599,8 @@ async def test_on_message_sets_thread_metadata_when_threaded_event() -> None:
 
 @pytest.mark.asyncio
 async def test_on_media_message_downloads_attachment_and_sets_metadata(
-    monkeypatch, tmp_path,
+    monkeypatch,
+    tmp_path,
 ) -> None:
     monkeypatch.setattr("amberclaw.channels.matrix.get_data_dir", lambda: tmp_path)
 
@@ -576,7 +616,9 @@ async def test_on_media_message_downloads_attachment_and_sets_metadata(
 
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
-    room = SimpleNamespace(room_id="!room:matrix.org", display_name="Test room", member_count=2)
+    room = SimpleNamespace(
+        room_id="!room:matrix.org", display_name="Test room", member_count=2
+    )
     event = SimpleNamespace(
         sender="@alice:matrix.org",
         body="photo.png",
@@ -613,7 +655,8 @@ async def test_on_media_message_downloads_attachment_and_sets_metadata(
 
 @pytest.mark.asyncio
 async def test_on_media_message_sets_thread_metadata_when_threaded_event(
-    monkeypatch, tmp_path,
+    monkeypatch,
+    tmp_path,
 ) -> None:
     monkeypatch.setattr("amberclaw.channels.matrix.get_data_dir", lambda: tmp_path)
 
@@ -629,7 +672,9 @@ async def test_on_media_message_sets_thread_metadata_when_threaded_event(
 
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
-    room = SimpleNamespace(room_id="!room:matrix.org", display_name="Test room", member_count=2)
+    room = SimpleNamespace(
+        room_id="!room:matrix.org", display_name="Test room", member_count=2
+    )
     event = SimpleNamespace(
         sender="@alice:matrix.org",
         body="photo.png",
@@ -657,7 +702,9 @@ async def test_on_media_message_sets_thread_metadata_when_threaded_event(
 
 
 @pytest.mark.asyncio
-async def test_on_media_message_respects_declared_size_limit(monkeypatch, tmp_path) -> None:
+async def test_on_media_message_respects_declared_size_limit(
+    monkeypatch, tmp_path
+) -> None:
     monkeypatch.setattr("amberclaw.channels.matrix.get_data_dir", lambda: tmp_path)
 
     channel = MatrixChannel(_make_config(max_media_bytes=3), MessageBus())
@@ -671,7 +718,9 @@ async def test_on_media_message_respects_declared_size_limit(monkeypatch, tmp_pa
 
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
-    room = SimpleNamespace(room_id="!room:matrix.org", display_name="Test room", member_count=2)
+    room = SimpleNamespace(
+        room_id="!room:matrix.org", display_name="Test room", member_count=2
+    )
     event = SimpleNamespace(
         sender="@alice:matrix.org",
         body="large.bin",
@@ -691,7 +740,8 @@ async def test_on_media_message_respects_declared_size_limit(monkeypatch, tmp_pa
 
 @pytest.mark.asyncio
 async def test_on_media_message_uses_server_limit_when_smaller_than_local_limit(
-    monkeypatch, tmp_path,
+    monkeypatch,
+    tmp_path,
 ) -> None:
     monkeypatch.setattr("amberclaw.channels.matrix.get_data_dir", lambda: tmp_path)
 
@@ -707,7 +757,9 @@ async def test_on_media_message_uses_server_limit_when_smaller_than_local_limit(
 
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
-    room = SimpleNamespace(room_id="!room:matrix.org", display_name="Test room", member_count=2)
+    room = SimpleNamespace(
+        room_id="!room:matrix.org", display_name="Test room", member_count=2
+    )
     event = SimpleNamespace(
         sender="@alice:matrix.org",
         body="large.bin",
@@ -741,7 +793,9 @@ async def test_on_media_message_handles_download_error(monkeypatch, tmp_path) ->
 
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
-    room = SimpleNamespace(room_id="!room:matrix.org", display_name="Test room", member_count=2)
+    room = SimpleNamespace(
+        room_id="!room:matrix.org", display_name="Test room", member_count=2
+    )
     event = SimpleNamespace(
         sender="@alice:matrix.org",
         body="photo.png",
@@ -780,7 +834,9 @@ async def test_on_media_message_decrypts_encrypted_media(monkeypatch, tmp_path) 
 
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
-    room = SimpleNamespace(room_id="!room:matrix.org", display_name="Test room", member_count=2)
+    room = SimpleNamespace(
+        room_id="!room:matrix.org", display_name="Test room", member_count=2
+    )
     event = SimpleNamespace(
         sender="@alice:matrix.org",
         body="secret.txt",
@@ -823,7 +879,9 @@ async def test_on_media_message_handles_decrypt_error(monkeypatch, tmp_path) -> 
 
     channel._handle_message = _fake_handle_message  # type: ignore[method-assign]
 
-    room = SimpleNamespace(room_id="!room:matrix.org", display_name="Test room", member_count=2)
+    room = SimpleNamespace(
+        room_id="!room:matrix.org", display_name="Test room", member_count=2
+    )
     event = SimpleNamespace(
         sender="@alice:matrix.org",
         body="secret.txt",
@@ -849,7 +907,9 @@ async def test_send_clears_typing_after_send() -> None:
     client = _FakeAsyncClient("", "", "", None)
     channel.client = client
 
-    await channel.send(OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content="Hi"))
+    await channel.send(
+        OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content="Hi")
+    )
 
     assert len(client.room_send_calls) == 1
     assert client.room_send_calls[0]["content"] == {
@@ -858,7 +918,11 @@ async def test_send_clears_typing_after_send() -> None:
         "m.mentions": {},
     }
     assert client.room_send_calls[0]["ignore_unverified_devices"] is True
-    assert client.typing_calls[-1] == ("!room:matrix.org", False, TYPING_NOTICE_TIMEOUT_MS)
+    assert client.typing_calls[-1] == (
+        "!room:matrix.org",
+        False,
+        TYPING_NOTICE_TIMEOUT_MS,
+    )
 
 
 @pytest.mark.asyncio
@@ -965,7 +1029,9 @@ async def test_send_does_not_parse_attachment_marker_without_media(tmp_path) -> 
 
     assert client.upload_calls == []
     assert len(client.room_send_calls) == 1
-    assert client.room_send_calls[0]["content"]["body"] == f"[attachment: {missing_path}]"
+    assert (
+        client.room_send_calls[0]["content"]["body"] == f"[attachment: {missing_path}]"
+    )
 
 
 @pytest.mark.asyncio
@@ -988,7 +1054,9 @@ async def test_send_passes_thread_relates_to_to_attachment_upload(monkeypatch) -
         captured["relates_to"] = relates_to
         return None
 
-    monkeypatch.setattr(channel, "_upload_and_send_attachment", _fake_upload_and_send_attachment)
+    monkeypatch.setattr(
+        channel, "_upload_and_send_attachment", _fake_upload_and_send_attachment
+    )
 
     metadata = {
         "thread_root_event_id": "$root1",
@@ -1040,7 +1108,8 @@ async def test_send_workspace_restriction_blocks_external_attachment(tmp_path) -
     assert client.upload_calls == []
     assert len(client.room_send_calls) == 1
     assert (
-        client.room_send_calls[0]["content"]["body"] == "[attachment: external.txt - upload failed]"
+        client.room_send_calls[0]["content"]["body"]
+        == "[attachment: external.txt - upload failed]"
     )
 
 
@@ -1072,7 +1141,9 @@ async def test_send_handles_upload_exception_and_reports_failure(tmp_path) -> No
 
 
 @pytest.mark.asyncio
-async def test_send_uses_server_upload_limit_when_smaller_than_local_limit(tmp_path) -> None:
+async def test_send_uses_server_upload_limit_when_smaller_than_local_limit(
+    tmp_path,
+) -> None:
     channel = MatrixChannel(_make_config(max_media_bytes=10), MessageBus())
     client = _FakeAsyncClient("", "", "", None)
     client.content_repository_config_response = SimpleNamespace(upload_size=3)
@@ -1092,7 +1163,10 @@ async def test_send_uses_server_upload_limit_when_smaller_than_local_limit(tmp_p
 
     assert client.upload_calls == []
     assert len(client.room_send_calls) == 1
-    assert client.room_send_calls[0]["content"]["body"] == "[attachment: tiny.txt - too large]"
+    assert (
+        client.room_send_calls[0]["content"]["body"]
+        == "[attachment: tiny.txt - too large]"
+    )
 
 
 @pytest.mark.asyncio
@@ -1115,7 +1189,10 @@ async def test_send_blocks_all_outbound_media_when_limit_is_zero(tmp_path) -> No
 
     assert client.upload_calls == []
     assert len(client.room_send_calls) == 1
-    assert client.room_send_calls[0]["content"]["body"] == "[attachment: empty.txt - too large]"
+    assert (
+        client.room_send_calls[0]["content"]["body"]
+        == "[attachment: empty.txt - too large]"
+    )
 
 
 @pytest.mark.asyncio
@@ -1124,7 +1201,9 @@ async def test_send_omits_ignore_unverified_devices_when_e2ee_disabled() -> None
     client = _FakeAsyncClient("", "", "", None)
     channel.client = client
 
-    await channel.send(OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content="Hi"))
+    await channel.send(
+        OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content="Hi")
+    )
 
     assert len(client.room_send_calls) == 1
     assert "ignore_unverified_devices" not in client.room_send_calls[0]
@@ -1140,10 +1219,16 @@ async def test_send_stops_typing_keepalive_task() -> None:
     await channel._start_typing_keepalive("!room:matrix.org")
     assert "!room:matrix.org" in channel._typing_tasks
 
-    await channel.send(OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content="Hi"))
+    await channel.send(
+        OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content="Hi")
+    )
 
     assert "!room:matrix.org" not in channel._typing_tasks
-    assert client.typing_calls[-1] == ("!room:matrix.org", False, TYPING_NOTICE_TIMEOUT_MS)
+    assert client.typing_calls[-1] == (
+        "!room:matrix.org",
+        False,
+        TYPING_NOTICE_TIMEOUT_MS,
+    )
 
 
 @pytest.mark.asyncio
@@ -1166,7 +1251,11 @@ async def test_send_progress_keeps_typing_keepalive_running() -> None:
     )
 
     assert "!room:matrix.org" in channel._typing_tasks
-    assert client.typing_calls[-1] == ("!room:matrix.org", True, TYPING_NOTICE_TIMEOUT_MS)
+    assert client.typing_calls[-1] == (
+        "!room:matrix.org",
+        True,
+        TYPING_NOTICE_TIMEOUT_MS,
+    )
 
     await channel.stop()
 
@@ -1183,7 +1272,11 @@ async def test_send_clears_typing_when_send_fails() -> None:
             OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content="Hi"),
         )
 
-    assert client.typing_calls[-1] == ("!room:matrix.org", False, TYPING_NOTICE_TIMEOUT_MS)
+    assert client.typing_calls[-1] == (
+        "!room:matrix.org",
+        False,
+        TYPING_NOTICE_TIMEOUT_MS,
+    )
 
 
 @pytest.mark.asyncio
@@ -1194,7 +1287,9 @@ async def test_send_adds_formatted_body_for_markdown() -> None:
 
     markdown_text = "# Headline\n\n- [x] done\n\n| A | B |\n| - | - |\n| 1 | 2 |"
     await channel.send(
-        OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content=markdown_text),
+        OutboundMessage(
+            channel="matrix", chat_id="!room:matrix.org", content=markdown_text
+        ),
     )
 
     content = client.room_send_calls[0]["content"]
@@ -1215,7 +1310,9 @@ async def test_send_adds_formatted_body_for_inline_url_superscript_subscript() -
 
     markdown_text = "Visit https://example.com and x^2^ plus H~2~O."
     await channel.send(
-        OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content=markdown_text),
+        OutboundMessage(
+            channel="matrix", chat_id="!room:matrix.org", content=markdown_text
+        ),
     )
 
     content = client.room_send_calls[0]["content"]
@@ -1238,7 +1335,9 @@ async def test_send_sanitizes_disallowed_link_scheme() -> None:
 
     markdown_text = "[click](javascript:alert(1))"
     await channel.send(
-        OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content=markdown_text),
+        OutboundMessage(
+            channel="matrix", chat_id="!room:matrix.org", content=markdown_text
+        ),
     )
 
     formatted_body = str(client.room_send_calls[0]["content"]["formatted_body"])
@@ -1248,7 +1347,9 @@ async def test_send_sanitizes_disallowed_link_scheme() -> None:
 
 
 def test_matrix_html_cleaner_strips_event_handlers_and_script_tags() -> None:
-    dirty_html = '<a href="https://example.com" onclick="evil()">x</a><script>alert(1)</script>'
+    dirty_html = (
+        '<a href="https://example.com" onclick="evil()">x</a><script>alert(1)</script>'
+    )
     cleaned_html = matrix_module.MATRIX_HTML_CLEANER.clean(dirty_html)
 
     assert "<script" not in cleaned_html
@@ -1264,7 +1365,9 @@ async def test_send_keeps_only_mxc_image_sources() -> None:
 
     markdown_text = "![ok](mxc://example.org/mediaid) ![no](https://example.com/a.png)"
     await channel.send(
-        OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content=markdown_text),
+        OutboundMessage(
+            channel="matrix", chat_id="!room:matrix.org", content=markdown_text
+        ),
     )
 
     formatted_body = str(client.room_send_calls[0]["content"]["formatted_body"])
@@ -1273,7 +1376,9 @@ async def test_send_keeps_only_mxc_image_sources() -> None:
 
 
 @pytest.mark.asyncio
-async def test_send_falls_back_to_plaintext_when_markdown_render_fails(monkeypatch) -> None:
+async def test_send_falls_back_to_plaintext_when_markdown_render_fails(
+    monkeypatch,
+) -> None:
     channel = MatrixChannel(_make_config(), MessageBus())
     client = _FakeAsyncClient("", "", "", None)
     channel.client = client
@@ -1284,7 +1389,9 @@ async def test_send_falls_back_to_plaintext_when_markdown_render_fails(monkeypat
     monkeypatch.setattr(matrix_module, "MATRIX_MARKDOWN", _raise)
     markdown_text = "# Headline"
     await channel.send(
-        OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content=markdown_text),
+        OutboundMessage(
+            channel="matrix", chat_id="!room:matrix.org", content=markdown_text
+        ),
     )
 
     content = client.room_send_calls[0]["content"]
@@ -1298,7 +1405,9 @@ async def test_send_keeps_plaintext_only_for_plain_text() -> None:
     channel.client = client
 
     text = "just a normal sentence without markdown markers"
-    await channel.send(OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content=text))
+    await channel.send(
+        OutboundMessage(channel="matrix", chat_id="!room:matrix.org", content=text)
+    )
 
     assert client.room_send_calls[0]["content"] == {
         "msgtype": "m.text",

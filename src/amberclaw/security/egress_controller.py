@@ -15,14 +15,14 @@ from loguru import logger
 from amberclaw.security.network_policy import NetworkPolicy
 
 # Context variables to track egress sandboxing rules task-locally
-_egress_policy: contextvars.ContextVar[NetworkPolicy | None] = (
-    contextvars.ContextVar("egress_policy", default=None)
+_egress_policy: contextvars.ContextVar[NetworkPolicy | None] = contextvars.ContextVar(
+    "egress_policy", default=None
 )
-_egress_active: contextvars.ContextVar[bool] = (
-    contextvars.ContextVar("egress_active", default=False)
+_egress_active: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "egress_active", default=False
 )
-_active_binary_context: contextvars.ContextVar[str | None] = (
-    contextvars.ContextVar("active_binary_context", default=None)
+_active_binary_context: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "active_binary_context", default=None
 )
 
 # Store original socket methods
@@ -68,6 +68,7 @@ def auto_detect_binary_context() -> str | None:
         return ctx
 
     import inspect  # noqa: PLC0415
+
     try:
         for frame_info in inspect.stack():
             filename = frame_info.filename.lower()
@@ -83,7 +84,10 @@ def auto_detect_binary_context() -> str | None:
 
 
 def patched_getaddrinfo(
-    host: str, port: str | int | None, *args, **kwargs,
+    host: str,
+    port: str | int | None,
+    *args,
+    **kwargs,
 ) -> list[tuple]:
     """Intercept and filter name resolution requests."""
     if _egress_active.get():

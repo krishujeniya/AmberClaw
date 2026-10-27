@@ -55,14 +55,22 @@ class CouncilTool(PydanticTool):
     def args_schema(self) -> type[CouncilArgs]:
         return CouncilArgs
 
-    def __init__(self, provider: Any, model: str, temperature: float = 0.1, max_tokens: int = 2048):
+    def __init__(
+        self,
+        provider: Any,
+        model: str,
+        temperature: float = 0.1,
+        max_tokens: int = 2048,
+    ):
         super().__init__()
         self._provider = provider
         self._primary_model = model
         self._temperature = temperature
         self._max_tokens = max_tokens
 
-    async def _ask(self, model: str, messages: list[dict], on_token: Any | None = None) -> str:
+    async def _ask(
+        self, model: str, messages: list[dict], on_token: Any | None = None
+    ) -> str:
         """Query a single model, return text or empty string on error."""
         try:
             resp = await self._provider.chat_with_retry(
@@ -81,9 +89,13 @@ class CouncilTool(PydanticTool):
     async def run(self, args: CouncilArgs, on_token: Any | None = None) -> str:
         models = args.models or [self._primary_model]
         if len(models) == 1:
-            models = models * 2  # degenerate case: same model twice, still useful for ranking
+            models = (
+                models * 2
+            )  # degenerate case: same model twice, still useful for ranking
 
-        logger.info("Council: stage 1 — {} models on query: {}", len(models), args.query[:80])
+        logger.info(
+            "Council: stage 1 — {} models on query: {}", len(models), args.query[:80]
+        )
 
         # ── Stage 1: Collect ──────────────────────────────────────────────────
         user_msg = [{"role": "user", "content": args.query}]
@@ -117,8 +129,12 @@ class CouncilTool(PydanticTool):
             stage1_rankings = [r for r in rankings if r]
 
         # ── Stage 3: Synthesis ────────────────────────────────────────────────
-        stage1_block = "\n\n".join(f"[{item['model']}]: {item['response']}" for item in stage1)
-        rankings_block = "\n\n".join(stage1_rankings) if stage1_rankings else "(no rankings)"
+        stage1_block = "\n\n".join(
+            f"[{item['model']}]: {item['response']}" for item in stage1
+        )
+        rankings_block = (
+            "\n\n".join(stage1_rankings) if stage1_rankings else "(no rankings)"
+        )
         synthesis_prompt = (
             f"You are synthesizing a council of AI experts.\n\n"
             f"Original question: {args.query}\n\n"

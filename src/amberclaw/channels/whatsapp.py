@@ -60,7 +60,9 @@ class WhatsAppChannel(BaseChannel):
                     # Send auth token if configured
                     if self.config.bridge_token:
                         await ws.send(
-                            json.dumps({"type": "auth", "token": self.config.bridge_token}),
+                            json.dumps(
+                                {"type": "auth", "token": self.config.bridge_token}
+                            ),
                         )
                     self._connected = True
                     logger.info("Connected to WhatsApp bridge")
@@ -97,7 +99,9 @@ class WhatsAppChannel(BaseChannel):
                     decoded = line.decode(errors="replace").strip()
                     if decoded:
                         if "Scan this QR code" in decoded:
-                            logger.info("[Bridge] WhatsApp QR code generated. Please link device via CLI.")
+                            logger.info(
+                                "[Bridge] WhatsApp QR code generated. Please link device via CLI."
+                            )
                         logger.debug("[Bridge {}] {}", name, decoded)
                 except Exception:
                     break
@@ -128,7 +132,7 @@ class WhatsAppChannel(BaseChannel):
             try:
                 self._bridge_process.terminate()
                 await asyncio.wait_for(self._bridge_process.wait(), timeout=3.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("WhatsApp bridge did not exit gracefully, killing...")
                 try:
                     self._bridge_process.kill()
@@ -188,7 +192,9 @@ class WhatsAppChannel(BaseChannel):
                     "Voice message received from {}, but direct download from bridge is not yet supported.",
                     sender_id,
                 )
-                content = "[Voice Message: Transcription not available for WhatsApp yet]"
+                content = (
+                    "[Voice Message: Transcription not available for WhatsApp yet]"
+                )
 
             # Extract media paths (images/documents/videos downloaded by the bridge)
             media_paths = data.get("media") or []
@@ -197,7 +203,9 @@ class WhatsAppChannel(BaseChannel):
             if media_paths:
                 for p in media_paths:
                     mime, _ = mimetypes.guess_type(p)
-                    media_type = "image" if mime and mime.startswith("image/") else "file"
+                    media_type = (
+                        "image" if mime and mime.startswith("image/") else "file"
+                    )
                     media_tag = f"[{media_type}: {p}]"
                     content = f"{content}\n{media_tag}" if content else media_tag
 
