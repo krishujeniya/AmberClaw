@@ -16,9 +16,11 @@ app = typer.Typer(
 from . import (
     agent,
     backup,
+    blueprint,
     budget,
     channels,
     council,
+    cron,
     db,
     doctor,
     gateway,
@@ -27,11 +29,13 @@ from . import (
     onboard,
     org,
     pair,
+    policy,
     provider,
     restore,
     scan_secrets,
     skills,
     status,
+    ticket,
     tui,
 )
 
@@ -58,6 +62,10 @@ app.add_typer(org.org_app, name="org")
 app.add_typer(db.db_app, name="db")
 app.add_typer(backup.backup_app, name="backup")
 app.add_typer(restore.restore_app, name="restore")
+app.add_typer(blueprint.blueprint_app, name="blueprint")
+app.add_typer(policy.policy_app, name="policy")
+app.add_typer(ticket.ticket_app, name="ticket")
+app.add_typer(cron.cron_app, name="cron")
 
 
 # Callback for version

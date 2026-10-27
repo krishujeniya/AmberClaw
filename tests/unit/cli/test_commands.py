@@ -500,3 +500,59 @@ def test_cli_org_escalate_command():
     assert "Escalation chain" in result.stdout
     assert "lead_eng" in result.stdout
     assert "admin" in result.stdout
+
+
+def test_cli_blueprint_commands():
+    # 1. Blueprint list
+    res_list = runner.invoke(app, ["blueprint", "list"])
+    assert res_list.exit_code == 0
+    assert "developer" in res_list.stdout
+    assert "paranoid" in res_list.stdout
+
+    # 2. Blueprint show
+    res_show = runner.invoke(app, ["blueprint", "show", "developer"])
+    assert res_show.exit_code == 0
+    assert "claude-3-5-sonnet" in res_show.stdout
+
+    # 3. Blueprint invalid show
+    res_err = runner.invoke(app, ["blueprint", "show", "non_existent_preset_xyz"])
+    assert res_err.exit_code == 1
+
+
+def test_cli_policy_commands():
+    # 1. Policy list
+    res_list = runner.invoke(app, ["policy", "list"])
+    assert res_list.exit_code == 0
+    assert "soc2_type2" in res_list.stdout
+    assert "hipaa" in res_list.stdout
+
+    # 2. Policy inspect
+    res_insp = runner.invoke(app, ["policy", "inspect", "soc2_type2"])
+    assert res_insp.exit_code == 0
+    assert "SOC2 Type 2" in res_insp.stdout
+
+    # 3. Policy test
+    res_test = runner.invoke(app, ["policy", "test", "hipaa"])
+    assert res_test.exit_code == 0
+    assert "Loaded and verified" in res_test.stdout
+
+
+def test_cli_ticket_commands():
+    # 1. Ticket list
+    res_list = runner.invoke(app, ["ticket", "list", "--limit", "5"])
+    assert res_list.exit_code == 0
+
+    # 2. Ticket show with invalid id
+    res_err = runner.invoke(app, ["ticket", "show", "invalid_id_9999999"])
+    assert res_err.exit_code == 1
+
+
+def test_cli_cron_commands():
+    # 1. Cron status
+    res_stat = runner.invoke(app, ["cron", "status"])
+    assert res_stat.exit_code == 0
+    assert "Cron Service Status" in res_stat.stdout
+
+    # 2. Cron list
+    res_list = runner.invoke(app, ["cron", "list"])
+    assert res_list.exit_code == 0
