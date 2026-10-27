@@ -35,4 +35,8 @@ nav:
     - Building Agent Skills: skills.md
     - Troubleshooting: troubleshooting.md
     - Ecosystem Comparisons: comparisons.md
+  - Runbooks:
+    - SLO Breach Response: runbooks/slo_breach_runbook.md
+    - Provider Outage Failover: runbooks/provider_outage_failover.md
+    - Disaster Recovery & Backup: runbooks/disaster_recovery_runbook.md
   - API Reference: api.md
