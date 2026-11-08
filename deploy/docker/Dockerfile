@@ -26,6 +26,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Install uv for runtime environment
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
 # Create a non-root user
 RUN groupadd -r amberclaw && useradd -r -g amberclaw amberclaw
 
