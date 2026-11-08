@@ -183,6 +183,23 @@ paths = ["^tests/unit/security/test_dlp\\.py$"]
 regexTarget = "secret"
 regexes = ["(?s)^xoxb\\-1234567890\\-1234567890123$"]
 
+[[rules.allowlists]]
+description = "Explicit synthetic high-entropy marker in offline scanner test"
+condition = "AND"
+paths = ["^tests/unit/security/test_security_branch_coverage_part4\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^4k9aZ8qL2mP0xW7vY3tN1bV6cJ5sD8fG$"]
+
+[[rules]]
+id = "curl-auth-header"
+
+[[rules.allowlists]]
+description = "Placeholder token in documentation sample curl command"
+condition = "AND"
+paths = ["^docs-site/index\\.html$"]
+regexTarget = "secret"
+regexes = ["(?s)^YOUR_TOKEN$"]
+
 [[rules]]
 id = "github-pat"
 
