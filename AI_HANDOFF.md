@@ -1,17 +1,23 @@
 # AmberClaw local handoff — 8 November 2026
 
-## Checkpoint — Local Stabilization, Security Branch Hardening and Release Acceptance COMPLETE
+## Checkpoint — Remote CI/CD Pipelines and GitHub Pages Deployment 100% Green
 
-Local stabilization tasks STAB-01 through STAB-06, KR2.5 90%+ security branch coverage,
-and the release acceptance checklist are fully completed and verified with machine
-evidence under `.planning/evidence/2026-11-08/`.
+GitHub Pages documentation deployment, all GitHub Actions workflows, multi-version Python test matrices, security scanning, container publishing, and Sigstore signing are fully verified and passing cleanly on `main`.
 
-Branch main, revision b83e63a. Working-tree changes preserved.
-Root was the sole main-checkout writer. No commits, pushes, deployment, publication,
-signing, paid calls or global memory writes were made. The actual Git index remains
-untouched (`.git/index` timestamp verified; isolated index used for pre-commit verification).
+Branch `main`, latest revision `1e5f571`.
 
-### Latest verified results (8 November 2026)
+### Latest verified remote CI/CD results (8 November 2026)
+
+- **Deploy AmberClaw Docs Site** (`pages-site.yml`): Run `42463528323` completed with `success`. Live URL: `https://krishujeniya.github.io/AmberClaw/` (HTTP 200 verified).
+- **CI** (`ci.yml`): Run `42468760900` completed with `success`. All 4 matrix jobs passed:
+  - `Test Install Paths` (`uv tool install .` and `pip install .`) in 3m26s
+  - `Lint, Typecheck & Test (3.11)` in 2m38s (1,602 unit/integration/e2e tests passed)
+  - `Lint, Typecheck & Test (3.12)` in 3m37s
+  - `Lint, Typecheck & Test (3.13)` in 3m53s
+- **Security Scan & Supply Chain** (`security.yml`): Run `42467763148` completed with `success` (Bandit AST scan, Gitleaks, License Policy, and CycloneDX/SPDX SBOM generation).
+- **Publish Container to GHCR** (`publish-ghcr.yml`): Run `42468760886` completed with `success` (`build-and-push-image` in 3m53s with Sigstore Cosign keyless signing).
+- **Secret Scan** (`secret-scan.yml`): Run `42468761026` completed with `success`.
+- **Publish Docs** (`docs.yml`): Run `42464771803` completed with `success` (`mkdocs build --strict`).
 
 - `make-check-final.txt`: Ruff check and formatting pass for 687 files; strict
   mypy passes with zero errors for 489 source files.
