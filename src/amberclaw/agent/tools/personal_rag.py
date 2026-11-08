@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from loguru import logger
+from numpy.typing import NDArray
 from pydantic import BaseModel, Field
 
 # sklearn imports moved to lazy imports in KnowledgeSearchTool.run
@@ -41,7 +43,7 @@ class KnowledgeToolBase(PydanticTool):
         provider: LLMProvider | None = None,
         embedding_model: str = "openai/text-embedding-3-small",
         reranker_model: str | None = None,
-    ):
+    ) -> None:
         super().__init__()
         self.workspace = workspace or Path.home() / ".amberclaw" / "workspace"
         self.kb_path = self.workspace / "knowledge_base.json"
@@ -54,27 +56,32 @@ class KnowledgeToolBase(PydanticTool):
         if not self.kb_path.exists():
             self.kb_path.write_text(json.dumps({"entries": []}))
 
-    def _load_kb(self) -> dict:
+    def _load_kb(self) -> dict[str, Any]:
         try:
-            return json.loads(self.kb_path.read_text())
+            data = json.loads(self.kb_path.read_text())
+            if isinstance(data, dict) and isinstance(data.get("entries"), list):
+                return data
+            return {"entries": []}
         except Exception:
             return {"entries": []}
 
-    def _save_kb(self, kb: dict):
+    def _save_kb(self, kb: dict[str, Any]) -> None:
         self.kb_path.write_text(json.dumps(kb, indent=2))
 
-    def _load_vectors(self) -> np.ndarray | None:
+    def _load_vectors(self) -> NDArray[np.float64] | None:
         if self.vectors_path.exists():
             try:
-                return np.load(self.vectors_path)
+                vectors = np.load(self.vectors_path, allow_pickle=False)
+                if isinstance(vectors, np.ndarray):
+                    return np.asarray(vectors, dtype=np.float64)
             except Exception as e:
                 logger.error("Failed to load knowledge vectors: {}", e)
         return None
 
-    def _save_vectors(self, vectors: np.ndarray):
+    def _save_vectors(self, vectors: NDArray[np.float64]) -> None:
         np.save(self.vectors_path, vectors)
 
-    async def _get_embedding(self, text: str) -> np.ndarray:
+    async def _get_embedding(self, text: str) -> NDArray[np.float64]:
         """Get embedding for text using the configured provider."""
         if not self.provider:
             # Try to return a zero vector of common dimension (e.g., 1536 for OpenAI)
@@ -84,7 +91,7 @@ class KnowledgeToolBase(PydanticTool):
             )
             return np.zeros(1536)
 
-        import litellm
+        import litellm  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
         try:
             response = await litellm.aembedding(
@@ -140,43 +147,8 @@ class KnowledgeSearchTool(KnowledgeToolBase):
 
         corpus = [e["content"] for e in entries]
 
-        # 1. Keyword Search (TF-IDF as proxy for BM25)
-        try:
-            from sklearn.feature_extraction.text import TfidfVectorizer
-            from sklearn.metrics.pairwise import cosine_similarity
-
-            vectorizer = TfidfVectorizer(stop_words="english")
-            tfidf_matrix = vectorizer.fit_transform(corpus)
-            query_vec = vectorizer.transform([args.query])
-            keyword_scores = cosine_similarity(query_vec, tfidf_matrix).flatten()
-        except (ImportError, ValueError):  # Missing dependency or empty corpus
-            keyword_scores = np.zeros(len(corpus))
-            cosine_similarity = None  # Signal for vector search
-
-        # 2. Vector Search (Semantic)
-        vectors = self._load_vectors()
-        if vectors is not None and len(vectors) == len(corpus):
-            query_embedding = await self._get_embedding(args.query)
-            if query_embedding.shape == vectors[0].shape:
-                if cosine_similarity:
-                    semantic_scores = cosine_similarity(
-                        query_embedding.reshape(1, -1),
-                        vectors,
-                    ).flatten()
-                else:
-                    # Fallback cosine similarity using numpy
-                    norm_q = np.linalg.norm(query_embedding)
-                    norm_v = np.linalg.norm(vectors, axis=1)
-                    if norm_q > 0:
-                        semantic_scores = np.dot(vectors, query_embedding) / (
-                            norm_v * norm_q
-                        )
-                    else:
-                        semantic_scores = np.zeros(len(corpus))
-            else:
-                semantic_scores = np.zeros(len(corpus))
-        else:
-            semantic_scores = np.zeros(len(corpus))
+        keyword_scores = self._keyword_scores(corpus, args.query)
+        semantic_scores = await self._semantic_scores(corpus, args.query)
 
         # 3. Fusion (Reciprocal Rank Fusion)
         # Sort by scores to get ranks
@@ -193,28 +165,7 @@ class KnowledgeSearchTool(KnowledgeToolBase):
         ]  # Get more for reranking
         candidate_entries = [entries[i] for i in top_indices]
 
-        # 4. Reranking (optional)
-        final_results = []
-        if self.reranker_model and self.provider:
-            import litellm
-
-            try:
-                # LiteLLM rerank (if supported by provider)
-                rerank_resp = await litellm.arerank(
-                    model=self.reranker_model,
-                    query=args.query,
-                    documents=[e["content"] for e in candidate_entries],
-                    top_n=args.limit,
-                )
-                for res in getattr(rerank_resp, "results", []):
-                    idx = getattr(res, "index", None)
-                    if idx is not None and idx < len(candidate_entries):
-                        final_results.append(candidate_entries[idx])
-            except Exception as e:
-                logger.debug("Reranking failed: {}. Falling back to fusion results.", e)
-                final_results = candidate_entries[: args.limit]
-        else:
-            final_results = candidate_entries[: args.limit]
+        final_results = await self._rerank(candidate_entries, args)
 
         if not final_results:
             return "No matching knowledge found."
@@ -227,6 +178,72 @@ class KnowledgeSearchTool(KnowledgeToolBase):
             formatted.append(f"Result {i + 1}:\n{res['content']}{tags}")
 
         return "\n---\n".join(formatted)
+
+    @staticmethod
+    def _keyword_scores(corpus: list[str], query: str) -> NDArray[np.float64]:
+        try:
+            from sklearn.feature_extraction.text import (  # noqa: PLC0415 - optional search backend
+                TfidfVectorizer,
+            )
+            from sklearn.metrics.pairwise import (  # noqa: PLC0415 - optional search backend
+                cosine_similarity,
+            )
+
+            vectorizer = TfidfVectorizer(stop_words="english")
+            matrix = vectorizer.fit_transform(corpus)
+            query_vector = vectorizer.transform([query])
+            return np.asarray(
+                cosine_similarity(query_vector, matrix).flatten(), dtype=np.float64
+            )
+        except (ImportError, ValueError):
+            return np.zeros(len(corpus))
+
+    async def _semantic_scores(
+        self, corpus: list[str], query: str
+    ) -> NDArray[np.float64]:
+        vectors = self._load_vectors()
+        if vectors is None or len(vectors) != len(corpus):
+            return np.zeros(len(corpus))
+        query_embedding = await self._get_embedding(query)
+        if query_embedding.shape != vectors[0].shape:
+            return np.zeros(len(corpus))
+        norms = np.linalg.norm(vectors, axis=1) * np.linalg.norm(query_embedding)
+        return np.asarray(
+            np.divide(
+                np.dot(vectors, query_embedding),
+                norms,
+                out=np.zeros(len(corpus)),
+                where=norms > 0,
+            ),
+            dtype=np.float64,
+        )
+
+    async def _rerank(
+        self, candidates: list[dict[str, Any]], args: KnowledgeSearchArgs
+    ) -> list[dict[str, Any]]:
+        if not self.reranker_model or not self.provider:
+            return candidates[: args.limit]
+        import litellm  # noqa: PLC0415 - optional reranking backend
+
+        try:
+            response = await litellm.arerank(
+                model=self.reranker_model,
+                query=args.query,
+                documents=[entry["content"] for entry in candidates],
+                top_n=args.limit,
+            )
+            indices = (
+                getattr(result, "index", None)
+                for result in getattr(response, "results", [])
+            )
+            return [
+                candidates[index]
+                for index in indices
+                if isinstance(index, int) and 0 <= index < len(candidates)
+            ]
+        except Exception as exc:
+            logger.debug("Reranking failed: {}. Falling back to fusion results.", exc)
+            return candidates[: args.limit]
 
 
 class KnowledgeAddTool(KnowledgeToolBase):

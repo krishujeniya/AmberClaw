@@ -49,7 +49,10 @@ class StateMigrator:
             # Find next valid step
             next_step = None
             for step in self._migrations:
-                if step.from_version == current_version and step.to_version <= target_version:
+                if (
+                    step.from_version == current_version
+                    and step.to_version <= target_version
+                ):
                     next_step = step
                     break
 

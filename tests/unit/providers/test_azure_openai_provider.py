@@ -106,10 +106,12 @@ def test_prepare_request_payload():
     )
 
     assert payload["messages"] == messages
+    expected_payload_max_completion_tokens = 1500
     assert (
-        payload["max_completion_tokens"] == 1500
+        payload["max_completion_tokens"] == expected_payload_max_completion_tokens
     )  # Azure API 2024-10-21 uses max_completion_tokens
-    assert payload["temperature"] == 0.8
+    expected_payload_temperature = 0.8
+    assert payload["temperature"] == expected_payload_temperature
     assert "tools" not in payload
 
     # Test with tools
@@ -215,9 +217,14 @@ async def test_chat_success():
         assert isinstance(result, LLMResponse)
         assert result.content == "Hello! How can I help you today?"
         assert result.finish_reason == "stop"
-        assert result.usage["prompt_tokens"] == 12
-        assert result.usage["completion_tokens"] == 18
-        assert result.usage["total_tokens"] == 30
+        expected_result_usage_prompt_tokens = 12
+        assert result.usage["prompt_tokens"] == expected_result_usage_prompt_tokens
+        expected_result_usage_completion_tokens = 18
+        assert (
+            result.usage["completion_tokens"] == expected_result_usage_completion_tokens
+        )
+        expected_result_usage_total_tokens = 30
+        assert result.usage["total_tokens"] == expected_result_usage_total_tokens
 
         # Verify URL was built with the provided model as deployment name
         call_args = mock_context.post.call_args
@@ -399,7 +406,6 @@ def test_get_default_model():
 
 if __name__ == "__main__":
     # Run basic tests
-    print("Running basic Azure OpenAI provider tests...")
 
     # Test initialization
     provider = AzureOpenAIProvider(
@@ -407,26 +413,23 @@ if __name__ == "__main__":
         api_base="https://test-resource.openai.azure.com",
         default_model="gpt-4o-deployment",
     )
-    print("✅ Provider initialization successful")
 
     # Test URL building
     url = provider._build_chat_url("my-deployment")
     expected = "https://test-resource.openai.azure.com/openai/deployments/my-deployment/chat/completions?api-version=2024-10-21"
     assert url == expected
-    print("✅ URL building works correctly")
 
     # Test headers
     headers = provider._build_headers()
     assert headers["api-key"] == "test-key"
     assert headers["Content-Type"] == "application/json"
-    print("✅ Header building works correctly")
 
     # Test payload preparation
     messages = [{"role": "user", "content": "Test"}]
     payload = provider._prepare_request_payload(
         "gpt-4o-deployment", messages, max_tokens=1000
     )
-    assert payload["max_completion_tokens"] == 1000  # Azure 2024-10-21 format
-    print("✅ Payload preparation works correctly")
-
-    print("✅ All basic tests passed! Updated test file is working correctly.")
+    expected_payload_max_completion_tokens_2 = 1000
+    assert (
+        payload["max_completion_tokens"] == expected_payload_max_completion_tokens_2
+    )  # Azure 2024-10-21 format

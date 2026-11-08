@@ -1,5 +1,6 @@
 """Unit tests for the AmberClaw plugin system."""
 
+import asyncio
 import tempfile
 from pathlib import Path
 
@@ -69,7 +70,8 @@ def attempt_write(path: str, content: str) -> str:
                 # Verify tools got discovered
                 assert "test_plugin" in manager.proxy_tools
                 tools = manager.proxy_tools["test_plugin"]
-                assert len(tools) == 2
+                expected_tools_count = 2
+                assert len(tools) == expected_tools_count
 
                 # Verify dynamic schema structure
                 add_tool = next(t for t in tools if t.name == "test_plugin_add")
@@ -102,7 +104,7 @@ def attempt_write(path: str, content: str) -> str:
                         or "Read-only file system" in res_write
                         or "Error" in res_write
                     )
-                    assert not outside_path.exists()
+                    assert not (await asyncio.to_thread(outside_path.exists))
 
             finally:
                 await manager.stop()

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any, Literal
 
 from loguru import logger
 
@@ -24,7 +25,7 @@ class CronScheduler:
         self.audit = audit_logger or CronAuditLogger()
         self.delivery = delivery_router or CronDeliveryRouter()
         self._running = False
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[Any] | None = None
 
     async def start(self) -> None:
         """Start the cron service and scheduler loop."""
@@ -48,6 +49,6 @@ class CronScheduler:
         success = await self.service.run_job(job_id, force=force)
         duration_ms = (asyncio.get_event_loop().time() - start_time) * 1000
 
-        status = "ok" if success else "error"
+        status: Literal["ok", "error", "skipped"] = "ok" if success else "error"
         self.audit.record_run(job_id=job_id, status=status, duration_ms=duration_ms)
         return success

@@ -137,7 +137,7 @@ class ToolExecutionFilter:
             from amberclaw.security.pii import PIIRedactor
 
             redactor = PIIRedactor()
-            output = redactor.redact_text(output)
+            output = redactor.redact(output)
 
         # 5. Quarantine untrusted external tool outputs
         if isolate_untrusted:

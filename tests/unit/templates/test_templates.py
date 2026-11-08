@@ -1,11 +1,11 @@
-import pytest
 from pathlib import Path
+
 from amberclaw.templates import (
-    TemplateManager,
-    TemplateInstaller,
-    TemplateScrubber,
-    TemplateMarket,
     PersonaTemplate,
+    TemplateInstaller,
+    TemplateManager,
+    TemplateMarket,
+    TemplateScrubber,
 )
 
 
@@ -26,7 +26,9 @@ def test_template_installer(tmp_path: Path):
     workspace = tmp_path / "new_workspace"
     installer = TemplateInstaller()
 
-    installed = installer.install_workspace(workspace, context={"agent_name": "TestAgent"})
+    installed = installer.install_workspace(
+        workspace, context={"agent_name": "TestAgent"}
+    )
     assert len(installed) > 0
     assert (workspace / "AGENTS.md").exists()
     assert (workspace / "SOUL.md").exists()
@@ -46,7 +48,8 @@ def test_template_scrubber():
 def test_template_market():
     market = TemplateMarket()
     personas = market.list_personas()
-    assert len(personas) >= 3
+    minimum_personas_count = 3
+    assert len(personas) >= minimum_personas_count
 
     default_p = market.get_persona("default-agent")
     assert default_p is not None

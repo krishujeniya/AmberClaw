@@ -40,7 +40,9 @@ def generate_openapi_schema(app: FastAPI) -> dict[str, Any]:
     return schema
 
 
-def export_openapi_schema(app: FastAPI, output_path: Path | str = "docs/openapi.json") -> Path:
+def export_openapi_schema(
+    app: FastAPI, output_path: Path | str = "docs/openapi.json"
+) -> Path:
     """Generate and write OpenAPI JSON schema file."""
     schema = generate_openapi_schema(app)
     out = Path(output_path)

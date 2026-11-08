@@ -6,11 +6,19 @@ Minimal validator for amberclaw skill folders.
 import re
 import sys
 from pathlib import Path
+from types import ModuleType
+from typing import Any
+
+MAX_COMPATIBILITY_CHARS = 1024
+VALIDATOR_ARGV_LENGTH = 2
+
 
 try:
-    import yaml
+    import yaml as yaml_module
 except ModuleNotFoundError:
-    yaml = None
+    yaml: ModuleType | None = None
+else:
+    yaml = yaml_module
 
 MAX_SKILL_NAME_LENGTH = 64
 ALLOWED_FRONTMATTER_KEYS = {
@@ -84,7 +92,9 @@ def _parse_simple_frontmatter(frontmatter_text: str) -> dict[str, str] | None:
     return parsed
 
 
-def _load_frontmatter(frontmatter_text: str) -> tuple[dict | None, str | None]:
+def _load_frontmatter(
+    frontmatter_text: str,
+) -> tuple[dict[Any, Any] | None, str | None]:
     if yaml is not None:
         try:
             frontmatter = yaml.safe_load(frontmatter_text)
@@ -128,90 +138,101 @@ def _validate_description(description: str) -> str | None:
         return "Description still contains TODO placeholder text"
     if "<" in trimmed or ">" in trimmed:
         return "Description cannot contain angle brackets (< or >)"
-    if len(trimmed) > 1024:
+    if len(trimmed) > MAX_COMPATIBILITY_CHARS:
         return f"Description is too long ({len(trimmed)} characters). Maximum is 1024 characters."
     return None
 
 
-def validate_skill(skill_path):
-    """Validate a skill folder structure and required frontmatter."""
-    skill_path = Path(skill_path).resolve()
-
-    if not skill_path.exists():
-        return False, f"Skill folder not found: {skill_path}"
-    if not skill_path.is_dir():
-        return False, f"Path is not a directory: {skill_path}"
-
-    skill_md = skill_path / "SKILL.md"
-    if not skill_md.exists():
-        return False, "SKILL.md not found"
-
-    try:
-        content = skill_md.read_text(encoding="utf-8")
-    except OSError as exc:
-        return False, f"Could not read SKILL.md: {exc}"
-
-    frontmatter_text = _extract_frontmatter(content)
-    if frontmatter_text is None:
-        return False, "Invalid frontmatter format"
-
-    frontmatter, error = _load_frontmatter(frontmatter_text)
-    if error:
-        return False, error
-
-    unexpected_keys = sorted(set(frontmatter.keys()) - ALLOWED_FRONTMATTER_KEYS)
+def _validate_frontmatter_keys(frontmatter: dict[Any, Any]) -> str | None:
+    if any(not isinstance(key, str) for key in frontmatter):
+        return "Frontmatter property names must be strings"
+    unexpected_keys = sorted(set(frontmatter) - ALLOWED_FRONTMATTER_KEYS)
     if unexpected_keys:
         allowed = ", ".join(sorted(ALLOWED_FRONTMATTER_KEYS))
         unexpected = ", ".join(unexpected_keys)
-        return (
-            False,
-            f"Unexpected key(s) in SKILL.md frontmatter: {unexpected}. Allowed properties are: {allowed}",
-        )
+        return f"Unexpected key(s) in SKILL.md frontmatter: {unexpected}. Allowed properties are: {allowed}"
+    for required in ("name", "description"):
+        if required not in frontmatter:
+            return f"Missing '{required}' in frontmatter"
+    return None
 
-    if "name" not in frontmatter:
-        return False, "Missing 'name' in frontmatter"
-    if "description" not in frontmatter:
-        return False, "Missing 'description' in frontmatter"
 
+def _validate_frontmatter_fields(
+    frontmatter: dict[Any, Any], folder_name: str
+) -> str | None:
     name = frontmatter["name"]
     if not isinstance(name, str):
-        return False, f"Name must be a string, got {type(name).__name__}"
-    name_error = _validate_skill_name(name.strip(), skill_path.name)
+        return f"Name must be a string, got {type(name).__name__}"
+    name_error = _validate_skill_name(name.strip(), folder_name)
     if name_error:
-        return False, name_error
-
+        return name_error
     description = frontmatter["description"]
     if not isinstance(description, str):
-        return False, f"Description must be a string, got {type(description).__name__}"
+        return f"Description must be a string, got {type(description).__name__}"
     description_error = _validate_description(description)
     if description_error:
-        return False, description_error
-
+        return description_error
     always = frontmatter.get("always")
     if always is not None and not isinstance(always, bool):
-        return False, f"'always' must be a boolean, got {type(always).__name__}"
+        return "'always' must be a boolean, got " + type(always).__name__
+    return None
 
+
+def _validate_resource_layout(skill_path: Path) -> str | None:
     for child in skill_path.iterdir():
-        if child.name == "SKILL.md":
-            continue
-        if child.is_dir() and child.name in ALLOWED_RESOURCE_DIRS:
+        if child.name == "SKILL.md" or (
+            child.is_dir() and child.name in ALLOWED_RESOURCE_DIRS
+        ):
             continue
         if child.is_symlink():
             continue
         return (
-            False,
             f"Unexpected file or directory in skill root: {child.name}. "
-            "Only SKILL.md, scripts/, references/, and assets/ are allowed.",
+            "Only SKILL.md, scripts/, references/, and assets/ are allowed."
         )
+    return None
 
-    return True, "Skill is valid!"
+
+def _skill_path_error(skill_path: Path) -> str | None:
+    if not skill_path.exists():
+        return f"Skill folder not found: {skill_path}"
+    if not skill_path.is_dir():
+        return f"Path is not a directory: {skill_path}"
+    if not (skill_path / "SKILL.md").exists():
+        return "SKILL.md not found"
+    return None
+
+
+def validate_skill(skill_path: str | Path) -> tuple[bool, str]:
+    """Validate a skill folder structure and required frontmatter."""
+    skill_path = Path(skill_path).resolve()
+    path_error = _skill_path_error(skill_path)
+    if path_error:
+        return False, path_error
+    skill_md = skill_path / "SKILL.md"
+    try:
+        content = skill_md.read_text(encoding="utf-8")
+    except OSError as exc:
+        return False, f"Could not read SKILL.md: {exc}"
+    frontmatter_text = _extract_frontmatter(content)
+    if frontmatter_text is None:
+        return False, "Invalid frontmatter format"
+    frontmatter, error = _load_frontmatter(frontmatter_text)
+    if frontmatter is None:
+        return False, error or "Invalid frontmatter"
+    error = (
+        _validate_frontmatter_keys(frontmatter)
+        or _validate_frontmatter_fields(frontmatter, skill_path.name)
+        or _validate_resource_layout(skill_path)
+    )
+    return not bool(error), error or "Skill is valid!"
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python quick_validate.py <skill_directory>")
+    if len(sys.argv) != VALIDATOR_ARGV_LENGTH:
+        print("Usage: python quick_validate.py <skill_directory>")  # noqa: T201 - standalone CLI output is the public interface
         sys.exit(1)
 
     valid, message = validate_skill(sys.argv[1])
-    print(message)
+    print(message)  # noqa: T201 - standalone CLI output is the public interface
     sys.exit(0 if valid else 1)

@@ -45,8 +45,8 @@ async def execute_local_task(task: str, session_id: str = "a2a:direct") -> str:
 
     try:
         return await agent_loop.process_direct(
-            text=task,
-            session_id=session_id,
+            content=task,
+            session_key=session_id,
         )
     finally:
         await agent_loop.close_mcp()
@@ -78,6 +78,8 @@ async def delegate_to_remote(target_url: str, task: str) -> str:
 
         result = data.get("result", {})
         if isinstance(result, dict) and "output" in result:
-            return result["output"]
+            output = result["output"]
+            if isinstance(output, str):
+                return output
 
         raise ValueError(f"Unexpected response format from remote agent: {data}")

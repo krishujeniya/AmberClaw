@@ -36,10 +36,12 @@ def temp_pairing_dir(tmp_path):
         yield tmp_path
 
 
-def test_generate_and_verify_code(temp_pairing_dir):
+@pytest.mark.usefixtures("temp_pairing_dir")
+def test_generate_and_verify_code():
     # Generate code
     code = generate_pairing_code(expires_in_seconds=10)
-    assert len(code) == 6
+    expected_code_count = 6
+    assert len(code) == expected_code_count
     assert code.isdigit()
 
     file_path = get_pairing_file()
@@ -51,12 +53,14 @@ def test_generate_and_verify_code(temp_pairing_dir):
     assert verify_and_consume_code(code) is False
 
 
-def test_expired_code(temp_pairing_dir):
+@pytest.mark.usefixtures("temp_pairing_dir")
+def test_expired_code():
     code = generate_pairing_code(expires_in_seconds=-1)  # Already expired
     assert verify_and_consume_code(code) is False
 
 
-def test_invalid_code(temp_pairing_dir):
+@pytest.mark.usefixtures("temp_pairing_dir")
+def test_invalid_code():
     assert verify_and_consume_code("999999") is False
 
 
@@ -82,8 +86,9 @@ def test_base_channel_allows_pair_bypass():
     bus.publish_inbound.assert_called_once()
 
 
+@pytest.mark.usefixtures("temp_pairing_dir")
 @pytest.mark.asyncio
-async def test_agent_loop_handle_pairing(temp_pairing_dir, tmp_path):
+async def test_agent_loop_handle_pairing(tmp_path):
     bus = MessageBus()
     bus.publish_outbound = AsyncMock()
 

@@ -7,8 +7,8 @@ provider_app = typer.Typer(help="Manage AI providers and API keys.")
 console = Console()
 
 
-@provider_app.command()
-def list():
+@provider_app.command("list")
+def list_providers() -> None:
     """List supported AI providers."""
     console.print("[bold cyan]Supported AI Providers:[/bold cyan]\n")
     for spec in registry.PROVIDERS:
@@ -17,12 +17,10 @@ def list():
 
 
 @provider_app.command()
-def login(name: str):
+def login(name: str) -> None:
     """Login to a provider (for OAuth based providers like Codex)."""
-    from amberclaw.providers import openai_codex_provider
+    from amberclaw.cli.oauth import (  # noqa: PLC0415 - load OAuth only for the explicit login command
+        login_provider,
+    )
 
-    if name.lower() == "codex":
-        console.print("[cyan]Initiating Codex OAuth login...[/cyan]")
-        openai_codex_provider.login()
-    else:
-        console.print(f"[red]Provider '{name}' does not support OAuth login.[/red]")
+    login_provider(name)

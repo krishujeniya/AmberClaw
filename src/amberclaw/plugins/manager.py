@@ -17,12 +17,19 @@ class PluginConnection:
     """Manages the stdout, stdin, and stderr communication streams of a plugin process."""
 
     def __init__(self, process: asyncio.subprocess.Process, plugin_name: str) -> None:
+        if process.stdin is None or process.stdout is None or process.stderr is None:
+            raise ValueError(
+                "Plugin subprocess requires stdin, stdout and stderr pipes"
+            )
         self.process = process
+        self._stdin = process.stdin
+        self._stdout = process.stdout
+        self._stderr = process.stderr
         self.plugin_name = plugin_name
         self._next_id = 1
         self._pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
-        self._read_task: asyncio.Task | None = None
-        self._stderr_task: asyncio.Task | None = None
+        self._read_task: asyncio.Task[Any] | None = None
+        self._stderr_task: asyncio.Task[Any] | None = None
 
     def start(self) -> None:
         """Starts background tasks for stdout routing and stderr logging."""
@@ -33,7 +40,7 @@ class PluginConnection:
         """Continuously reads JSON-RPC responses from stdout."""
         try:
             while True:
-                line = await self.process.stdout.readline()
+                line = await self._stdout.readline()
                 if not line:
                     break
                 try:
@@ -41,9 +48,14 @@ class PluginConnection:
                     if not line_str:
                         continue
                     res = json.loads(line_str)
+                    if not isinstance(res, dict):
+                        continue
                     req_id = res.get("id")
-                    if req_id in self._pending:
-                        self._pending[req_id].set_result(res)
+                    pending = (
+                        self._pending.get(req_id) if isinstance(req_id, int) else None
+                    )
+                    if pending is not None and not pending.done():
+                        pending.set_result(res)
                 except Exception as e:
                     logger.error(
                         "RPC parse error in plugin '{}': {}", self.plugin_name, e
@@ -59,7 +71,7 @@ class PluginConnection:
         """Forwards plugin process stderr streams to the system log."""
         try:
             while True:
-                line = await self.process.stderr.readline()
+                line = await self._stderr.readline()
                 if not line:
                     break
                 logger.info(
@@ -90,8 +102,8 @@ class PluginConnection:
         }
 
         try:
-            self.process.stdin.write(json.dumps(req).encode("utf-8") + b"\n")
-            await self.process.stdin.drain()
+            self._stdin.write(json.dumps(req).encode("utf-8") + b"\n")
+            await self._stdin.drain()
             # Wait for response with a timeout
             return await asyncio.wait_for(future, timeout=30.0)
         except TimeoutError:
@@ -121,12 +133,19 @@ class PluginConnection:
             self._read_task.cancel()
         if self._stderr_task:
             self._stderr_task.cancel()
+        tasks = [
+            task for task in (self._read_task, self._stderr_task) if task is not None
+        ]
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
         try:
-            self.process.stdin.close()
-            await self.process.stdin.wait_closed()
+            self._stdin.close()
+            await self._stdin.wait_closed()
         except Exception:
-            pass
+            logger.debug(
+                "Optional operation failed in manager; using the existing fallback"
+            )
 
         try:
             self.process.terminate()
@@ -136,7 +155,9 @@ class PluginConnection:
                 self.process.kill()
                 await self.process.wait()
             except Exception:
-                pass
+                logger.debug(
+                    "Optional operation failed in manager; using the existing fallback"
+                )
 
 
 class PluginProxyTool(Tool):
@@ -147,25 +168,38 @@ class PluginProxyTool(Tool):
     ) -> None:
         super().__init__()
         self._plugin_name = plugin_name
-        self._tool_metadata = tool_metadata
+        tool_name = tool_metadata.get("name")
+        description = tool_metadata.get("description")
+        parameters = tool_metadata.get("args_schema")
+        if (
+            not isinstance(tool_name, str)
+            or not isinstance(description, str)
+            or not isinstance(parameters, dict)
+        ):
+            raise ValueError(
+                "Plugin tool metadata requires name, description and args_schema"
+            )
+        self._tool_name = tool_name
+        self._description = description
+        self._parameters = parameters
         self._manager = manager
 
     @property
     def name(self) -> str:
-        return f"{self._plugin_name}_{self._tool_metadata['name']}"
+        return f"{self._plugin_name}_{self._tool_name}"
 
     @property
     def description(self) -> str:
-        return self._tool_metadata["description"]
+        return self._description
 
     @property
     def parameters(self) -> dict[str, Any]:
-        return self._tool_metadata["args_schema"]
+        return self._parameters
 
     async def execute(self, **kwargs: Any) -> str:
         """Relay invocation to the corresponding plugin host runner."""
         return await self._manager.execute_tool(
-            self._plugin_name, self._tool_metadata["name"], kwargs
+            self._plugin_name, self._tool_name, kwargs
         )
 
 
@@ -188,7 +222,9 @@ class PluginManager:
 
                 env = os.environ.copy()
                 env["PYTHONUNBUFFERED"] = "1"
-                src_root = str(Path(__file__).resolve().parents[2])  # root src path (src/)
+                src_root = str(
+                    (await asyncio.to_thread(Path(__file__).resolve)).parents[2]
+                )  # root src path (src/)
                 env["PYTHONPATH"] = src_root + (
                     os.pathsep + env["PYTHONPATH"] if "PYTHONPATH" in env else ""
                 )
@@ -257,7 +293,10 @@ class PluginManager:
         if "error" in res:
             err = res["error"]
             return f"Error executing plugin tool {tool_name}: {err.get('message')}"
-        return res.get("result", "")
+        result = res.get("result", "")
+        if isinstance(result, str):
+            return result
+        return json.dumps(result, ensure_ascii=False)
 
     async def stop(self) -> None:
         """Terminates all plugin host execution processes."""

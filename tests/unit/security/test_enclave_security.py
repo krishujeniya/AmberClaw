@@ -82,7 +82,9 @@ def test_enclave_signer_signature_and_tampering() -> None:
 
     # Signer with different key
     other_signer = EnclaveSigner()
-    assert EnclaveSigner.verify_signature(other_signer.public_key_pem, msg, sig) is False
+    assert (
+        EnclaveSigner.verify_signature(other_signer.public_key_pem, msg, sig) is False
+    )
 
 
 def test_zeroize_buffer() -> None:
@@ -142,7 +144,9 @@ def test_attestation_verifier_positive_and_negative() -> None:
 
     # 4. Expired timestamp
     doc_expired = doc.model_copy(
-        update={"timestamp_utc": (datetime.now(UTC) - timedelta(seconds=400)).isoformat()}
+        update={
+            "timestamp_utc": (datetime.now(UTC) - timedelta(seconds=400)).isoformat()
+        }
     )
     is_valid_exp, msg_exp = verifier.verify(
         doc=doc_expired,
@@ -211,7 +215,9 @@ async def test_enclave_manager_context_manager() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         async with EnclaveManager(workspace_dir=tmpdir) as enclave:
             assert enclave.is_ready is True
-            res = await enclave.execute("python", "import sys; print(sys.version_info.major)")
+            res = await enclave.execute(
+                "python", "import sys; print(sys.version_info.major)"
+            )
             assert res.exit_code == 0
             assert "3" in res.stdout.strip()
 

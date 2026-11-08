@@ -51,6 +51,10 @@ class SecureSecret:
     """
 
     def __init__(self, secret: str | bytes | bytearray) -> None:
+        self._buffer: bytearray | None = None
+        self._length = 0
+        self._is_wiped = True
+
         if isinstance(secret, str):
             raw = secret.encode("utf-8")
         elif isinstance(secret, (bytes, bytearray)):
@@ -58,7 +62,7 @@ class SecureSecret:
         else:
             raise TypeError(f"Unsupported secret type: {type(secret)}")
 
-        self._buffer: bytearray | None = bytearray(raw)
+        self._buffer = bytearray(raw)
         self._length = len(raw)
         self._is_wiped = False
 

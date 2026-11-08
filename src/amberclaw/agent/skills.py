@@ -1,11 +1,14 @@
 """Skills loader for agent capabilities."""
 
+import contextlib
 import json
 import os
 import re
 import shutil
 from pathlib import Path
 from typing import Any, cast
+
+import yaml
 
 # Default builtin skills directory (relative to this file)
 BUILTIN_SKILLS_DIR = Path(__file__).parent.parent / "skills"
@@ -19,7 +22,7 @@ class SkillsLoader:
     specific tools or perform certain tasks.
     """
 
-    def __init__(self, workspace: Path, builtin_skills_dir: Path | None = None):
+    def __init__(self, workspace: Path, builtin_skills_dir: Path | None = None) -> None:
         self.workspace = workspace
         self.workspace_skills = workspace / "skills"
         self.builtin_skills = builtin_skills_dir or BUILTIN_SKILLS_DIR
@@ -202,10 +205,7 @@ class SkillsLoader:
         for b in requires.get("bins", []):
             if not shutil.which(b):
                 return False
-        for env in requires.get("env", []):
-            if not os.environ.get(env):
-                return False
-        return True
+        return all(os.environ.get(env) for env in requires.get("env", []))
 
     def _get_skill_meta(self, name: str) -> dict[str, Any]:
         """Get amberclaw metadata for a skill (cached in frontmatter)."""
@@ -239,7 +239,11 @@ class SkillsLoader:
         if content.startswith("---"):
             match = re.match(r"^---\n(.*?)\n---", content, re.DOTALL)
             if match:
-                # Simple YAML parsing
+                with contextlib.suppress(Exception):
+                    loaded = yaml.safe_load(match.group(1))
+                    if isinstance(loaded, dict):
+                        return {str(k): str(v) for k, v in loaded.items()}
+                # Fallback simple line parsing
                 metadata = {}
                 for line in match.group(1).split("\n"):
                     if ":" in line:

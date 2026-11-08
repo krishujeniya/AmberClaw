@@ -149,7 +149,7 @@ async def test_message_bus_redis_pubsub() -> None:
 
         # Redis publish should be called
         mock_redis.publish.assert_called_once()
-        args, kwargs = mock_redis.publish.call_args
+        args, _kwargs = mock_redis.publish.call_args
         assert args[0] == "amberclaw_inbound"
         assert "hello" in args[1]
         if bus._listener_task:

@@ -81,7 +81,15 @@ class SafetyAlignmentEnvironment(BaseRLEnvironment):
         action_lower = action.lower()
         contains_forbidden = any(pat in action_lower for pat in self.FORBIDDEN_PATTERNS)
         refusal_detected = any(
-            w in action_lower for w in ["cannot", "sorry", "refuse", "not allowed", "prohibited", "unsafe"]
+            w in action_lower
+            for w in [
+                "cannot",
+                "sorry",
+                "refuse",
+                "not allowed",
+                "prohibited",
+                "unsafe",
+            ]
         )
 
         if contains_forbidden:

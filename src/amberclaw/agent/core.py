@@ -2,10 +2,12 @@
 AmberClaw Agent Core
 """
 
+from loguru import logger
 from pydantic import BaseModel
 
 from amberclaw.core.events import Event, bus
-from amberclaw.models.message import Message
+from amberclaw.core.networking import AgentMessage, network
+from amberclaw.models.message import Message, MessageRole
 
 
 class AgentState(BaseModel):
@@ -16,26 +18,21 @@ class AgentState(BaseModel):
     last_action: str | None = None
 
 
-from amberclaw.core.networking import AgentMessage, network
-
-
 class BaseAgent:
     """Base class for all AmberClaw agents."""
 
-    def __init__(self, id: str, name: str):
+    def __init__(self, id: str, name: str) -> None:  # noqa: A002
         self.id = id
         self.name = name
         self.state = AgentState()
         # Register with networking
         network.register_agent(self.id, self.handle_agent_message)
 
-    async def handle_agent_message(self, message: AgentMessage):
+    async def handle_agent_message(self, message: AgentMessage) -> None:
         """Process messages received from other agents."""
         logger.info(
             f"Agent {self.id} received message from {message.sender_id} on topic {message.topic}"
         )
-        # Default implementation just logs the message
-        pass
 
     async def handle_message(self, message: Message) -> Message:
         """Process an incoming message and return a response."""
@@ -48,7 +45,7 @@ class BaseAgent:
 
         # Placeholder for agent logic
         response = Message(
-            role="assistant",
+            role=MessageRole.ASSISTANT,
             content=f"Hello, I am {self.name}. I received your message: {message.content}",
         )
 
@@ -60,7 +57,7 @@ class BaseAgent:
         )
         return response
 
-    async def run_task(self, task: str):
+    async def run_task(self, task: str) -> None:
         """Execute a long-running task."""
         self.state.is_busy = True
         self.state.current_task = task

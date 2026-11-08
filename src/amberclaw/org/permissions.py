@@ -84,7 +84,10 @@ class OrgPolicy(BaseModel):
             return False
 
         # Department boundary check
-        if not same_department and not (self.allow_cross_dept_delegation or OrgPermission.CROSS_DEPT_CALL in all_perms):
+        if not same_department and not (
+            self.allow_cross_dept_delegation
+            or OrgPermission.CROSS_DEPT_CALL in all_perms
+        ):
             return False
 
         # Hierarchy level check

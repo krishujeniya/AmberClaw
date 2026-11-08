@@ -1,15 +1,13 @@
 """Workspace prompt template rendering manager for AmberClaw."""
 
 from pathlib import Path
-from typing import Any
-
-from loguru import logger
+from typing import Any, ClassVar
 
 
 class TemplateManager:
     """Manages workspace markdown prompt templates (AGENTS.md, SOUL.md, TOOLS.md, etc.)."""
 
-    TEMPLATE_FILES = [
+    TEMPLATE_FILES: ClassVar[list[str]] = [
         "AGENTS.md",
         "SOUL.md",
         "TOOLS.md",
@@ -17,7 +15,7 @@ class TemplateManager:
         "HEARTBEAT.md",
     ]
 
-    def __init__(self, template_dir: Path | None = None):
+    def __init__(self, template_dir: Path | None = None) -> None:
         self.template_dir = template_dir or Path(__file__).parent
 
     def get_template_path(self, filename: str) -> Path:
@@ -31,7 +29,9 @@ class TemplateManager:
             raise FileNotFoundError(f"Template file '{filename}' not found at {p}")
         return p.read_text(encoding="utf-8")
 
-    def render_template(self, filename: str, context: dict[str, Any] | None = None) -> str:
+    def render_template(
+        self, filename: str, context: dict[str, Any] | None = None
+    ) -> str:
         """Render a template file with context variable substitution."""
         content = self.read_template(filename)
         if not context:

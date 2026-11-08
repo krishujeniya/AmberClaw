@@ -12,7 +12,9 @@ class WorkspaceManager:
     """Manages active workspace instances, filesystem isolation, and lifecycle teardown."""
 
     def __init__(self, base_storage_dir: Path | str | None = None) -> None:
-        self.base_storage_dir = Path(base_storage_dir) if base_storage_dir else Path("./workspaces")
+        self.base_storage_dir = (
+            Path(base_storage_dir) if base_storage_dir else Path("./workspaces")
+        )
         self._workspaces: dict[str, WorkspaceContext] = {}
 
     def create_workspace(  # noqa: PLR0913

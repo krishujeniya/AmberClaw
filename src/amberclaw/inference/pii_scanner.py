@@ -68,9 +68,13 @@ class InferencePIIScanner:
 
         # Sort matches by start position descending to replace without offset corruption
         sorted_matches = sorted(matches, key=lambda x: x.start, reverse=True)
-        for m in sorted_matches:
-            replacement = self.mask_template.format(entity=m.entity_type.upper())
-            sanitized = sanitized[: m.start] + replacement + sanitized[m.end :]
+        for pii_match in sorted_matches:
+            replacement = self.mask_template.format(
+                entity=pii_match.entity_type.upper()
+            )
+            sanitized = (
+                sanitized[: pii_match.start] + replacement + sanitized[pii_match.end :]
+            )
 
         logger.info(
             "PII scanner detected {} sensitive occurrences in text", len(matches)

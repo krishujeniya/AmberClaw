@@ -34,7 +34,8 @@ def policy_list() -> None:
 @policy_app.command("inspect")
 def policy_inspect(
     standard: str = typer.Argument(
-        ..., help="Compliance standard ID (e.g. 'soc2_type2', 'hipaa', 'gdpr', 'air_gapped')"
+        ...,
+        help="Compliance standard ID (e.g. 'soc2_type2', 'hipaa', 'gdpr', 'air_gapped')",
     ),
 ) -> None:
     """Inspect the rules and enforcement actions in a compliance policy pack."""
@@ -42,7 +43,9 @@ def policy_inspect(
         std_enum = ComplianceStandard(standard.lower())
         pack = PolicyPackRegistry.get_pack(std_enum)
     except Exception as ex:
-        console.print(f"[bold red]Unknown or unsupported compliance pack '{standard}': {ex}[/bold red]")
+        console.print(
+            f"[bold red]Unknown or unsupported compliance pack '{standard}': {ex}[/bold red]"
+        )
         raise typer.Exit(code=1) from ex
 
     console.print(

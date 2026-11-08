@@ -168,7 +168,7 @@ def _make_config(**kwargs) -> MatrixConfig:
     return MatrixConfig(
         enabled=True,
         homeserver="https://matrix.org",
-        access_token="token",
+        access_token="token",  # noqa: S106 - synthetic credential or protocol expectation in an offline test
         user_id="@bot:matrix.org",
         **kwargs,
     )
@@ -192,7 +192,7 @@ async def test_start_skips_load_store_when_device_id_missing(
     monkeypatch.setattr("amberclaw.channels.matrix.get_data_dir", lambda: tmp_path)
     monkeypatch.setattr(
         "amberclaw.channels.matrix.AsyncClientConfig",
-        lambda **kwargs: SimpleNamespace(**kwargs),
+        SimpleNamespace,
     )
     monkeypatch.setattr("amberclaw.channels.matrix.AsyncClient", _fake_client)
     monkeypatch.setattr(
@@ -205,8 +205,12 @@ async def test_start_skips_load_store_when_device_id_missing(
     assert len(clients) == 1
     assert clients[0].config.encryption_enabled is True
     assert clients[0].load_store_called is False
-    assert len(clients[0].callbacks) == 3
-    assert len(clients[0].response_callbacks) == 3
+    expected_clients_callbacks_count = 3
+    assert len(clients[0].callbacks) == expected_clients_callbacks_count
+    expected_clients_response_callbacks_count = 3
+    assert (
+        len(clients[0].response_callbacks) == expected_clients_response_callbacks_count
+    )
 
     await channel.stop()
 
@@ -219,7 +223,8 @@ async def test_register_event_callbacks_uses_media_base_filter() -> None:
 
     channel._register_event_callbacks()
 
-    assert len(client.callbacks) == 3
+    expected_client_callbacks_count = 3
+    assert len(client.callbacks) == expected_client_callbacks_count
     assert client.callbacks[1][0] == channel._on_media_message
     assert client.callbacks[1][1] == matrix_module.MATRIX_MEDIA_EVENT_FILTER
 
@@ -246,7 +251,7 @@ async def test_start_disables_e2ee_when_configured(monkeypatch, tmp_path) -> Non
     monkeypatch.setattr("amberclaw.channels.matrix.get_data_dir", lambda: tmp_path)
     monkeypatch.setattr(
         "amberclaw.channels.matrix.AsyncClientConfig",
-        lambda **kwargs: SimpleNamespace(**kwargs),
+        SimpleNamespace,
     )
     monkeypatch.setattr("amberclaw.channels.matrix.AsyncClient", _fake_client)
     monkeypatch.setattr(
@@ -264,8 +269,9 @@ async def test_start_disables_e2ee_when_configured(monkeypatch, tmp_path) -> Non
     await channel.stop()
 
 
+@pytest.mark.usefixtures("monkeypatch")
 @pytest.mark.asyncio
-async def test_stop_stops_sync_forever_before_close(monkeypatch) -> None:
+async def test_stop_stops_sync_forever_before_close() -> None:
     channel = MatrixChannel(_make_config(device_id="DEVICE"), MessageBus())
     client = _FakeAsyncClient("", "", "", None)
     task = _DummyTask()
@@ -363,7 +369,8 @@ async def test_typing_keepalive_refreshes_periodically(monkeypatch) -> None:
     await channel._stop_typing_keepalive("!room:matrix.org", clear_typing=True)
 
     true_updates = [call for call in client.typing_calls if call[1] is True]
-    assert len(true_updates) >= 2
+    minimum_true_updates_count = 2
+    assert len(true_updates) >= minimum_true_updates_count
     assert client.typing_calls[-1] == (
         "!room:matrix.org",
         False,
@@ -641,8 +648,8 @@ async def test_on_media_message_downloads_attachment_and_sets_metadata(
     media_paths = handled[0]["media"]
     assert isinstance(media_paths, list) and len(media_paths) == 1
     media_path = Path(media_paths[0])
-    assert media_path.is_file()
-    assert media_path.read_bytes() == b"image"
+    assert await asyncio.to_thread(media_path.is_file)
+    assert (await asyncio.to_thread(media_path.read_bytes)) == b"image"
 
     metadata = handled[0]["metadata"]
     attachments = metadata["attachments"]
@@ -819,7 +826,7 @@ async def test_on_media_message_decrypts_encrypted_media(monkeypatch, tmp_path) 
     monkeypatch.setattr(
         matrix_module,
         "decrypt_attachment",
-        lambda ciphertext, key, sha256, iv: b"plain",
+        lambda _ciphertext, _key, _sha256, _iv: b"plain",
     )
 
     channel = MatrixChannel(_make_config(), MessageBus())
@@ -852,17 +859,18 @@ async def test_on_media_message_decrypts_encrypted_media(monkeypatch, tmp_path) 
 
     assert len(handled) == 1
     media_path = Path(handled[0]["media"][0])
-    assert media_path.read_bytes() == b"plain"
+    assert (await asyncio.to_thread(media_path.read_bytes)) == b"plain"
     attachment = handled[0]["metadata"]["attachments"][0]
     assert attachment["encrypted"] is True
-    assert attachment["size_bytes"] == 5
+    expected_attachment_size_bytes = 5
+    assert attachment["size_bytes"] == expected_attachment_size_bytes
 
 
 @pytest.mark.asyncio
 async def test_on_media_message_handles_decrypt_error(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("amberclaw.channels.matrix.get_data_dir", lambda: tmp_path)
 
-    def _raise(*args, **kwargs):
+    def _raise(*_args, **_kwargs):
         raise matrix_module.EncryptionError("boom")
 
     monkeypatch.setattr(matrix_module, "decrypt_attachment", _raise)
@@ -947,8 +955,10 @@ async def test_send_uploads_media_and_sends_file_event(tmp_path) -> None:
     assert not isinstance(client.upload_calls[0]["data_provider"], (bytes, bytearray))
     assert hasattr(client.upload_calls[0]["data_provider"], "read")
     assert client.upload_calls[0]["filename"] == "test.txt"
-    assert client.upload_calls[0]["filesize"] == 5
-    assert len(client.room_send_calls) == 2
+    expected_client_upload_calls_filesize = 5
+    assert client.upload_calls[0]["filesize"] == expected_client_upload_calls_filesize
+    expected_client_room_send_calls_count = 2
+    assert len(client.room_send_calls) == expected_client_room_send_calls_count
     assert client.room_send_calls[0]["content"]["msgtype"] == "m.file"
     assert client.room_send_calls[0]["content"]["url"] == "mxc://example.org/uploaded"
     assert client.room_send_calls[1]["content"]["body"] == "Please review."
@@ -1046,9 +1056,9 @@ async def test_send_passes_thread_relates_to_to_attachment_upload(monkeypatch) -
 
     async def _fake_upload_and_send_attachment(
         *,
-        room_id: str,
-        path: Path,
-        limit_bytes: int,
+        room_id: str,  # noqa: ARG001 - preserve the fake SDK keyword contract
+        path: Path,  # noqa: ARG001 - preserve the fake SDK keyword contract
+        limit_bytes: int,  # noqa: ARG001 - preserve the fake SDK keyword contract
         relates_to: dict[str, object] | None = None,
     ) -> str | None:
         captured["relates_to"] = relates_to
@@ -1067,7 +1077,7 @@ async def test_send_passes_thread_relates_to_to_attachment_upload(monkeypatch) -
             channel="matrix",
             chat_id="!room:matrix.org",
             content="Hi",
-            media=["/tmp/fake.txt"],
+            media=["/tmp/fake.txt"],  # noqa: S108 - synthetic path passed to an offline fixture
             metadata=metadata,
         ),
     )
@@ -1383,7 +1393,7 @@ async def test_send_falls_back_to_plaintext_when_markdown_render_fails(
     client = _FakeAsyncClient("", "", "", None)
     channel.client = client
 
-    def _raise(text: str) -> str:
+    def _raise(_text: str) -> str:
         raise RuntimeError("boom")
 
     monkeypatch.setattr(matrix_module, "MATRIX_MARKDOWN", _raise)

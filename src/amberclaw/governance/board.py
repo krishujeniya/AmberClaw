@@ -101,7 +101,7 @@ class GovernanceBoard:
             )
             self._pending_approvals.append(proposal)
 
-            from amberclaw.governance.tickets import (  # noqa: PLC0415
+            from amberclaw.governance.tickets import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
                 TicketStatus,
                 tickets,
             )
@@ -140,7 +140,7 @@ class GovernanceBoard:
         """Human approval of a pending action."""
         for proposal in self._pending_approvals:
             if proposal.action_id == action_id:
-                from amberclaw.governance.tickets import (  # noqa: PLC0415
+                from amberclaw.governance.tickets import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
                     TicketStatus,
                     tickets,
                 )

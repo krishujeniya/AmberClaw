@@ -6,13 +6,33 @@ Implements payload size limits (HTTP 413) and per-client rate limiting (HTTP 429
 import asyncio
 import time
 from collections import defaultdict
-from typing import ClassVar
+from collections.abc import AsyncIterable
+from typing import ClassVar, Protocol, runtime_checkable
 
 from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.types import ASGIApp
 
 MAX_BODY_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB maximum request payload
+
+
+@runtime_checkable
+class _StreamingBody(Protocol):
+    """Body stream shared by public and middleware-generated responses."""
+
+    body_iterator: AsyncIterable[str | bytes | memoryview]
+
+
+async def _buffer_response_body(response: Response) -> bytes:
+    if not isinstance(response, _StreamingBody):
+        return bytes(response.body)
+    body_chunks: list[bytes] = []
+    async for chunk in response.body_iterator:
+        body_chunks.append(
+            chunk.encode(response.charset) if isinstance(chunk, str) else bytes(chunk)
+        )
+    return b"".join(body_chunks)
 
 
 class IdempotencyRecord:
@@ -24,7 +44,7 @@ class IdempotencyRecord:
         headers: dict[str, str],
         body: bytes,
         timestamp: float,
-    ):
+    ) -> None:
         self.status_code = status_code
         self.headers = headers
         self.body = body
@@ -34,7 +54,7 @@ class IdempotencyRecord:
 class IdempotencyMiddleware(BaseHTTPMiddleware):
     """Idempotency middleware preventing duplicate operations on mutating HTTP methods."""
 
-    def __init__(self, app, ttl_seconds: int = 86400):
+    def __init__(self, app: ASGIApp, ttl_seconds: int = 86400) -> None:
         super().__init__(app)
         self.ttl_seconds = ttl_seconds
         self._cache: dict[str, IdempotencyRecord] = {}
@@ -75,8 +95,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
         # Cache successful or client-error responses (avoid caching transient 5xx server errors)
         if response.status_code < status.HTTP_500_INTERNAL_SERVER_ERROR:
-            body_chunks = [chunk async for chunk in response.body_iterator]
-            body = b"".join(body_chunks)
+            body = await _buffer_response_body(response)
             headers = dict(response.headers)
             # Remove transfer-encoding if present since body is buffered
             headers.pop("transfer-encoding", None)
@@ -92,6 +111,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 status_code=response.status_code,
                 headers=headers,
                 media_type=response.media_type,
+                background=response.background,
             )
 
         return response
@@ -100,7 +120,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 class RequestTimeoutMiddleware(BaseHTTPMiddleware):
     """Enforces maximum request execution timeout with 504 Gateway Timeout envelope."""
 
-    def __init__(self, app, timeout_seconds: float = 30.0):
+    def __init__(self, app: ASGIApp, timeout_seconds: float = 30.0) -> None:
         super().__init__(app)
         self.timeout_seconds = timeout_seconds
 
@@ -128,7 +148,7 @@ class RequestTimeoutMiddleware(BaseHTTPMiddleware):
 class RequestBodyLimitMiddleware(BaseHTTPMiddleware):
     """Middleware enforcing a strict maximum HTTP request body size."""
 
-    def __init__(self, app, max_bytes: int = MAX_BODY_SIZE_BYTES):
+    def __init__(self, app: ASGIApp, max_bytes: int = MAX_BODY_SIZE_BYTES) -> None:
         super().__init__(app)
         self.max_bytes = max_bytes
 
@@ -158,7 +178,9 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
 
     _instances: ClassVar[list["RateLimiterMiddleware"]] = []
 
-    def __init__(self, app, max_requests: int = 10, window_seconds: int = 60):
+    def __init__(
+        self, app: ASGIApp, max_requests: int = 10, window_seconds: int = 60
+    ) -> None:
         super().__init__(app)
         self.max_requests = max_requests
         self.window_seconds = window_seconds
@@ -231,7 +253,7 @@ class APIDeprecationMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app,
+        app: ASGIApp,
         deprecated_prefixes: tuple[str, ...] | None = None,
         sunset_date: str = "Wed, 11 Nov 2026 00:00:00 GMT",
     ) -> None:

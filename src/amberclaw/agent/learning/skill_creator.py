@@ -14,7 +14,7 @@ from amberclaw.providers.base import LLMProvider
 class SkillCreator:
     """Monitors agent trajectories and autonomously synthesizes reusable skills."""
 
-    def __init__(self, provider: LLMProvider, workspace: Path):
+    def __init__(self, provider: LLMProvider, workspace: Path) -> None:
         self.provider = provider
         self.workspace = workspace
         self.global_skills_dir = Path.home() / ".amberclaw" / "skills" / "auto-created"
@@ -44,7 +44,7 @@ class SkillCreator:
         tool_calls_count = 0
 
         for msg in messages:
-            role = msg.get("role")
+            role = str(msg.get("role") or "unknown")
             if role == "assistant":
                 assistant_turns += 1
                 tcs = msg.get("tool_calls")
@@ -73,7 +73,7 @@ class SkillCreator:
         # Build trajectory string
         trajectory_str = ""
         for i, msg in enumerate(messages):
-            role = msg.get("role")
+            role = str(msg.get("role") or "unknown")
             content = msg.get("content") or ""
             tcs = msg.get("tool_calls")
 
@@ -87,7 +87,9 @@ class SkillCreator:
             if tcs:
                 trajectory_str += f"\n    (Tool Calls: {tcs})"
 
-        from amberclaw.security.secret_scanner import SecretScanner
+        from amberclaw.security.secret_scanner import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            SecretScanner,
+        )
 
         trajectory_str = SecretScanner.redact_text(trajectory_str)
 

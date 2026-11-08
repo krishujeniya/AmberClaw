@@ -2,9 +2,12 @@
 AmberClaw Subagent Tools
 """
 
+from typing import TYPE_CHECKING
+
 from pydantic import BaseModel, Field
 
-from amberclaw.agent.subagent import manager as subagent_manager
+if TYPE_CHECKING:
+    from amberclaw.agent.subagent import SubagentManager
 from amberclaw.tools.registry import BaseTool
 
 
@@ -19,10 +22,14 @@ class SpawnArgs(BaseModel):
     )
 
 
-class SpawnTool(BaseTool):
+class SpawnTool(BaseTool[[str, str | None, str | None, str | None]]):
     name = "spawn"
     description = "Spawn a subagent to handle a task in the background."
     args_schema = SpawnArgs
+
+    def __init__(self, manager: "SubagentManager | None" = None) -> None:
+        super().__init__()
+        self._manager = manager
 
     async def run(
         self,
@@ -31,6 +38,8 @@ class SpawnTool(BaseTool):
         model: str | None = None,
         worker_role: str | None = None,
     ) -> str:
-        return await subagent_manager.spawn(
+        if self._manager is None:
+            return "Error: No subagent manager configured."
+        return await self._manager.spawn(
             task=task, label=label, model=model, worker_role=worker_role
         )

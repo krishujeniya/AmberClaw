@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
+from http import HTTPStatus
 from typing import Any
 from urllib.parse import urljoin
 
@@ -31,7 +33,7 @@ class AzureOpenAIProvider(LLMProvider):
         api_key: str = "",
         api_base: str = "",
         default_model: str = "gpt-5.2-chat",
-    ):
+    ) -> None:
         super().__init__(api_key, api_base)
         self.default_model = default_model
         self.api_version = "2024-10-21"
@@ -51,7 +53,7 @@ class AzureOpenAIProvider(LLMProvider):
         """Build the Azure OpenAI chat completions URL."""
         # Azure OpenAI URL format:
         # https://{resource}.openai.azure.com/openai/deployments/{deployment}/chat/completions?api-version={version}
-        base_url = self.api_base
+        base_url = self.api_base or ""
         if not base_url.endswith("/"):
             base_url += "/"
 
@@ -80,7 +82,7 @@ class AzureOpenAIProvider(LLMProvider):
         name = deployment_name.lower()
         return not any(token in name for token in ("gpt-5", "o1", "o3", "o4"))
 
-    def _prepare_request_payload(
+    def _prepare_request_payload(  # noqa: PLR0913 - preserve the provider chat and constructor keyword contract
         self,
         deployment_name: str,
         messages: list[dict[str, Any]],
@@ -117,7 +119,7 @@ class AzureOpenAIProvider(LLMProvider):
 
         return payload
 
-    async def chat(
+    async def chat(  # noqa: PLR0913 - preserve the provider chat and constructor keyword contract
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
@@ -126,6 +128,7 @@ class AzureOpenAIProvider(LLMProvider):
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
         response_format: dict[str, Any] | None = None,
+        on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
         """
         Send a chat completion request to Azure OpenAI.
@@ -143,7 +146,9 @@ class AzureOpenAIProvider(LLMProvider):
         """
         deployment_name = model or self.default_model
         url = self._build_chat_url(deployment_name)
-        from amberclaw.security.vault import vault
+        from amberclaw.security.vault import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            vault,
+        )
 
         resolved_key = vault.resolve_secret(self.api_key)
         headers = self._build_headers(resolved_key)
@@ -160,14 +165,17 @@ class AzureOpenAIProvider(LLMProvider):
         try:
             async with httpx.AsyncClient(timeout=60.0, verify=True) as client:
                 response = await client.post(url, headers=headers, json=payload)
-                if response.status_code != 200:
+                if response.status_code != HTTPStatus.OK:
                     return LLMResponse(
                         content=f"Azure OpenAI API Error {response.status_code}: {response.text}",
                         finish_reason="error",
                     )
 
                 response_data = response.json()
-                return self._parse_response(response_data)
+                result = self._parse_response(response_data)
+            if on_token and result.content and result.finish_reason != "error":
+                await on_token(result.content)
+            return result
 
         except Exception as e:
             return LLMResponse(
@@ -230,18 +238,24 @@ class AzureOpenAIProvider(LLMProvider):
 
     def to_langchain_chat(self, model: str | None = None, **kwargs: Any) -> Any:
         """Convert this provider to a LangChain AzureChatOpenAI model."""
-        from langchain_openai import AzureChatOpenAI
-        from pydantic import SecretStr
+        from langchain_openai import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            AzureChatOpenAI,
+        )
+        from pydantic import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            SecretStr,
+        )
 
-        from amberclaw.security.vault import vault
+        from amberclaw.security.vault import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            vault,
+        )
 
         resolved_key = vault.resolve_secret(self.api_key)
 
         deployment_name = model or self.default_model
         return AzureChatOpenAI(
-            azure_deployment=deployment_name,
-            api_version=self.api_version,
+            deployment_name=deployment_name,
+            openai_api_version=self.api_version,
             azure_endpoint=self.api_base,
-            api_key=SecretStr(resolved_key) if resolved_key else None,
+            openai_api_key=SecretStr(resolved_key) if resolved_key else None,
             **kwargs,
         )

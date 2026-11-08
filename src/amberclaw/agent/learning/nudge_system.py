@@ -26,7 +26,7 @@ class MemoryNudgeSystem:
     # Turn-based nudge frequency
     TURN_FREQUENCY = 10
 
-    def __init__(self, workspace: Path):
+    def __init__(self, workspace: Path) -> None:
         self.workspace = workspace
 
     def should_nudge(

@@ -40,7 +40,7 @@ class ProcessRecoveryManager:
         """Calculate exponential backoff delay based on current attempt count."""
         attempts = self._attempts.get(process_id, 0)
         delay = self.base_backoff * (2**attempts)
-        return min(delay, self.max_backoff)
+        return min(float(delay), self.max_backoff)
 
     def can_recover(self, process_id: str) -> bool:
         """Check if process can be recovered without violating circuit breaker."""

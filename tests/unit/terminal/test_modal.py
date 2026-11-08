@@ -1,11 +1,36 @@
+import os
 import time
+from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from amberclaw.terminal.factory import BackendFactory
-from amberclaw.terminal.modal import ModalTerminalBackend
+from amberclaw.terminal.modal import ModalTerminalBackend, run_bash, run_python
+
+
+def test_modal_python_worker_isolates_environment_and_cwd(tmp_path, monkeypatch):
+    monkeypatch.delenv("AMBERCLAW_WORKER_TEST", raising=False)
+    original_cwd = Path.cwd()
+    result = run_python.get_raw_f()(
+        "import os; print(os.environ['AMBERCLAW_WORKER_TEST']); print(os.getcwd())",
+        {"AMBERCLAW_WORKER_TEST": "child-only"},
+        str(tmp_path),
+    )
+    assert result["exit_code"] == 0
+    assert result["stdout"].splitlines() == ["child-only", str(tmp_path)]
+    assert "AMBERCLAW_WORKER_TEST" not in os.environ
+    assert Path.cwd() == original_cwd
+    failed = run_python.get_raw_f()("raise ValueError('expected')", cwd=str(tmp_path))
+    assert failed["exit_code"] == 1
+    assert "ValueError: expected" in failed["stderr"]
+
+
+def test_modal_bash_worker_preserves_command_semantics(tmp_path):
+    result = run_bash.get_raw_f()("printf hello | tr a-z A-Z", cwd=str(tmp_path))
+    assert result["stdout"] == "HELLO"
+    assert result["exit_code"] == 0
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,6 @@
 """Tests for NetworkPolicy and Egress Controller sandboxing."""
 
+import asyncio
 import contextlib
 import socket
 
@@ -127,7 +128,6 @@ def test_egress_sandbox_per_binary_restriction() -> None:
 @pytest.mark.asyncio
 async def test_egress_sandbox_concurrent_task_isolation() -> None:
     """Verify that egress sandboxes run in separate asyncio tasks are strictly isolated."""
-    import asyncio
 
     policy_a = NetworkPolicy(allowed_hosts=["api.openai.com"], allowed_ports=[443])
     policy_b = NetworkPolicy(allowed_hosts=["github.com"], allowed_ports=[443])
@@ -156,4 +156,3 @@ async def test_egress_sandbox_concurrent_task_isolation() -> None:
 
     results = await asyncio.gather(run_task_a(), run_task_b())
     assert results == [True, True]
-

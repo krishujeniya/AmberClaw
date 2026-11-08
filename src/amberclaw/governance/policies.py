@@ -23,7 +23,9 @@ class PolicyRule(BaseModel):
         default_factory=lambda: ["*"],
         description="Glob patterns or action names this policy governs.",
     )
-    max_cost: float | None = Field(default=None, description="Maximum allowable USD cost.")
+    max_cost: float | None = Field(
+        default=None, description="Maximum allowable USD cost."
+    )
     forbidden_tokens: list[str] = Field(
         default_factory=list,
         description="Tokens or substrings that trigger denial/approval if found.",
@@ -138,9 +140,15 @@ class PolicyEngine:
                 # Prioritize DENY over REQUIRE_APPROVAL over WARN
                 if p.enforcement == EnforcementAction.DENY:
                     final_enforcement = EnforcementAction.DENY
-                elif p.enforcement == EnforcementAction.REQUIRE_APPROVAL and final_enforcement != EnforcementAction.DENY:
+                elif (
+                    p.enforcement == EnforcementAction.REQUIRE_APPROVAL
+                    and final_enforcement != EnforcementAction.DENY
+                ):
                     final_enforcement = EnforcementAction.REQUIRE_APPROVAL
-                elif p.enforcement == EnforcementAction.WARN and final_enforcement == EnforcementAction.ALLOW:
+                elif (
+                    p.enforcement == EnforcementAction.WARN
+                    and final_enforcement == EnforcementAction.ALLOW
+                ):
                     final_enforcement = EnforcementAction.WARN
 
         is_allowed = final_enforcement != EnforcementAction.DENY

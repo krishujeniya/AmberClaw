@@ -29,7 +29,7 @@ async def test_vercel_connect_success() -> None:
         assert backend.sandbox == mock_sandbox
         mock_create.assert_called_once_with(
             runtime="python3.13",
-            token="test-token",  # noqa: S106
+            token="test-token",  # noqa: S106 - synthetic credential or protocol expectation in an offline test
             project_id="test-project",
             team_id="test-team",
             timeout=100_000,

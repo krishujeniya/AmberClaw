@@ -1,9 +1,21 @@
 import os
+import secrets
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from amberclaw.api.middleware import RateLimiterMiddleware
+
+_TEST_JWT_SECRET = secrets.token_urlsafe(48)
+_TEST_CLIENT_SECRET = secrets.token_urlsafe(48)
+
+
+@pytest.fixture(autouse=True)
+def configure_test_auth(monkeypatch):
+    """Explicit ephemeral test configuration; production has no default secret."""
+    monkeypatch.setenv("JWT_SECRET_KEY", _TEST_JWT_SECRET)
+    monkeypatch.setenv("AUTH_CLIENT_ID", "offline-admin")
+    monkeypatch.setenv("AUTH_CLIENT_SECRET", _TEST_CLIENT_SECRET)
 
 
 @pytest.fixture(autouse=True)

@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
 
+MAX_PREVIEW_ROWS = 20
+
 
 class SQLArgs(BaseModel):
     """Arguments for the data_sql_query tool."""
@@ -26,7 +28,7 @@ class SQLArgs(BaseModel):
 class DataSQLTool(PydanticTool):
     """Query SQL databases using natural language via DataAgent SQLDatabaseAgent."""
 
-    def __init__(self, model: Any = None):
+    def __init__(self, model: Any = None) -> None:
         self._model = model
 
     @property
@@ -47,9 +49,11 @@ class DataSQLTool(PydanticTool):
 
     async def run(self, args: SQLArgs) -> str:
         try:
-            import sqlalchemy as sql
+            import sqlalchemy as sql  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
-            from amberclaw.data.agents import SQLDatabaseAgent
+            from amberclaw.data.agents import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                SQLDatabaseAgent,
+            )
 
             engine = sql.create_engine(args.connection_string)
             conn = engine.connect()
@@ -71,11 +75,11 @@ class DataSQLTool(PydanticTool):
                 query = agent.get_sql_query_code()
 
                 if data is not None:
-                    import pandas as pd
+                    import pandas as pd  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
                     df = pd.DataFrame(data)
                     result = f"SQL Query:\n```sql\n{query}\n```\n\nResults ({len(df)} rows):\n{df.head(20).to_markdown(index=False)}"
-                    if len(df) > 20:
+                    if len(df) > MAX_PREVIEW_ROWS:
                         result += f"\n\n... and {len(df) - 20} more rows."
                     return result
 

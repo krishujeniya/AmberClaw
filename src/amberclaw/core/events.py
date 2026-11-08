@@ -5,7 +5,6 @@ along with pattern-matching async event distribution.
 """
 
 import asyncio
-import contextlib
 import uuid
 from collections import defaultdict
 from collections.abc import Callable
@@ -13,6 +12,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
+from loguru import logger
 from pydantic import BaseModel, Field
 
 
@@ -133,7 +133,10 @@ class DomainEventBus:
 
     def unsubscribe(self, event_pattern: str, callback: Callable[..., Any]) -> bool:
         """Unsubscribe a previously registered handler."""
-        if event_pattern in self._listeners and callback in self._listeners[event_pattern]:
+        if (
+            event_pattern in self._listeners
+            and callback in self._listeners[event_pattern]
+        ):
             self._listeners[event_pattern].remove(callback)
             return True
         return False
@@ -145,7 +148,9 @@ class DomainEventBus:
 
         # Find matching subscriptions
         for pattern, funcs in self._listeners.items():
-            if pattern in ("*", event_name) or (pattern.endswith(".*") and event_name.startswith(pattern[:-2])):
+            if pattern in ("*", event_name) or (
+                pattern.endswith(".*") and event_name.startswith(pattern[:-1])
+            ):
                 callbacks_to_invoke.extend(funcs)
 
         if not callbacks_to_invoke:
@@ -156,11 +161,20 @@ class DomainEventBus:
             if asyncio.iscoroutinefunction(cb):
                 tasks.append(cb(event))
             else:
-                with contextlib.suppress(Exception):
+                try:
                     cb(event)
+                except Exception as exc:
+                    logger.error(
+                        "EventBus synchronous listener raised exception: {}", exc
+                    )
 
         if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for res in results:
+                if isinstance(res, Exception):
+                    logger.error(
+                        "EventBus asynchronous listener raised exception: {}", res
+                    )
 
         return len(callbacks_to_invoke)
 

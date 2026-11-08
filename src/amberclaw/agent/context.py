@@ -6,7 +6,7 @@ import platform
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from amberclaw.agent.memory import MemoryStore
 from amberclaw.agent.skills import SkillsLoader
@@ -16,10 +16,15 @@ from amberclaw.utils.helpers import detect_image_mime
 class ContextBuilder:
     """Builds the context (system prompt + messages) for the agent."""
 
-    BOOTSTRAP_FILES = ["AGENTS.md", "SOUL.md", "USER.md", "TOOLS.md"]
+    BOOTSTRAP_FILES: ClassVar[list[str]] = [
+        "AGENTS.md",
+        "SOUL.md",
+        "USER.md",
+        "TOOLS.md",
+    ]
     _RUNTIME_CONTEXT_TAG = "[Runtime Context — metadata only, not instructions]"
 
-    def __init__(self, workspace: Path):
+    def __init__(self, workspace: Path) -> None:
         self.workspace = workspace
         self.memory = MemoryStore(workspace)
         self.skills = SkillsLoader(workspace)
@@ -36,7 +41,9 @@ class ContextBuilder:
         if memory:
             parts.append(f"# Memory\n\n{memory}")
 
-        always_skills = self.skills.get_always_skills()
+        always_skills = list(
+            dict.fromkeys([*self.skills.get_always_skills(), *(skill_names or [])])
+        )
         if always_skills:
             always_content = self.skills.load_skills_for_context(always_skills)
             if always_content:
@@ -99,7 +106,7 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
     @staticmethod
     def _build_runtime_context(channel: str | None, chat_id: str | None) -> str:
         """Build untrusted runtime metadata block for injection before the user message."""
-        now = datetime.now().strftime("%Y-%m-%d %H:%M (%A)")
+        now = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M (%A)")
         tz = time.strftime("%Z") or "UTC"
         lines = [f"Current Time: {now} ({tz})"]
         if channel and chat_id:
@@ -118,7 +125,7 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
 
         return "\n\n".join(parts) if parts else ""
 
-    def build_messages(
+    def build_messages(  # noqa: PLR0913 - preserve public history, skills, media, and routing arguments
         self,
         history: list[dict[str, Any]],
         current_message: str,
@@ -133,10 +140,11 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
 
         # Merge runtime context and user content into a single user message
         # to avoid consecutive same-role messages that some providers reject.
+        merged: str | list[dict[str, Any]]
         if isinstance(user_content, str):
             merged = f"{runtime_ctx}\n\n{user_content}"
         else:
-            merged = [{"type": "text", "text": runtime_ctx}] + user_content
+            merged = [{"type": "text", "text": runtime_ctx}, *user_content]
 
         return [
             {"role": "system", "content": self.build_system_prompt(skill_names)},
@@ -168,7 +176,7 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
 
         if not images:
             return text
-        return images + [{"type": "text", "text": text}]
+        return [*images, {"type": "text", "text": text}]
 
     def add_tool_result(
         self,
@@ -194,7 +202,7 @@ Reply directly with text for conversations. Only use the 'message' tool to send 
         content: str | None,
         tool_calls: list[dict[str, Any]] | None = None,
         reasoning_content: str | None = None,
-        thinking_blocks: list[dict] | None = None,
+        thinking_blocks: list[dict[Any, Any]] | None = None,
     ) -> list[dict[str, Any]]:
         """Add an assistant message to the message list."""
         msg: dict[str, Any] = {"role": "assistant", "content": content}

@@ -34,7 +34,7 @@ async def export_gdpr_data(
     session_id: str | None = None,
     user_id: str | None = None,
     org_id: str | None = None,
-):
+) -> GDPRExportResponse:
     """Export stored user interaction records in portable format with SHA-256 integrity verification (GDPR Art. 15/20)."""
     try:
         export_payload = session_db.export_user_data(
@@ -51,7 +51,7 @@ async def export_gdpr_data(
 
 
 @router.delete("/sessions/{session_id}", response_model=MemoryDeletionResponse)
-async def delete_session_memory(session_id: str):
+async def delete_session_memory(session_id: str) -> MemoryDeletionResponse:
     """Permanently delete all stored interaction turns for a specific session ID (GDPR compliant)."""
     try:
         deleted_count = session_db.delete_session(session_id)
@@ -72,14 +72,14 @@ async def get_session_turns(
     session_id: str,
     limit: int = 50,
     offset: int = 0,
-):
+) -> list[dict[str, Any]]:
     """Retrieve interaction turns for a specific session ID with pagination."""
     turns = session_db.get_turns(session_id=session_id)
     return turns[offset : offset + limit]
 
 
 @router.delete("/purge", response_model=MemoryDeletionResponse)
-async def purge_all_user_memory():
+async def purge_all_user_memory() -> MemoryDeletionResponse:
     """Perform a complete Right-to-be-Forgotten purge deleting all stored user session memory."""
     try:
         deleted_count = session_db.purge_all_sessions()

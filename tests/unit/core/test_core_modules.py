@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 # Dummy functions to represent core logic for testing purposes
 def load_skill(skill_name: str) -> bool:
-    return True if skill_name else False
+    return bool(skill_name)
 
 
 def validate_config(config: dict) -> bool:
@@ -31,6 +31,8 @@ def test_agent_loop_logic():
 
 
 def test_security_guards():
-    is_safe = lambda x: "rm -rf" not in x
+    def is_safe(command: str) -> bool:
+        return "rm -rf" not in command
+
     assert is_safe("hello world") is True
     assert is_safe("rm -rf /") is False

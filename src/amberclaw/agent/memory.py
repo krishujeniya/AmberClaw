@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -45,7 +45,7 @@ _SAVE_MEMORY_TOOL = [
 class MemoryStore:
     """Two-layer memory: MEMORY.md (long-term facts) + HISTORY.md (grep-searchable log)."""
 
-    def __init__(self, workspace: Path):
+    def __init__(self, workspace: Path) -> None:
         self.memory_dir = ensure_dir(workspace / "memory")
         self.memory_file = self.memory_dir / "MEMORY.md"
         self.history_file = self.memory_dir / "HISTORY.md"
@@ -60,12 +60,12 @@ class MemoryStore:
         self.memory_file.write_text(content, encoding="utf-8")
 
     def append_history(self, entry: str) -> None:
-        with open(self.history_file, "a", encoding="utf-8") as f:
+        with Path(self.history_file).open("a", encoding="utf-8") as f:
             f.write(entry.rstrip() + "\n\n")
 
     def append_feedback(self, feedback: str) -> None:
         """Store user corrections and feedback for self-improvement (AC-053)."""
-        with open(self.feedback_file, "a", encoding="utf-8") as f:
+        with Path(self.feedback_file).open("a", encoding="utf-8") as f:
             f.write(f"- {feedback.rstrip()}\n")
 
     def read_feedback(self) -> str:
@@ -84,6 +84,58 @@ class MemoryStore:
             res += f"## User Feedback & Self-Improvement\n{feedback}\n\n"
         return res
 
+    @staticmethod
+    def _memory_arguments(args: object) -> dict[str, Any] | None:
+        """Normalize the provider's object, JSON, or first-list-item tool arguments."""
+        # Some providers return arguments as a JSON string instead of dict
+        if isinstance(args, str):
+            args = json.loads(args)
+        # Some providers return arguments as a list (handle edge case)
+        if isinstance(args, list):
+            if args and isinstance(args[0], dict):
+                args = args[0]
+            else:
+                logger.warning(
+                    "Memory consolidation: unexpected arguments as empty or non-dict list",
+                )
+                return None
+        if not isinstance(args, dict):
+            logger.warning(
+                "Memory consolidation: unexpected arguments type {}",
+                type(args).__name__,
+            )
+            return None
+
+        return args
+
+    @staticmethod
+    def _consolidation_window(
+        session: Session, archive_all: bool, memory_window: int
+    ) -> tuple[list[dict[str, Any]], int] | None:
+        """Select the unchanged message window and number of messages to keep."""
+        if archive_all:
+            old_messages = session.messages
+            keep_count = 0
+            logger.info(
+                "Memory consolidation (archive_all): {} messages", len(session.messages)
+            )
+        else:
+            keep_count = memory_window // 2
+            if len(session.messages) <= keep_count:
+                return None
+            if len(session.messages) - session.last_consolidated <= 0:
+                return None
+            old_messages = session.messages[session.last_consolidated : -keep_count]
+            if not old_messages:
+                return None
+            logger.info(
+                "Memory consolidation: {} to consolidate, {} keep",
+                len(old_messages),
+                keep_count,
+            )
+
+        return old_messages, keep_count
+
     async def consolidate(
         self,
         session: Session,
@@ -97,26 +149,10 @@ class MemoryStore:
 
         Returns True on success (including no-op), False on failure.
         """
-        if archive_all:
-            old_messages = session.messages
-            keep_count = 0
-            logger.info(
-                "Memory consolidation (archive_all): {} messages", len(session.messages)
-            )
-        else:
-            keep_count = memory_window // 2
-            if len(session.messages) <= keep_count:
-                return True
-            if len(session.messages) - session.last_consolidated <= 0:
-                return True
-            old_messages = session.messages[session.last_consolidated : -keep_count]
-            if not old_messages:
-                return True
-            logger.info(
-                "Memory consolidation: {} to consolidate, {} keep",
-                len(old_messages),
-                keep_count,
-            )
+        window = self._consolidation_window(session, archive_all, memory_window)
+        if window is None:
+            return True
+        old_messages, keep_count = window
 
         lines = []
         for m in old_messages:
@@ -157,24 +193,8 @@ class MemoryStore:
                 )
                 return False
 
-            args = response.tool_calls[0].arguments
-            # Some providers return arguments as a JSON string instead of dict
-            if isinstance(args, str):
-                args = json.loads(args)
-            # Some providers return arguments as a list (handle edge case)
-            if isinstance(args, list):
-                if args and isinstance(args[0], dict):
-                    args = args[0]
-                else:
-                    logger.warning(
-                        "Memory consolidation: unexpected arguments as empty or non-dict list",
-                    )
-                    return False
-            if not isinstance(args, dict):
-                logger.warning(
-                    "Memory consolidation: unexpected arguments type {}",
-                    type(args).__name__,
-                )
+            args = self._memory_arguments(response.tool_calls[0].arguments)
+            if args is None:
                 return False
 
             if entry := args.get("history_entry"):

@@ -1,44 +1,69 @@
-# Incident Runbook: Disaster Recovery & Database Restoration
+# SQLite and file recovery runbook
 
-## Overview
-This runbook details procedure for restoring AmberClaw database snapshots, WAL logs, and session stores following catastrophic storage corruption, host failure, or accidental data loss.
+`DisasterRecoveryManager` backs up local SQLite databases and selected files into
+a tar.gz archive with a SHA-256 manifest. It uses SQLite's online backup API.
+This is a snapshot facility; remote PostgreSQL backup, incremental point-in-time
+recovery, archive encryption and an `amberclaw backup` CLI are not implemented by
+this manager. Use the actual library API below.
 
-## Prerequisites
-- Most recent encrypted backup snapshot archive located in storage backup directory (e.g. `~/.AmberClaw/backups/`).
-- Valid backup manifest with SHA-256 integrity checksums.
+## Verify the procedure locally
 
-## Procedure
+From the repository root:
 
-### 1. List Available Backups
 ```bash
-amberclaw backup list
+LITELLM_LOCAL_MODEL_COST_MAP=True uv run python examples/release_drill.py
 ```
 
-### 2. Run Pre-Restoration Verification (DR Drill)
-Verify that the backup manifest passes tamper-evidence checks before touching live storage:
-```bash
-amberclaw backup drill --backup-file ~/.AmberClaw/backups/snapshot_latest.tar.gz
-```
-Expected output:
-```
-Integrity check passed. Snapshot is valid and non-corrupted.
+The example creates a disposable SQLite database, upgrades its schema, inserts a
+record, creates a backup, changes the record, restores the original data, rolls
+the schema back and re-applies it. It prints the actual checks and cleans up the
+temporary directory. It does not stop services or touch production data.
+
+## Create and inspect a real snapshot
+
+Supply the deployment's actual data/config/log paths; defaults below describe a
+checkout layout and must be checked against the running application:
+
+```python
+from pathlib import Path
+from amberclaw.storage.backup import DisasterRecoveryManager
+
+manager = DisasterRecoveryManager(
+    data_dir=Path("data"), backup_dir=Path("backups"),
+    config_dir=Path("config"), logs_dir=Path("logs"),
+)
+archive = manager.create_backup()
+print(archive)
+print(manager.list_backups())
 ```
 
-### 3. Stop AmberClaw Services
-```bash
-systemctl stop amberclaw-gateway
-# or
-docker compose -f deploy/docker/docker-compose.prod.yml down
+Keep snapshots and their sidecar manifests in trusted, access-controlled storage.
+Hashes detect mismatches; they do not authenticate an attacker-replaced archive
+and manifest. Protect backups containing configuration or client data according
+to the deployment's storage policy.
+
+## Restore into a separate directory
+
+Stop every application writer using the deployment's real service manager before
+replacing live state. Keep the original data and executable environment available
+for rollback. First restore into a fresh, separate directory:
+
+```python
+from pathlib import Path
+restored = manager.restore_backup(
+    archive_path=archive,
+    target_dir=Path("restore-review"),
+)
+print(restored.backup_id)
 ```
 
-### 4. Execute Restoration
-```bash
-amberclaw restore run --backup-file ~/.AmberClaw/backups/snapshot_latest.tar.gz --target-dir ~/.AmberClaw/
-```
+Restoration rejects traversal paths, archive links, devices, duplicate/unlisted
+files and mismatched manifest sizes/hashes. SQLite integrity checks run in staging
+before destination writes. Existing files require explicit `force=True`; that
+option does not bypass security or integrity validation. Review recovered files
+and application-level records before choosing any live destination.
 
-### 5. Verify Database Integrity & Start Services
-```bash
-amberclaw doctor
-systemctl start amberclaw-gateway
-```
-Verify that the gateway responds to `/health` and that active agents load cleanly.
+Start the matching application revision only after its data, authentication,
+provider and channel checks pass. Record the target commands and outcomes.
+The disposable local drill does not establish target restoration or deployment
+rollback acceptance. See [the upgrade guide](../upgrade-stabilization.md).

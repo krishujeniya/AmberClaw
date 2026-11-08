@@ -1,8 +1,9 @@
 """Cron tool for scheduling reminders and tasks."""
 
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from datetime import datetime
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 
@@ -52,7 +53,7 @@ class CronTool(PydanticTool):
     def args_schema(self) -> type[CronArgs]:
         return CronArgs
 
-    def __init__(self, cron_service: CronService):
+    def __init__(self, cron_service: CronService) -> None:
         super().__init__()
         self._cron = cron_service
         self._channel = ""
@@ -66,11 +67,11 @@ class CronTool(PydanticTool):
         self._channel = channel
         self._chat_id = chat_id
 
-    def set_cron_context(self, active: bool):
+    def set_cron_context(self, active: bool) -> Token[bool]:
         """Mark whether the tool is executing inside a cron job callback."""
         return self._in_cron_context.set(active)
 
-    def reset_cron_context(self, token) -> None:
+    def reset_cron_context(self, token: Token[bool]) -> None:
         """Restore previous cron context."""
         self._in_cron_context.reset(token)
 
@@ -92,15 +93,9 @@ class CronTool(PydanticTool):
             return "Error: message is required for add"
         if not self._channel or not self._chat_id:
             return "Error: no session context (channel/chat_id)"
-        if args.tz and not args.cron_expr:
-            return "Error: tz can only be used with cron_expr"
-        if args.tz:
-            from zoneinfo import ZoneInfo
-
-            try:
-                ZoneInfo(args.tz)
-            except (KeyError, Exception):
-                return f"Error: unknown timezone '{args.tz}'"
+        tz_error = self._validate_timezone(args)
+        if tz_error:
+            return tz_error
 
         # Build schedule
         delete_after = False
@@ -129,6 +124,17 @@ class CronTool(PydanticTool):
             delete_after_run=delete_after,
         )
         return f"Created job '{job.name}' (id: {job.id})"
+
+    @staticmethod
+    def _validate_timezone(args: CronArgs) -> str | None:
+        if args.tz and not args.cron_expr:
+            return "Error: tz can only be used with cron_expr"
+        if args.tz:
+            try:
+                ZoneInfo(args.tz)
+            except (KeyError, Exception):
+                return f"Error: unknown timezone '{args.tz}'"
+        return None
 
     def _list_jobs(self) -> str:
         jobs = self._cron.list_jobs()

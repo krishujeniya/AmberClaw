@@ -10,8 +10,8 @@ channels_app = typer.Typer(
 console = Console()
 
 
-@channels_app.command()
-def list():
+@channels_app.command("list")
+def list_channels() -> None:
     """List available and active channels."""
     cfg = loader.load_config()
 
@@ -19,7 +19,10 @@ def list():
     table.add_column("Channel", style="cyan")
     table.add_column("Status", style="bold")
 
-    for channel_name, channel_cfg in cfg.channels.items():
+    for channel_name in type(cfg.channels).model_fields:
+        channel_cfg = getattr(cfg.channels, channel_name)
+        if not hasattr(channel_cfg, "enabled"):
+            continue
         enabled = getattr(channel_cfg, "enabled", False)
         status = "[green]Enabled[/green]" if enabled else "[dim]Disabled[/dim]"
         table.add_row(channel_name.capitalize(), status)
@@ -28,7 +31,7 @@ def list():
 
 
 @channels_app.command()
-def setup(channel: str):
+def setup(channel: str) -> None:
     """Set up a communication channel."""
     console.print(f"[bold cyan]Setting up {channel} channel...[/bold cyan]")
     # Placeholder for bridge installation/setup logic

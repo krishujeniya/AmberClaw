@@ -22,7 +22,7 @@ class CLIVoiceLoop:
         stt_engine: SpeechToTextEngine | None = None,
         tts_engine: Any = None,
         config: AudioConfig | None = None,
-    ):
+    ) -> None:
         self.config = config or AudioConfig()
         self.stt_engine = stt_engine or SpeechToTextEngine()
         self.tts_engine = tts_engine or NeuTTS()
@@ -62,7 +62,7 @@ class CLIVoiceLoop:
 
                 # Synthesize agent response to speech audio
                 if isinstance(self.tts_engine, ElevenLabsTTS):
-                    async for chunk in self.tts_engine.stream_tts_http(response_text):
+                    async for _chunk in self.tts_engine.stream_tts_http(response_text):
                         pass
                 elif hasattr(self.tts_engine, "synthesize"):
                     await self.tts_engine.synthesize(response_text)

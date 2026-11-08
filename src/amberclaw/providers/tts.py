@@ -1,5 +1,6 @@
 """Text-to-Speech providers (AC-076)."""
 
+import asyncio
 import os
 from pathlib import Path
 from typing import Protocol
@@ -21,7 +22,7 @@ class OpenAIttsProvider:
 
     def __init__(
         self, api_key: str | None = None, model: str = "tts-1", voice: str = "alloy"
-    ):
+    ) -> None:
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self.model = model
         self.voice = voice
@@ -46,8 +47,7 @@ class OpenAIttsProvider:
                 )
                 response.raise_for_status()
 
-                with open(output_path, "wb") as f:
-                    f.write(response.content)
+                await asyncio.to_thread(Path(output_path).write_bytes, response.content)
                 return True
         except Exception as e:
             logger.error("OpenAI TTS error: {}", e)
@@ -59,7 +59,7 @@ class ElevenLabsTTSProvider:
 
     def __init__(
         self, api_key: str | None = None, voice_id: str = "pNInz6obpgmqMArAY74m"
-    ):
+    ) -> None:
         self.api_key = api_key or os.environ.get("ELEVENLABS_API_KEY")
         self.voice_id = voice_id
         self.api_url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
@@ -90,8 +90,7 @@ class ElevenLabsTTSProvider:
                 )
                 response.raise_for_status()
 
-                with open(output_path, "wb") as f:
-                    f.write(response.content)
+                await asyncio.to_thread(Path(output_path).write_bytes, response.content)
                 return True
         except Exception as e:
             logger.error("ElevenLabs TTS error: {}", e)

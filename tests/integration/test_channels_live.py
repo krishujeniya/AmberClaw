@@ -160,8 +160,9 @@ async def test_channel_rate_limiter_and_retry_after():
     acquired = await limiter.acquire("telegram", cost=1.0, timeout=1.0)
     assert acquired is True
 
-    # Block channel due to HTTP 429
-    limiter.report_rate_limit("telegram", retry_after_sec=0.2)
+    # Block channel due to HTTP 429. Use a generous Retry-After so the
+    # assertions below cannot race an event-loop scheduling stall.
+    limiter.report_rate_limit("telegram", retry_after_sec=1.0)
     assert limiter.is_blocked("telegram") is True
 
     # Immediate acquire with short timeout should fail while blocked
@@ -169,7 +170,7 @@ async def test_channel_rate_limiter_and_retry_after():
     assert blocked is False
 
     # Wait for Retry-After to expire
-    await asyncio.sleep(0.25)
+    await asyncio.sleep(1.05)
     assert limiter.is_blocked("telegram") is False
 
     # Should succeed again

@@ -4,7 +4,7 @@ AmberClaw Agent-to-Agent (A2A) Communication Protocol
 
 import asyncio
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from loguru import logger
@@ -18,22 +18,22 @@ class AgentMessage(BaseModel):
     receiver_id: str | None = None  # None means broadcast
     topic: str
     payload: dict[str, Any] = Field(default_factory=dict)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class AgentNetworking:
     """Manages agent discovery and communication."""
 
-    def __init__(self):
-        self._agents: dict[str, Callable] = {}
+    def __init__(self) -> None:
+        self._agents: dict[str, Callable[..., Any]] = {}
         self._topics: dict[str, list[str]] = {}  # topic -> list of agent_ids
 
-    def register_agent(self, agent_id: str, callback: Callable):
+    def register_agent(self, agent_id: str, callback: Callable[..., Any]) -> None:
         """Register an agent for receiving messages."""
         self._agents[agent_id] = callback
-        logger.info(f"Agent {agent_id} registered for networking")
+        logger.info("Agent {} registered for networking", agent_id)
 
-    def subscribe(self, agent_id: str, topic: str):
+    def subscribe(self, agent_id: str, topic: str) -> None:
         """Subscribe an agent to a specific topic."""
         if topic not in self._topics:
             self._topics[topic] = []
@@ -41,7 +41,7 @@ class AgentNetworking:
             self._topics[topic].append(agent_id)
         logger.debug(f"Agent {agent_id} subscribed to topic: {topic}")
 
-    async def send(self, message: AgentMessage):
+    async def send(self, message: AgentMessage) -> None:
         """Send a message to a specific agent or broadcast to a topic."""
         if message.receiver_id:
             # Direct message
@@ -59,7 +59,7 @@ class AgentNetworking:
             if tasks:
                 await asyncio.gather(*tasks)
 
-    async def _deliver(self, agent_id: str, message: AgentMessage):
+    async def _deliver(self, agent_id: str, message: AgentMessage) -> None:
         """Deliver a message to an agent's callback."""
         if agent_id in self._agents:
             try:

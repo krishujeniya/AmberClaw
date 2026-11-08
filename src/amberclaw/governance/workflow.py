@@ -29,7 +29,9 @@ class ApprovalVote(BaseModel):
 class ApprovalRequest(BaseModel):
     """A governed multi-stage approval workflow instance."""
 
-    request_id: str = Field(default_factory=lambda: f"REQ-{uuid.uuid4().hex[:8].upper()}")
+    request_id: str = Field(
+        default_factory=lambda: f"REQ-{uuid.uuid4().hex[:8].upper()}"
+    )
     requester_id: str
     title: str
     description: str = ""
@@ -50,7 +52,11 @@ class ApprovalRequest(BaseModel):
 
     @property
     def is_finalized(self) -> bool:
-        return self.stage in {WorkflowStage.APPROVED, WorkflowStage.REJECTED, WorkflowStage.EXPIRED}
+        return self.stage in {
+            WorkflowStage.APPROVED,
+            WorkflowStage.REJECTED,
+            WorkflowStage.EXPIRED,
+        }
 
 
 class WorkflowEngine:
@@ -75,7 +81,9 @@ class WorkflowEngine:
             title=title,
             description=description,
             required_approvals=required_approvals,
-            stage=WorkflowStage.AUTOMATED_CHECKS if auto_pass_checks else WorkflowStage.SUBMITTED,
+            stage=WorkflowStage.AUTOMATED_CHECKS
+            if auto_pass_checks
+            else WorkflowStage.SUBMITTED,
             created_at=now,
             expires_at=now + ttl_seconds,
         )
@@ -110,7 +118,9 @@ class WorkflowEngine:
             req.stage = WorkflowStage.EXPIRED
             return req
 
-        vote = ApprovalVote(reviewer_id=reviewer_id, approved=approved, comments=comments)
+        vote = ApprovalVote(
+            reviewer_id=reviewer_id, approved=approved, comments=comments
+        )
         req.votes.append(vote)
 
         if not approved:

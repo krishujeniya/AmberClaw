@@ -25,7 +25,7 @@ class ChatResponse(BaseModel):
 
 
 @router.post("/spawn", response_model=AgentProfile)
-async def spawn_agent(profile: AgentProfile):
+async def spawn_agent(profile: AgentProfile) -> AgentProfile:
     """
     Spawns a new AmberClaw Agent into the OS environment.
     """
@@ -41,7 +41,7 @@ async def list_agents(
     limit: int = 50,
     offset: int = 0,
     order_by: str = "agent_id",
-):
+) -> list[AgentProfile]:
     """
     List all registered active agents with pagination and deterministic ordering.
     """
@@ -54,7 +54,7 @@ async def list_agents(
 
 
 @router.post("/{agent_id}/chat", response_model=ChatResponse)
-async def agent_chat(agent_id: str, request: ChatRequest):
+async def agent_chat(agent_id: str, request: ChatRequest) -> ChatResponse:
     """
     Send a message to a specific agent and get an LLM response.
     """

@@ -1,3 +1,6 @@
+import math
+import struct
+
 from amberclaw.agent.emotion import (
     EmotionEngine,
     TextSentimentAnalyzer,
@@ -30,8 +33,6 @@ def test_voice_tone_analyzer():
     assert low_arousal == 0.0
 
     # High energy audio PCM
-    import math
-    import struct
 
     high_pcm = bytearray()
     for i in range(1600):
@@ -39,13 +40,14 @@ def test_voice_tone_analyzer():
         high_pcm.extend(struct.pack("<h", val))
 
     high_arousal = analyzer.analyze_pcm(bytes(high_pcm))
-    assert high_arousal > 0.5
+    minimum_high_arousal = 0.5
+    assert high_arousal > minimum_high_arousal
 
 
 def test_emotion_engine_adaptation():
     engine = EmotionEngine()
 
-    state, adaptation = engine.process(
+    _state, adaptation = engine.process(
         text="Help! My server is broken and critical ASAP!"
     )
     assert adaptation.urgency in ("high", "critical")

@@ -1,4 +1,4 @@
-# ruff: noqa: DTZ003, S202, S608, S110, PLR0912, PLR0915
+# ruff: noqa: DTZ003, S608, S110, PLR0912, PLR0915
 """Disaster Recovery, Automated Backup, and Point-In-Time Restoration Engine.
 
 Provides atomic WAL-consistent SQLite backups, tar-slip protected restoration,
@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import sqlite3
 import tarfile
 import tempfile
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from loguru import logger
@@ -71,7 +72,7 @@ class DisasterRecoveryManager:
         backup_dir: Path | str = "backups",
         config_dir: Path | str = "config",
         logs_dir: Path | str = "logs",
-    ):
+    ) -> None:
         self.data_dir = Path(data_dir)
         self.backup_dir = Path(backup_dir)
         self.config_dir = Path(config_dir)
@@ -221,38 +222,109 @@ class DisasterRecoveryManager:
         dest_dir.mkdir(parents=True, exist_ok=True)
         dest_resolved = dest_dir.resolve()
 
-        with tarfile.open(archive_path, "r:gz") as tar:
-            # Check for tar-slip traversal attacks
-            for member in tar.getmembers():
-                target_member_path = (dest_dir / member.name).resolve()
-                if not str(target_member_path).startswith(str(dest_resolved)):
-                    raise BackupSecurityError(
-                        f"Refusing to extract entry with path traversal: {member.name}"
-                    )
-
-            # Extract manifest first
-            manifest_member = tar.getmember("manifest.json")
-            f = tar.extractfile(manifest_member)
-            if not f:
-                raise ValueError("Backup archive missing manifest.json")
-            manifest_data = json.loads(f.read().decode("utf-8"))
-            manifest = BackupManifest(**manifest_data)
-
-            # Prevent accidental overwrite unless force is specified
-            if not force and any(
-                (dest_dir / item["relative_path"]).exists() for item in manifest.files
-            ):
+        with tempfile.TemporaryDirectory(prefix="amberclaw-restore-") as staging:
+            staged_dir = Path(staging)
+            with tarfile.open(archive_path, "r:gz") as tar:
+                manifest = self._stage_verified_archive(tar, staged_dir)
+            paths = [item["relative_path"] for item in manifest.files]
+            # Validate every destination before the first overwrite, including
+            # existing symlink components. Archive links are rejected entirely.
+            targets = [self._restore_path(dest_resolved, rel) for rel in paths]
+            manifest_target = self._restore_path(dest_resolved, "manifest.json")
+            if not force and any(target.exists() for target in targets):
                 raise FileExistsError(
                     "Target directory contains existing files. Use force=True to overwrite."
                 )
+            self._verify_restored_databases(manifest, staged_dir)
+            for rel, target in zip(paths, targets, strict=True):
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(staged_dir / rel, target)
+            shutil.copyfile(staged_dir / "manifest.json", manifest_target)
 
-            # Extract all files
-            tar.extractall(path=dest_dir)
+        logger.info(
+            f"Successfully restored backup '{manifest.backup_id}' to {dest_dir}"
+        )
+        return manifest
 
-        # Post-restore SQLite database integrity verification
+    @staticmethod
+    def _restore_path(root: Path, name: str) -> Path:
+        path = PurePosixPath(name)
+        if path.is_absolute() or ".." in path.parts or not path.parts or "\\" in name:
+            raise BackupSecurityError(f"Refusing entry with path traversal: {name}")
+        target = root.joinpath(*path.parts)
+        if not target.resolve().is_relative_to(root.resolve()):
+            raise BackupSecurityError(f"Refusing entry with path traversal: {name}")
+        return target
+
+    def _stage_verified_archive(
+        self, tar: tarfile.TarFile, staged: Path
+    ) -> BackupManifest:
+        members: dict[str, tarfile.TarInfo] = {}
+        for member in tar.getmembers():
+            path = self._restore_path(staged, member.name)
+            name = path.relative_to(staged).as_posix()
+            if name in members or not (member.isfile() or member.isdir()):
+                raise BackupSecurityError(
+                    f"Duplicate or unsupported backup entry: {name}"
+                )
+            members[name] = member
+        manifest_member = members.get("manifest.json")
+        if manifest_member is None or not manifest_member.isfile():
+            raise ValueError("Backup archive missing regular manifest.json")
+        stream = tar.extractfile(manifest_member)
+        if stream is None:
+            raise ValueError("Backup archive missing manifest.json")
+        with stream:
+            manifest_data = json.load(stream)
+        manifest = BackupManifest(**manifest_data)
+        expected = {"manifest.json"}
+        size = 0
+        for item in manifest.files:
+            path = self._restore_path(staged, item["relative_path"])
+            name = path.relative_to(staged).as_posix()
+            file_member = members.get(name)
+            if name in expected or file_member is None or not file_member.isfile():
+                raise BackupSecurityError(f"Invalid manifest file entry: {name}")
+            expected.add(name)
+            self._stage_verified_file(tar, file_member, path, item)
+            size += file_member.size
+        if any(
+            member.isfile() and name not in expected for name, member in members.items()
+        ):
+            raise BackupSecurityError("Backup contains files absent from manifest")
+        if (
+            manifest.total_files != len(manifest.files)
+            or manifest.total_size_bytes != size
+        ):
+            raise ValueError("Backup manifest totals do not match archived files")
+        (staged / "manifest.json").write_text(
+            json.dumps(manifest_data), encoding="utf-8"
+        )
+        return manifest
+
+    def _stage_verified_file(
+        self,
+        tar: tarfile.TarFile,
+        member: tarfile.TarInfo,
+        path: Path,
+        entry: dict[str, Any],
+    ) -> None:
+        if member.size != entry["size_bytes"]:
+            raise ValueError(f"Backup file size mismatch: {member.name}")
+        stream = tar.extractfile(member)
+        if stream is None:
+            raise ValueError(f"Missing backup data: {member.name}")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with stream, path.open("wb") as output:
+            shutil.copyfileobj(stream, output)
+        if self._hash_file(path) != entry["sha256"]:
+            raise ValueError(f"Backup checksum mismatch: {member.name}")
+
+    @staticmethod
+    def _verify_restored_databases(manifest: BackupManifest, staged_dir: Path) -> None:
         for item in manifest.files:
             rel = item["relative_path"]
-            restored_file = dest_dir / rel
+            restored_file = staged_dir / rel
             if restored_file.suffix in [".db", ".sqlite", ".sqlite3"]:
                 with sqlite3.connect(str(restored_file)) as conn:
                     cursor = conn.cursor()
@@ -262,11 +334,6 @@ class DisasterRecoveryManager:
                         raise ValueError(
                             f"Restored SQLite DB '{rel}' failed integrity check: {result}"
                         )
-
-        logger.info(
-            f"Successfully restored backup '{manifest.backup_id}' to {dest_dir}"
-        )
-        return manifest
 
     def list_backups(self) -> list[dict[str, Any]]:
         """List all available backup archives with their metadata."""

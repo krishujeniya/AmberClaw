@@ -15,7 +15,7 @@ class SkillImprover:
 
     SUCCESS_RATE_THRESHOLD = 0.5
 
-    def __init__(self, provider: LLMProvider, workspace: Path):
+    def __init__(self, provider: LLMProvider, workspace: Path) -> None:
         self.provider = provider
         self.workspace = workspace
         self.db_path = Path.home() / ".amberclaw" / "skills" / "telemetry.db"
@@ -76,7 +76,7 @@ class SkillImprover:
                 (skill_name,),
             )
             successes = cursor.fetchone()[0]
-            return successes / total
+            return float(successes) / float(total)
 
     async def check_and_refine(self, skill_name: str, model: str | None = None) -> bool:
         """

@@ -34,7 +34,7 @@ async def test_screenshare_vision_callback():
 
     session.push_frame(b"\x89PNG\r\n\x1a\n")
 
-    async def mock_vision(vision_item: dict) -> str:
+    async def mock_vision(_vision_item: dict) -> str:
         return "Detected Python syntax error on line 42."
 
     result = await session.analyze_latest_frame(vision_callback=mock_vision)

@@ -17,7 +17,7 @@ T = TypeVar("T", bound=BaseModel)
 class JSONStateStore(Generic[T]):
     """Thread-safe persistent JSON store for Pydantic objects."""
 
-    def __init__(self, file_path: str | Path, model_cls: type[T]):
+    def __init__(self, file_path: str | Path, model_cls: type[T]) -> None:
         self.file_path = Path(file_path)
         self.model_cls = model_cls
         self._lock = threading.Lock()
@@ -56,14 +56,9 @@ class JSONStateStore(Generic[T]):
         """Persist items to disk atomically."""
         tmp_path = self.file_path.with_suffix(".tmp")
         try:
-            data = {}
-            for key, item in self._items.items():
-                if hasattr(item, "model_dump"):
-                    data[key] = item.model_dump(mode="json")
-                elif hasattr(item, "dict"):
-                    data[key] = item.dict()
-                else:
-                    data[key] = item
+            data = {
+                key: item.model_dump(mode="json") for key, item in self._items.items()
+            }
             with tmp_path.open("w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             tmp_path.replace(self.file_path)

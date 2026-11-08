@@ -1,0 +1,249 @@
+# Exact reviewed offline fixtures and nonsecret identifiers; path AND value must match.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "gcp-api-key"
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^benchmarks/benchmark_suite\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^AIzaSyA1234567890abcdef1234567890abcdef$"]
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Dictionary result identifier, not an authentication key"
+condition = "AND"
+paths = ["^amberclaw/vibeds/ml_agents/h2o_ml_agent\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^h2o_train_result$"]
+
+[[rules.allowlists]]
+description = "Dictionary result identifier, not an authentication key"
+condition = "AND"
+paths = ["^src/amberclaw/data/ml_agents/h2o_ml_agent\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^h2o_train_result$"]
+
+[[rules.allowlists]]
+description = "X25519PrivateKey type annotation, not a credential"
+condition = "AND"
+paths = ["^src/amberclaw/security/enclave/crypto\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^x25519\\.X25519PrivateKey$"]
+
+[[rules.allowlists]]
+description = "Reference to encrypted envelope field, not a literal secret"
+condition = "AND"
+paths = ["^src/amberclaw/security/kms/manager\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^envelope\\.encrypted_dek_b64$"]
+
+[[rules.allowlists]]
+description = "API key explicitly monkeypatched for in-process TestClient authentication"
+condition = "AND"
+paths = ["^tests/integration/test_api_auth\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^secret_api_key_12345$"]
+
+[[rules.allowlists]]
+description = "Idempotency request identifier, not an authentication key"
+condition = "AND"
+paths = ["^tests/integration/test_api_idempotency_and_pagination\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^unique\\-idemp\\-key\\-101$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/cli/test_doctor\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^sk\\-123456789012345678901234567890123456789012345678$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/inference/test_inference_package\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^sk\\-proj\\-testkey987654321$"]
+
+[[rules.allowlists]]
+description = "Synthetic entropy detector probe in scanner test"
+condition = "AND"
+paths = ["^tests/unit/security/test_advanced_secret_scanning\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^7f8b9c0d1e2f3a4b5c6d7e8f$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_advanced_secret_scanning\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^AKIA1234567890ABCDEF$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_audit_logger\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^sk\\-proj\\-1234567890abcdef$"]
+
+[[rules.allowlists]]
+description = "Malformed private-key scanner fixture; cryptography parser rejects it"
+condition = "AND"
+paths = ["^tests/unit/security/test_secret_scanner\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^\\-\\-\\-\\-\\-BEGIN\\ RSA\\ PRIVATE\\ KEY\\-\\-\\-\\-\\-\\\\n\"\\n\\ \\ \\ \\ \\ \\ \\ \\ \"MIIEowIBAAKCAQEA0G\\.\\.\\.rest\\ of\\ private\\ key\\.\\.\\.\\\\n\"\\n\\ \\ \\ \\ \\ \\ \\ \\ \"\\-\\-\\-\\-\\-END\\ RSA\\ PRIVATE\\ KEY\\-\\-\\-\\-\\-$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_secret_scanner\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^AKIA1234567890ABCDEF$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_secret_scanner\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^xoxb\\-1234567890\\-abcdefghij$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_vault_rotation\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^sk\\-proj\\-test123456$"]
+
+[[rules.allowlists]]
+description = "Synthetic environment sanitizer probe; no external authentication"
+condition = "AND"
+paths = ["^tests/unit/subagent/test_subagent_package\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^sk\\-secret\\-12345$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/templates/test_templates\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^sk\\-123456789012345678901234567890123456789012345678$"]
+
+[[rules.allowlists]]
+description = "Local test encryption key and its encoded form; mocked enclave backend"
+condition = "AND"
+paths = ["^tests/unit/terminal/test_enclave_backend\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^amberclaw\\-enclave\\-passphrase\\-999$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/test_providers\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^sk\\-or\\-v1\\-abcdef123456$"]
+
+[[rules.allowlists]]
+description = "Dummy factory option used without connecting to Daytona"
+condition = "AND"
+paths = ["^tests/unit/test_terminal\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^daytona_key_123$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^benchmarks/benchmark_suite\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^AIzaSyA1234567890abcdef1234567890abcdef$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/test_security\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^ghp_123456789012345678901234567890123456$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_dlp\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^\\-\\-\\-\\-\\-BEGIN\\ RSA\\ PRIVATE\\ KEY\\-\\-\\-\\-\\-\\\\n\"\\n\\ \\ \\ \\ \\ \\ \\ \\ \"MIIEowIBAAKCAQEA0Y1\\+examplekeydatafakefakefakefakefakefakefakefake\\\\n\"\\n\\ \\ \\ \\ \\ \\ \\ \\ \"\\-\\-\\-\\-\\-END\\ RSA\\ PRIVATE\\ KEY\\-\\-\\-\\-\\-$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_dlp\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^xoxb\\-1234567890\\-1234567890123$"]
+
+[[rules]]
+id = "github-pat"
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/test_security\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^ghp_123456789012345678901234567890123456$"]
+
+[[rules]]
+id = "private-key"
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_dlp\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^\\-\\-\\-\\-\\-BEGIN\\ RSA\\ PRIVATE\\ KEY\\-\\-\\-\\-\\-\\\\n\"\\n\\ \\ \\ \\ \\ \\ \\ \\ \"MIIEowIBAAKCAQEA0Y1\\+examplekeydatafakefakefakefakefakefakefakefake\\\\n\"\\n\\ \\ \\ \\ \\ \\ \\ \\ \"\\-\\-\\-\\-\\-END\\ RSA\\ PRIVATE\\ KEY\\-\\-\\-\\-\\-$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_dlp\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^xoxb\\-1234567890\\-1234567890123$"]
+
+[[rules.allowlists]]
+description = "Malformed private-key scanner fixture; cryptography parser rejects it"
+condition = "AND"
+paths = ["^tests/unit/security/test_secret_scanner\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^\\-\\-\\-\\-\\-BEGIN\\ RSA\\ PRIVATE\\ KEY\\-\\-\\-\\-\\-\\\\n\"\\n\\ \\ \\ \\ \\ \\ \\ \\ \"MIIEowIBAAKCAQEA0G\\.\\.\\.rest\\ of\\ private\\ key\\.\\.\\.\\\\n\"\\n\\ \\ \\ \\ \\ \\ \\ \\ \"\\-\\-\\-\\-\\-END\\ RSA\\ PRIVATE\\ KEY\\-\\-\\-\\-\\-$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_secret_scanner\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^AKIA1234567890ABCDEF$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_secret_scanner\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^xoxb\\-1234567890\\-abcdefghij$"]
+
+[[rules]]
+id = "slack-bot-token"
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_dlp\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^\\-\\-\\-\\-\\-BEGIN\\ RSA\\ PRIVATE\\ KEY\\-\\-\\-\\-\\-\\\\n\"\\n\\ \\ \\ \\ \\ \\ \\ \\ \"MIIEowIBAAKCAQEA0Y1\\+examplekeydatafakefakefakefakefakefakefakefake\\\\n\"\\n\\ \\ \\ \\ \\ \\ \\ \\ \"\\-\\-\\-\\-\\-END\\ RSA\\ PRIVATE\\ KEY\\-\\-\\-\\-\\-$"]
+
+[[rules.allowlists]]
+description = "Explicit synthetic marker in an offline test/benchmark fixture"
+condition = "AND"
+paths = ["^tests/unit/security/test_dlp\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^xoxb\\-1234567890\\-1234567890123$"]

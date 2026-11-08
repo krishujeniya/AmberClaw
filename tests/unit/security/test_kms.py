@@ -53,7 +53,9 @@ async def test_kms_secret_manager_key_rotation() -> None:
     envelope_old = await manager.encrypt_secret(secret, key_id="old-master-key")
     assert envelope_old.key_id == "old-master-key"
 
-    envelope_new = await manager.rotate_key(envelope_old, new_key_id="new-master-key-2026")
+    envelope_new = await manager.rotate_key(
+        envelope_old, new_key_id="new-master-key-2026"
+    )
     assert envelope_new.key_id == "new-master-key-2026"
 
     # Decrypt rotated envelope

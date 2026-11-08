@@ -22,7 +22,7 @@ class MultimodalRouter:
         self,
         image_processor: ImageProcessor | None = None,
         video_processor: VideoProcessor | None = None,
-    ):
+    ) -> None:
         self.image_processor = image_processor or ImageProcessor()
         self.video_processor = video_processor or VideoProcessor(
             image_processor=self.image_processor
@@ -46,7 +46,7 @@ class MultimodalRouter:
             for att in attachments:
                 try:
                     if att.media_type == "image":
-                        raw_bytes, mime = self.image_processor.load_bytes(
+                        raw_bytes, _mime = self.image_processor.load_bytes(
                             att.data_or_path
                         )
                         item = self.image_processor.to_vision_message_content(

@@ -14,7 +14,7 @@ class _DummyChannel(BaseChannel):
     async def stop(self) -> None:
         return None
 
-    async def send(self, msg: OutboundMessage) -> None:
+    async def send(self, msg: OutboundMessage) -> None:  # noqa: ARG002 - preserve the fake SDK keyword contract
         return None
 
 

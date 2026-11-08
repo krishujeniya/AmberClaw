@@ -108,10 +108,15 @@ async def test_safe_mode_bootstrapper(monkeypatch):
     async def mock_db_fail():
         return False
 
+    async def healthy_backend():
+        return True
+
     monkeypatch.setattr(bootstrapper, "verify_database", mock_db_fail)
+    monkeypatch.setattr(bootstrapper, "verify_cache", healthy_backend)
+    monkeypatch.setattr(bootstrapper, "verify_vector_store", healthy_backend)
 
     status = await bootstrapper.bootstrap()
     assert status.safe_mode is True
     assert "storage_database" in status.degraded_components
-    assert status.active_fallbacks.get("database") == "in_memory_sqlite"
-    assert status.system_ready is True
+    assert "database" not in status.active_fallbacks
+    assert status.system_ready is False

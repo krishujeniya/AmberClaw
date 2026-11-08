@@ -1,4 +1,3 @@
-import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -22,7 +21,7 @@ class VideoMetadata(BaseModel):
 class VideoProcessor:
     """Processor for extracting keyframes and formatting video sequences for vision LLMs."""
 
-    def __init__(self, image_processor: ImageProcessor | None = None):
+    def __init__(self, image_processor: ImageProcessor | None = None) -> None:
         self.image_processor = image_processor or ImageProcessor()
         self._has_cv2 = False
         self._check_cv2()
@@ -42,6 +41,8 @@ class VideoProcessor:
         fps_sample_rate: float = 1.0,
     ) -> list[bytes]:
         """Extract a uniform sequence of up to max_frames keyframe images (JPEG bytes) from video."""
+        if max_frames < 1 or fps_sample_rate <= 0:
+            raise ValueError("Frame count and sampling rate must be positive")
         if self._has_cv2:
             return self._extract_cv2(
                 video_source, max_frames=max_frames, fps_sample_rate=fps_sample_rate
@@ -58,7 +59,7 @@ class VideoProcessor:
         max_frames: int,
         fps_sample_rate: float,
     ) -> list[bytes]:
-        import cv2  # noqa: PLC0415
+        import cv2  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
         tmp_path = None
         if isinstance(video_source, bytes):
@@ -70,18 +71,19 @@ class VideoProcessor:
             source_path = str(video_source)
 
         frames: list[bytes] = []
+        cap = None
         try:
             cap = cv2.VideoCapture(source_path)
             if not cap.isOpened():
                 return self._extract_simulated(max_frames)
 
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            fps = cap.get(cv2.CAP_PROP_FPS) or 24.0
 
             if total_frames <= 0:
                 return self._extract_simulated(max_frames)
 
-            step = max(1, int(total_frames / max_frames))
+            fps = cap.get(cv2.CAP_PROP_FPS) or 24.0
+            step = max(1, int(total_frames / max_frames), int(fps / fps_sample_rate))
 
             current_frame = 0
             while cap.isOpened() and len(frames) < max_frames:
@@ -100,13 +102,14 @@ class VideoProcessor:
                 if current_frame >= total_frames:
                     break
 
-            cap.release()
         except Exception as ex:
             logger.error(f"OpenCV video extraction error: {ex}")
             return self._extract_simulated(max_frames)
         finally:
-            if tmp_path and os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+            if cap is not None:
+                cap.release()
+            if tmp_path and Path(tmp_path).exists():
+                Path(tmp_path).unlink()
 
         return frames if frames else self._extract_simulated(max_frames)
 
@@ -132,7 +135,7 @@ class VideoProcessor:
         """Extract video keyframes and format them as a sequence of vision message content items."""
         keyframes = self.extract_keyframes(video_source, max_frames=max_frames)
         items: list[dict[str, Any]] = []
-        for i, frame_bytes in enumerate(keyframes):
+        for frame_bytes in keyframes:
             content_item = self.image_processor.to_vision_message_content(
                 frame_bytes, detail="low"
             )

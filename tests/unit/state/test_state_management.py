@@ -74,8 +74,18 @@ def test_state_migrator():
         p["tools_config"] = {t: {"enabled": True} for t in tools_list}
         return p
 
-    migrator.register_step(from_version=1, to_version=2, transform_fn=v1_to_v2, description="Migrate v1 to v2")
-    migrator.register_step(from_version=2, to_version=3, transform_fn=v2_to_v3, description="Migrate v2 to v3")
+    migrator.register_step(
+        from_version=1,
+        to_version=2,
+        transform_fn=v1_to_v2,
+        description="Migrate v1 to v2",
+    )
+    migrator.register_step(
+        from_version=2,
+        to_version=3,
+        transform_fn=v2_to_v3,
+        description="Migrate v2 to v3",
+    )
 
     old_state = {
         "schema_version": 1,

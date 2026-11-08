@@ -7,12 +7,16 @@ Uses the agent's own LLM provider + config. Zero external deps.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
+from amberclaw.providers.base import LLMProvider
+
+TokenCallback = Callable[[str], Awaitable[None]]
 
 
 class CouncilArgs(BaseModel):
@@ -57,11 +61,11 @@ class CouncilTool(PydanticTool):
 
     def __init__(
         self,
-        provider: Any,
+        provider: LLMProvider,
         model: str,
         temperature: float = 0.1,
         max_tokens: int = 2048,
-    ):
+    ) -> None:
         super().__init__()
         self._provider = provider
         self._primary_model = model
@@ -69,7 +73,10 @@ class CouncilTool(PydanticTool):
         self._max_tokens = max_tokens
 
     async def _ask(
-        self, model: str, messages: list[dict], on_token: Any | None = None
+        self,
+        model: str,
+        messages: list[dict[str, Any]],
+        on_token: TokenCallback | None = None,
     ) -> str:
         """Query a single model, return text or empty string on error."""
         try:
@@ -81,12 +88,14 @@ class CouncilTool(PydanticTool):
                 max_tokens=self._max_tokens,
                 on_token=on_token,
             )
-            return (resp.content or "").strip()
+            return "" if resp.finish_reason == "error" else (resp.content or "").strip()
         except Exception as exc:
             logger.warning("Council: model {} failed: {}", model, exc)
             return ""
 
-    async def run(self, args: CouncilArgs, on_token: Any | None = None) -> str:
+    async def run(
+        self, args: CouncilArgs, on_token: TokenCallback | None = None
+    ) -> str:
         models = args.models or [self._primary_model]
         if len(models) == 1:
             models = (
@@ -98,12 +107,14 @@ class CouncilTool(PydanticTool):
         )
 
         # ── Stage 1: Collect ──────────────────────────────────────────────────
-        user_msg = [{"role": "user", "content": args.query}]
+        user_msg: list[dict[str, Any]] = [{"role": "user", "content": args.query}]
         tasks = [self._ask(m, user_msg) for m in models]
         raw_responses = await asyncio.gather(*tasks)
 
-        stage1: list[dict] = [
-            {"model": m, "response": r} for m, r in zip(models, raw_responses) if r
+        stage1: list[dict[str, Any]] = [
+            {"model": m, "response": r}
+            for m, r in zip(models, raw_responses, strict=True)
+            if r
         ]
         if not stage1:
             return "Council failed: all models returned empty responses."
@@ -111,7 +122,8 @@ class CouncilTool(PydanticTool):
         # ── Stage 2: Peer Ranking ─────────────────────────────────────────────
         labels = [chr(65 + i) for i in range(len(stage1))]
         responses_block = "\n\n".join(
-            f"Response {lbl}:\n{item['response']}" for lbl, item in zip(labels, stage1)
+            f"Response {lbl}:\n{item['response']}"
+            for lbl, item in zip(labels, stage1, strict=True)
         )
         ranking_prompt = (
             f"You are an anonymous peer reviewer.\n\n"
@@ -121,12 +133,24 @@ class CouncilTool(PydanticTool):
             "Give a 1-sentence reason for each rank. "
             "Format: RANK 1: Response X — reason."
         )
-        rank_msgs = [{"role": "user", "content": ranking_prompt}]
+        rank_msgs: list[dict[str, Any]] = [{"role": "user", "content": ranking_prompt}]
 
-        for _round in range(args.depth):
+        stage1_rankings: list[str] = []
+        for round_index in range(args.depth):
+            if stage1_rankings:
+                previous = "\n\n".join(stage1_rankings)
+                rank_msgs = [
+                    {
+                        "role": "user",
+                        "content": (
+                            f"{ranking_prompt}\n\nPrevious peer reviews:\n{previous}\n\n"
+                            f"Round {round_index + 1}: reconsider the rankings using these reviews."
+                        ),
+                    }
+                ]
             rank_tasks = [self._ask(m, rank_msgs) for m in models]
             rankings = await asyncio.gather(*rank_tasks)
-            stage1_rankings = [r for r in rankings if r]
+            stage1_rankings.extend(r for r in rankings if r)
 
         # ── Stage 3: Synthesis ────────────────────────────────────────────────
         stage1_block = "\n\n".join(

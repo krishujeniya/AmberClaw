@@ -118,7 +118,7 @@ async def test_agent_loop_low_memory_reaction(tmp_path: Path):
     mock_sessions.list_sessions.return_value = [mock_session_info]
 
     mock_session = MagicMock()
-    mock_sessions.get_session.return_value = mock_session
+    mock_sessions.get_or_create.return_value = mock_session
 
     agent = AgentLoop(
         bus=bus,
@@ -152,6 +152,7 @@ async def test_agent_loop_low_memory_reaction(tmp_path: Path):
     # Stop the agent loop
     agent.stop()
     await loop_task
+    await agent.close_mcp()
 
     # Verify that memory consolidation was triggered on the active session
     agent._consolidate_memory.assert_called_once_with(mock_session, archive_all=True)

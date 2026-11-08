@@ -6,9 +6,9 @@ from amberclaw.templates.scrubber import TemplateScrubber
 from amberclaw.templates.template import TemplateManager
 
 __all__ = [
-    "TemplateManager",
-    "TemplateInstaller",
-    "TemplateScrubber",
-    "TemplateMarket",
     "PersonaTemplate",
+    "TemplateInstaller",
+    "TemplateManager",
+    "TemplateMarket",
+    "TemplateScrubber",
 ]

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import json_repair
@@ -17,7 +18,7 @@ class CustomProvider(LLMProvider):
         api_key: str = "no-key",
         api_base: str = "http://localhost:8000/v1",
         default_model: str = "default",
-    ):
+    ) -> None:
         super().__init__(api_key, api_base)
         self.default_model = default_model
         # Keep affinity stable for this provider instance to improve backend cache locality.
@@ -27,7 +28,7 @@ class CustomProvider(LLMProvider):
             default_headers={"x-session-affinity": uuid.uuid4().hex},
         )
 
-    async def chat(
+    async def chat(  # noqa: PLR0913 - preserve the provider chat and constructor keyword contract
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
@@ -36,6 +37,7 @@ class CustomProvider(LLMProvider):
         temperature: float = 0.7,
         reasoning_effort: str | None = None,
         response_format: dict[str, Any] | None = None,
+        on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
         kwargs: dict[str, Any] = {
             "model": model or self.default_model,
@@ -49,15 +51,22 @@ class CustomProvider(LLMProvider):
             kwargs["response_format"] = response_format
         if tools:
             kwargs.update(tools=tools, tool_choice="auto")
-        from amberclaw.security.vault import vault
+        from amberclaw.security.vault import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            vault,
+        )
 
         resolved_key = vault.resolve_secret(self.api_key)
         self._client.api_key = resolved_key or "no-key"
         try:
             try:
-                return self._parse(await self._client.chat.completions.create(**kwargs))
+                result = self._parse(
+                    await self._client.chat.completions.create(**kwargs)
+                )
             finally:
                 self._client.api_key = self.api_key or "no-key"
+            if on_token and result.content and result.finish_reason != "error":
+                await on_token(result.content)
+            return result
         except Exception as e:
             return LLMResponse(content=f"Error: {e}", finish_reason="error")
 
@@ -96,16 +105,22 @@ class CustomProvider(LLMProvider):
 
     def to_langchain_chat(self, model: str | None = None, **kwargs: Any) -> Any:
         """Convert this provider to a LangChain ChatOpenAI model."""
-        from langchain_openai import ChatOpenAI
-        from pydantic import SecretStr
+        from langchain_openai import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            ChatOpenAI,
+        )
+        from pydantic import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            SecretStr,
+        )
 
-        from amberclaw.security.vault import vault
+        from amberclaw.security.vault import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            vault,
+        )
 
         resolved_key = vault.resolve_secret(self.api_key)
 
         return ChatOpenAI(
-            model=model or self.default_model,
-            api_key=SecretStr(resolved_key) if resolved_key else None,
-            base_url=self.api_base,
+            model_name=model or self.default_model,
+            openai_api_key=SecretStr(resolved_key) if resolved_key else None,
+            openai_api_base=self.api_base,
             **kwargs,
         )

@@ -15,14 +15,14 @@ class SkillUsageMetric(BaseModel):
     total_execution_time_ms: float = Field(default=0.0)
     last_invoked_at: float | None = Field(default=None)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]  # Documented Pydantic computed_field/property limitation in mypy
     @property
     def success_rate(self) -> float:
         if self.invocations == 0:
             return 1.0
         return round(self.successes / self.invocations, 2)
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]  # Documented Pydantic computed_field/property limitation in mypy
     @property
     def avg_execution_time_ms(self) -> float:
         if self.invocations == 0:

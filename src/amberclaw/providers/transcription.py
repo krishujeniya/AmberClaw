@@ -1,8 +1,9 @@
 """Voice transcription providers (AC-075)."""
 
+import asyncio
 import os
 from pathlib import Path
-from typing import Protocol
+from typing import BinaryIO, Protocol
 
 import httpx
 from loguru import logger
@@ -23,7 +24,7 @@ class GroqTranscriptionProvider:
     Groq offers extremely fast transcription with a generous free tier.
     """
 
-    def __init__(self, api_key: str | None = None):
+    def __init__(self, api_key: str | None = None) -> None:
         self.api_key = api_key or os.environ.get("GROQ_API_KEY")
         self.api_url = "https://api.groq.com/openai/v1/audio/transcriptions"
 
@@ -34,14 +35,14 @@ class GroqTranscriptionProvider:
             return ""
 
         path = Path(file_path)
-        if not path.exists():
+        if not (await asyncio.to_thread(path.exists)):
             logger.error("Audio file not found: {}", file_path)
             return ""
 
         try:
             async with httpx.AsyncClient() as client:
-                with open(path, "rb") as f:
-                    files = {
+                with await asyncio.to_thread(Path(path).open, "rb") as f:
+                    files: dict[str, tuple[str | None, BinaryIO | str]] = {
                         "file": (path.name, f),
                         "model": (None, "whisper-large-v3"),
                     }
@@ -58,7 +59,8 @@ class GroqTranscriptionProvider:
 
                     response.raise_for_status()
                     data = response.json()
-                    return data.get("text", "")
+                    text = data.get("text") if isinstance(data, dict) else None
+                    return text if isinstance(text, str) else ""
 
         except Exception as e:
             logger.error("Groq transcription error: {}", e)
@@ -70,7 +72,7 @@ class OpenAITranscriptionProvider:
     Voice transcription provider using OpenAI's Whisper API.
     """
 
-    def __init__(self, api_key: str | None = None):
+    def __init__(self, api_key: str | None = None) -> None:
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self.api_url = "https://api.openai.com/v1/audio/transcriptions"
 
@@ -81,14 +83,14 @@ class OpenAITranscriptionProvider:
             return ""
 
         path = Path(file_path)
-        if not path.exists():
+        if not (await asyncio.to_thread(path.exists)):
             logger.error("Audio file not found: {}", file_path)
             return ""
 
         try:
             async with httpx.AsyncClient() as client:
-                with open(path, "rb") as f:
-                    files = {
+                with await asyncio.to_thread(Path(path).open, "rb") as f:
+                    files: dict[str, tuple[str | None, BinaryIO | str]] = {
                         "file": (path.name, f),
                         "model": (None, "whisper-1"),
                     }
@@ -105,7 +107,8 @@ class OpenAITranscriptionProvider:
 
                     response.raise_for_status()
                     data = response.json()
-                    return data.get("text", "")
+                    text = data.get("text") if isinstance(data, dict) else None
+                    return text if isinstance(text, str) else ""
 
         except Exception as e:
             logger.error("OpenAI transcription error: {}", e)

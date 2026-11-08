@@ -87,9 +87,7 @@ def test_validate_config_dict():
     # Invalid dict with multiple issues
     invalid = {
         "gateway": {"host": "bad_host", "port": 99999},
-        "agents": {
-            "worker": {"model": "bad model!@", "temperature": 5.0}
-        },
+        "agents": {"worker": {"model": "bad model!@", "temperature": 5.0}},
     }
     errors = validate_config_dict(invalid)
     assert len(errors) == 4

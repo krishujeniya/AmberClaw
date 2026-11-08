@@ -20,7 +20,10 @@ class RollbackStep(BaseModel):
     """A discrete compensatory action step."""
 
     step_id: str = Field(default_factory=lambda: f"RBS-{uuid.uuid4().hex[:6].upper()}")
-    action_type: str = Field(..., description="Type of rollback operation (e.g. file_restore, git_revert, state_reset).")
+    action_type: str = Field(
+        ...,
+        description="Type of rollback operation (e.g. file_restore, git_revert, state_reset).",
+    )
     target: str = Field(..., description="Target entity or path being restored.")
     parameters: dict[str, Any] = Field(default_factory=dict)
     status: RollbackStatus = RollbackStatus.PENDING
@@ -31,7 +34,9 @@ class RollbackPlan(BaseModel):
     """An ordered series of compensatory actions reversing a governed operation."""
 
     plan_id: str = Field(default_factory=lambda: f"RBP-{uuid.uuid4().hex[:8].upper()}")
-    action_id: str = Field(..., description="Original governed action ID being rolled back.")
+    action_id: str = Field(
+        ..., description="Original governed action ID being rolled back."
+    )
     created_at: float = Field(default_factory=time.time)
     steps: list[RollbackStep] = Field(default_factory=list)
     status: RollbackStatus = RollbackStatus.PENDING
@@ -54,7 +59,9 @@ class GovernanceRollbackManager:
         self._handlers["state_reset"] = handle_generic_noop
         self._handlers["git_revert"] = handle_generic_noop
 
-    def register_handler(self, action_type: str, handler: Callable[[RollbackStep], bool]) -> None:
+    def register_handler(
+        self, action_type: str, handler: Callable[[RollbackStep], bool]
+    ) -> None:
         """Register an execution handler for a specific rollback action type."""
         self._handlers[action_type] = handler
 

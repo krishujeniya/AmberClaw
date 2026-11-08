@@ -12,6 +12,10 @@ class CompanyModel(BaseModel):
     id: str = Field(..., description="Unique organization identifier.")
     name: str = Field(..., description="Company name.")
     domain: str | None = Field(default=None, description="Primary domain identifier.")
-    departments: list[str] = Field(default_factory=list, description="Registered organizational departments.")
-    settings: dict[str, Any] = Field(default_factory=dict, description="Tenant-level configurations.")
+    departments: list[str] = Field(
+        default_factory=list, description="Registered organizational departments."
+    )
+    settings: dict[str, Any] = Field(
+        default_factory=dict, description="Tenant-level configurations."
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)

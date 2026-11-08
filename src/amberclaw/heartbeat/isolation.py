@@ -28,9 +28,7 @@ class ProcessIsolationManager:
         self.timeout = timedelta(seconds=timeout_seconds)
         self._isolated: dict[str, IsolationRecord] = {}
 
-    def check_for_zombies(
-        self, statuses: dict[str, HeartbeatStatus]
-    ) -> list[str]:
+    def check_for_zombies(self, statuses: dict[str, HeartbeatStatus]) -> list[str]:
         """Find processes that have missed their heartbeat threshold."""
         now = datetime.now(UTC)
         zombie_ids: list[str] = []
@@ -52,7 +50,7 @@ class ProcessIsolationManager:
         self,
         process_id: str,
         reason: str = "Heartbeat timeout exceeded",
-        tasks: dict[str, asyncio.Task] | None = None,
+        tasks: dict[str, asyncio.Task[Any]] | None = None,
     ) -> IsolationRecord:
         """Isolate and cancel the hung process task."""
         record = IsolationRecord(process_id=process_id, reason=reason)

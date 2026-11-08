@@ -1,9 +1,24 @@
 from unittest.mock import MagicMock, patch
 
+import paramiko
 import pytest
 
 from amberclaw.terminal.factory import BackendFactory
 from amberclaw.terminal.ssh import SSHTerminalBackend
+
+
+def test_ssh_requires_trusted_host_and_closes_failed_connection():
+    client = MagicMock()
+    client.connect.side_effect = paramiko.SSHException("Unknown host key")
+    with patch("paramiko.SSHClient", return_value=client):
+        backend = SSHTerminalBackend(host="untrusted.example")
+        with pytest.raises(paramiko.SSHException, match="Unknown host"):
+            backend._connect_sync()
+    client.load_system_host_keys.assert_called_once()
+    policy = client.set_missing_host_key_policy.call_args.args[0]
+    assert isinstance(policy, paramiko.RejectPolicy)
+    client.close.assert_called_once()
+    assert backend.client is None
 
 
 @pytest.mark.asyncio
@@ -48,7 +63,7 @@ async def test_ssh_backend_execution_success() -> None:
             host="1.2.3.4",
             port=2222,
             username="testuser",
-            password="testpassword",
+            password="testpassword",  # noqa: S106 - synthetic credential or protocol expectation in an offline test
             workspace_dir="/remote/workspace",
         )
 
@@ -59,7 +74,7 @@ async def test_ssh_backend_execution_success() -> None:
             hostname="1.2.3.4",
             port=2222,
             username="testuser",
-            password="testpassword",
+            password="testpassword",  # noqa: S106 - synthetic credential or protocol expectation in an offline test
             key_filename=None,
             allow_agent=True,
         )
@@ -123,30 +138,40 @@ async def test_ssh_backend_timeout() -> None:
         backend = SSHTerminalBackend(host="1.2.3.4", username="testuser")
         result = await backend.execute_bash("sleep 10", timeout=2)
 
-        assert result["exit_code"] == -9
+        expected_result_exit_code = -9
+        assert result["exit_code"] == expected_result_exit_code
         stderr_lower = result["stderr"].lower()
         assert "timeout" in stderr_lower or "timed out" in stderr_lower
 
 
-def test_backend_factory() -> None:
+def test_backend_factory(tmp_path) -> None:
     # Local backend instantiation
-    local_backend = BackendFactory.create_backend("local", workspace_dir="/tmp/ws")
-    from amberclaw.terminal.local import LocalTerminalBackend
+    local_backend = BackendFactory.create_backend("local", workspace_dir=str(tmp_path))
+    from amberclaw.terminal.local import (  # noqa: PLC0415 - import after dependency fixtures are installed
+        LocalTerminalBackend,
+    )
 
     assert isinstance(local_backend, LocalTerminalBackend)
 
     # Docker backend instantiation
     docker_backend = BackendFactory.create_backend(
-        "docker", workspace_dir="/tmp/ws", image="python:3.11-alpine"
+        "docker",
+        workspace_dir=str(tmp_path),
+        image="python:3.11-alpine",
     )
-    from amberclaw.terminal.docker import DockerTerminalBackend
+    from amberclaw.terminal.docker import (  # noqa: PLC0415 - import after dependency fixtures are installed
+        DockerTerminalBackend,
+    )
 
     assert isinstance(docker_backend, DockerTerminalBackend)
     assert docker_backend.image == "python:3.11-alpine"
 
     # SSH backend instantiation
     ssh_backend = BackendFactory.create_backend(
-        "ssh", workspace_dir="/tmp/ws", host="myhost", username="user"
+        "ssh",
+        workspace_dir=str(tmp_path),
+        host="myhost",
+        username="user",
     )
 
     assert isinstance(ssh_backend, SSHTerminalBackend)
@@ -155,4 +180,4 @@ def test_backend_factory() -> None:
 
     # Invalid backend type raises ValueError
     with pytest.raises(ValueError, match="Unknown terminal backend type"):
-        BackendFactory.create_backend("invalid_type", workspace_dir="/tmp/ws")
+        BackendFactory.create_backend("invalid_type", workspace_dir=str(tmp_path))

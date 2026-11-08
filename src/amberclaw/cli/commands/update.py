@@ -30,4 +30,6 @@ def update_check() -> None:
     table.add_row("Lockfile Present", "✓ uv.lock" if lockfile.exists() else "✗ Missing")
 
     console.print(table)
-    console.print("[bold green]✓ AmberClaw is up to date with repository head.[/bold green]")
+    console.print(
+        "[bold green]✓ AmberClaw is up to date with repository head.[/bold green]"
+    )

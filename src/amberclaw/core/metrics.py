@@ -50,7 +50,9 @@ def record_dlq_message(reason: str = "overflow") -> None:
     DLQ_MESSAGES_TOTAL.labels(reason=reason).inc()
 
 
-def set_service_state(service_name: str, is_running: bool, is_failed: bool = False) -> None:
+def set_service_state(
+    service_name: str, is_running: bool, is_failed: bool = False
+) -> None:
     """Update running state of a kernel background service."""
     if is_failed:
         val = -1

@@ -15,7 +15,9 @@ def ingest(
     ),
 ) -> None:
     """Ingest documents into the RAG memory."""
-    from amberclaw.memory import rag_pipeline
+    from amberclaw.memory import (  # noqa: PLC0415 - defer runtime and platform initialization until command use
+        rag_pipeline,
+    )
 
     cfg = loader.load_config()
 

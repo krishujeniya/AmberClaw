@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import sys
 from enum import StrEnum
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -52,8 +53,8 @@ class RLOrchestrator:
                 delay_sec=30,
             ),
         ]
-        self._tasks: list[asyncio.Task] = []
-        self._monitor_tasks: list[asyncio.Task] = []
+        self._tasks: list[asyncio.Task[Any]] = []
+        self._monitor_tasks: list[asyncio.Task[Any]] = []
         self._is_running = False
 
     async def _run_process(self, config: RLProcessConfig) -> None:

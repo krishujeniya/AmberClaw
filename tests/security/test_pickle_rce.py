@@ -1,13 +1,11 @@
-import os
 import json
-import sys
+import os
 from pathlib import Path
-from unittest.mock import MagicMock
+
 import pytest
 
 from amberclaw.data.tools.data_loader import ALLOW_UNSAFE_PICKLE_ENV_VAR, load_pickle
 from amberclaw.memory.rag_pipeline import Document, HybridRetriever
-
 
 
 def test_data_loader_pickle_blocked_by_default(tmp_path: Path):
@@ -35,10 +33,14 @@ def test_rag_pipeline_json_persistence(tmp_path: Path):
 
     # Verify content is valid JSON
     data = json.loads(retriever.docs_path.read_text(encoding="utf-8"))
-    assert len(data) == 2
+    expected_data_count = 2
+    assert len(data) == expected_data_count
     assert data[0]["page_content"] == "Security test doc 1"
 
     # Reload in new instance
-    new_retriever = HybridRetriever(db_dir=tmp_path, collection_name="test_json_collection")
-    assert len(new_retriever.bm25_docs) == 2
+    new_retriever = HybridRetriever(
+        db_dir=tmp_path, collection_name="test_json_collection"
+    )
+    expected_new_retriever_bm25_docs_count = 2
+    assert len(new_retriever.bm25_docs) == expected_new_retriever_bm25_docs_count
     assert new_retriever.bm25_docs[0].page_content == "Security test doc 1"

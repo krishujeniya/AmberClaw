@@ -1,6 +1,7 @@
-import json
-import os
+import asyncio
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -11,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
 from amberclaw.config.loader import load_config
+from amberclaw.config.schema import GoogleDriveConfig
 
 SCOPES = [
     "https://www.googleapis.com/auth/drive",
@@ -22,11 +24,11 @@ SCOPES = [
 class DriveManager:
     """Helper to manage Google Drive service connection."""
 
-    def __init__(self, config):
+    def __init__(self, config: GoogleDriveConfig) -> None:
         self.config = config
-        self.service = None
+        self.service: Any = None
 
-    def _get_service(self):
+    def _get_service(self) -> Any:
         if self.service:
             return self.service
 
@@ -37,19 +39,23 @@ class DriveManager:
 
         if token_path.exists():
             try:
-                creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+                load_credentials: Callable[[str, list[str]], Credentials] = (
+                    Credentials.from_authorized_user_file
+                )
+                creds = load_credentials(str(token_path), SCOPES)
             except Exception:
                 creds = None
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+                refresh_credentials: Callable[[Request], None] = creds.refresh
+                refresh_credentials(Request())
             else:
                 # In a terminal tool, we might need to prompt for OAuth
                 # but for now we assume credentials are pre-configured or handled by env
                 # If credentials_json is provided as raw JSON string or path
                 creds_json = self.config.credentials_json
-                if os.path.exists(creds_json):
+                if Path(creds_json).exists():
                     flow = InstalledAppFlow.from_client_secrets_file(creds_json, SCOPES)
                 else:
                     # Fallback to local server if we're in an interactive session
@@ -137,8 +143,8 @@ class DriveUploadTool(PydanticTool):
         if not config.tools.drive.enabled:
             return "Google Drive tool is disabled in config."
 
-        path = Path(args.file_path).expanduser()
-        if not path.exists():
+        path = await asyncio.to_thread(Path(args.file_path).expanduser)
+        if not await asyncio.to_thread(path.exists):
             return f"Error: Local file {args.file_path} does not exist."
 
         manager = DriveManager(config.tools.drive)

@@ -8,8 +8,8 @@ skills_app = typer.Typer(help="Manage amberclaw skills and capabilities.")
 console = Console()
 
 
-@skills_app.command()
-def list():
+@skills_app.command("list")
+def list_skills() -> None:
     """List all installed skills."""
     workspace = paths.get_workspace_path()
     skills_dir = workspace / "skills"
@@ -32,7 +32,7 @@ def list():
 
 
 @skills_app.command()
-def install(name: str):
+def install(name: str) -> None:
     """Install a new skill."""
     console.print(f"[green]Installing skill: {name}...[/green]")
     # Placeholder for actual installation logic

@@ -56,7 +56,9 @@ async def test_heartbeat_priority_queue():
     # Put events in reverse priority order
     ev_bg = HeartbeatPingEvent(process_id="p_bg", priority=HeartbeatPriority.BACKGROUND)
     ev_norm = HeartbeatPingEvent(process_id="p_norm", priority=HeartbeatPriority.NORMAL)
-    ev_crit = HeartbeatPingEvent(process_id="p_crit", priority=HeartbeatPriority.CRITICAL)
+    ev_crit = HeartbeatPingEvent(
+        process_id="p_crit", priority=HeartbeatPriority.CRITICAL
+    )
 
     await queue.put(ev_bg)
     await queue.put(ev_norm)

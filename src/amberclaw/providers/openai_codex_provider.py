@@ -5,10 +5,12 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from http import HTTPStatus
 from typing import Any
 
 import httpx
+from loguru import logger
 from oauth_cli_kit import get_token as get_codex_token
 
 from amberclaw.providers.base import LLMProvider, LLMResponse, ToolCallRequest
@@ -20,19 +22,20 @@ DEFAULT_ORIGINATOR = "amberclaw"
 class OpenAICodexProvider(LLMProvider):
     """Use Codex OAuth to call the Responses API."""
 
-    def __init__(self, default_model: str = "openai-codex/gpt-5.1-codex"):
+    def __init__(self, default_model: str = "openai-codex/gpt-5.1-codex") -> None:
         super().__init__(api_key=None, api_base=None)
         self.default_model = default_model
 
-    async def chat(
+    async def chat(  # noqa: PLR0913 - preserve the provider chat and constructor keyword contract
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
         model: str | None = None,
-        max_tokens: int = 4096,
-        temperature: float = 0.7,
+        max_tokens: int = 4096,  # noqa: ARG002 - provider protocol includes options unsupported by this adapter
+        temperature: float = 0.7,  # noqa: ARG002 - provider protocol includes options unsupported by this adapter
         reasoning_effort: str | None = None,
-        response_format: dict[str, Any] | None = None,
+        response_format: dict[str, Any] | None = None,  # noqa: ARG002 - provider protocol includes options unsupported by this adapter
+        on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
         model = model or self.default_model
         system_prompt, input_items = _convert_messages(messages)
@@ -68,6 +71,8 @@ class OpenAICodexProvider(LLMProvider):
                 body,
                 verify=True,
             )
+            if on_token and content and finish_reason != "error":
+                await on_token(content)
             return LLMResponse(
                 content=content,
                 tool_calls=tool_calls,
@@ -107,16 +112,16 @@ async def _request_codex(
     body: dict[str, Any],
     verify: bool,
 ) -> tuple[str, list[ToolCallRequest], str]:
-    async with httpx.AsyncClient(timeout=60.0, verify=verify) as client:
-        async with client.stream("POST", url, headers=headers, json=body) as response:
-            if response.status_code != 200:
-                text = await response.aread()
-                raise RuntimeError(
-                    _friendly_error(
-                        response.status_code, text.decode("utf-8", "ignore")
-                    ),
-                )
-            return await _consume_sse(response)
+    async with (
+        httpx.AsyncClient(timeout=60.0, verify=verify) as client,
+        client.stream("POST", url, headers=headers, json=body) as response,
+    ):
+        if response.status_code != HTTPStatus.OK:
+            text = await response.aread()
+            raise RuntimeError(
+                _friendly_error(response.status_code, text.decode("utf-8", "ignore")),
+            )
+        return await _consume_sse(response)
 
 
 def _convert_tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -259,9 +264,50 @@ async def _iter_sse(response: httpx.Response) -> AsyncGenerator[dict[str, Any], 
                 try:
                     yield json.loads(data)
                 except Exception:
+                    logger.debug(
+                        "Optional operation failed in openai_codex_provider; using the existing fallback"
+                    )
                     continue
             continue
         buffer.append(line)
+
+
+def _completed_tool_call(
+    item: dict[str, Any], tool_call_buffers: dict[str, dict[str, Any]], call_id: str
+) -> ToolCallRequest:
+    buf = tool_call_buffers.get(call_id) or {}
+    args_raw = buf.get("arguments") or item.get("arguments") or "{}"
+    try:
+        args = json.loads(args_raw)
+    except Exception:
+        args = {"raw": args_raw}
+    return ToolCallRequest(
+        id=f"{call_id}|{buf.get('id') or item.get('id') or 'fc_0'}",
+        name=str(buf.get("name") or item.get("name") or "unknown"),
+        arguments=args,
+    )
+
+
+def _consume_tool_item(
+    item: dict[str, Any],
+    buffers: dict[str, dict[str, Any]],
+    tool_calls: list[ToolCallRequest],
+    *,
+    completed: bool,
+) -> None:
+    if item.get("type") != "function_call":
+        return
+    call_id = item.get("call_id")
+    if not call_id:
+        return
+    if completed:
+        tool_calls.append(_completed_tool_call(item, buffers, call_id))
+    else:
+        buffers[call_id] = {
+            "id": item.get("id") or "fc_0",
+            "name": item.get("name"),
+            "arguments": item.get("arguments") or "",
+        }
 
 
 async def _consume_sse(
@@ -275,16 +321,9 @@ async def _consume_sse(
     async for event in _iter_sse(response):
         event_type = event.get("type")
         if event_type == "response.output_item.added":
-            item = event.get("item") or {}
-            if item.get("type") == "function_call":
-                call_id = item.get("call_id")
-                if not call_id:
-                    continue
-                tool_call_buffers[call_id] = {
-                    "id": item.get("id") or "fc_0",
-                    "name": item.get("name"),
-                    "arguments": item.get("arguments") or "",
-                }
+            _consume_tool_item(
+                event.get("item") or {}, tool_call_buffers, tool_calls, completed=False
+            )
         elif event_type == "response.output_text.delta":
             content += event.get("delta") or ""
         elif event_type == "response.function_call_arguments.delta":
@@ -296,24 +335,9 @@ async def _consume_sse(
             if call_id and call_id in tool_call_buffers:
                 tool_call_buffers[call_id]["arguments"] = event.get("arguments") or ""
         elif event_type == "response.output_item.done":
-            item = event.get("item") or {}
-            if item.get("type") == "function_call":
-                call_id = item.get("call_id")
-                if not call_id:
-                    continue
-                buf = tool_call_buffers.get(call_id) or {}
-                args_raw = buf.get("arguments") or item.get("arguments") or "{}"
-                try:
-                    args = json.loads(args_raw)
-                except Exception:
-                    args = {"raw": args_raw}
-                tool_calls.append(
-                    ToolCallRequest(
-                        id=f"{call_id}|{buf.get('id') or item.get('id') or 'fc_0'}",
-                        name=str(buf.get("name") or item.get("name") or "unknown"),
-                        arguments=args,
-                    ),
-                )
+            _consume_tool_item(
+                event.get("item") or {}, tool_call_buffers, tool_calls, completed=True
+            )
         elif event_type == "response.completed":
             status = (event.get("response") or {}).get("status")
             finish_reason = _map_finish_reason(status)
@@ -336,6 +360,6 @@ def _map_finish_reason(status: str | None) -> str:
 
 
 def _friendly_error(status_code: int, raw: str) -> str:
-    if status_code == 429:
+    if status_code == HTTPStatus.TOO_MANY_REQUESTS:
         return "ChatGPT usage quota exceeded or rate limit triggered. Please try again later."
     return f"HTTP {status_code}: {raw}"

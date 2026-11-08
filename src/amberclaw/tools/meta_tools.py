@@ -15,7 +15,7 @@ class ListToolsArgs(BaseModel):
     )
 
 
-class ListToolsTool(BaseTool):
+class ListToolsTool(BaseTool[[str | None]]):
     """Tool that returns catalog of all registered tools."""
 
     name = "list_tools"
@@ -60,7 +60,7 @@ class InspectToolSchemaArgs(BaseModel):
     tool_name: str = Field(..., description="Name of the tool to inspect")
 
 
-class InspectToolSchemaTool(BaseTool):
+class InspectToolSchemaTool(BaseTool[[str]]):
     """Tool that returns the exact JSON schema of a registered tool."""
 
     name = "inspect_tool_schema"

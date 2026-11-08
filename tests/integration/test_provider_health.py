@@ -1,10 +1,13 @@
 import logging
-import pytest
+from http import HTTPStatus
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
-from amberclaw.api.main import app
+
 from amberclaw.api.auth import create_access_token
-from amberclaw.providers.litellm_client import LLMRouter, LLMMessage
+from amberclaw.api.main import app
+from amberclaw.providers.litellm_client import LLMMessage, LLMRouter
 
 
 @pytest.fixture
@@ -18,7 +21,7 @@ def test_provider_health_endpoint(auth_headers, monkeypatch):
     client = TestClient(app)
 
     response = client.get("/api/v1/providers/health", headers=auth_headers)
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
 
     data = response.json()
     assert data["status"] == "ok"
@@ -45,11 +48,15 @@ async def test_llm_router_token_cost_tracking(caplog):
     mock_usage.total_tokens = 23
     mock_response.usage = mock_usage
 
-    with patch("amberclaw.providers.litellm_client.acompletion", new_callable=AsyncMock) as mock_acomp:
+    with patch(
+        "amberclaw.providers.litellm_client.acompletion", new_callable=AsyncMock
+    ) as mock_acomp:
         mock_acomp.return_value = mock_response
 
         messages = [LLMMessage(role="user", content="Hello")]
         result = await router.generate(messages=messages, model="gpt-4o")
 
         assert result == "Hello world from test"
-        assert "LLM Token Usage [gpt-4o]: prompt=15, completion=8, total=23" in caplog.text
+        assert (
+            "LLM Token Usage [gpt-4o]: prompt=15, completion=8, total=23" in caplog.text
+        )

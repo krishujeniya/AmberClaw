@@ -9,11 +9,14 @@
 - API auth router endpoints for token lifecycle and key management
 """
 
+import os
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
+from amberclaw.api.auth import create_access_token
 from amberclaw.api.v1.auth_router import router as auth_router
 from amberclaw.security.approval import (
     ApprovalStatus,
@@ -383,14 +386,22 @@ def test_tool_execution_filter_output_dlp_and_truncation():
 def auth_client():
     app = FastAPI()
     app.include_router(auth_router, prefix="/api/v1/auth")
-    return TestClient(app)
+    client = TestClient(app)
+
+    client.headers["Authorization"] = (
+        f"Bearer {create_access_token({'sub': 'offline-admin', 'role': 'admin'})}"
+    )
+    return client
 
 
 def test_api_auth_token_refresh_and_revoke_endpoints(auth_client):
     # 1. Login to obtain tokens
     res = auth_client.post(
         "/api/v1/auth/token",
-        json={"client_id": "admin", "client_secret": "amberclaw-secret"},
+        json={
+            "client_id": os.environ["AUTH_CLIENT_ID"],
+            "client_secret": os.environ["AUTH_CLIENT_SECRET"],
+        },
     )
     assert res.status_code == 200
     data = res.json()

@@ -1,5 +1,7 @@
 """Template persona marketplace directory."""
 
+from typing import ClassVar
+
 from pydantic import BaseModel
 
 
@@ -14,7 +16,7 @@ class PersonaTemplate(BaseModel):
 class TemplateMarket:
     """Catalog of built-in and community agent persona templates."""
 
-    BUILTIN_PERSONAS = [
+    BUILTIN_PERSONAS: ClassVar[list[PersonaTemplate]] = [
         PersonaTemplate(
             id="default-agent",
             name="Default OS Assistant",
@@ -35,7 +37,7 @@ class TemplateMarket:
         ),
     ]
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._personas = {p.id: p for p in self.BUILTIN_PERSONAS}
 
     def list_personas(self) -> list[PersonaTemplate]:

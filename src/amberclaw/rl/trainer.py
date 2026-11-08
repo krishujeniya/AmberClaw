@@ -93,7 +93,8 @@ class GRPOTrainer:
 
         # Calculate clipped surrogate policy loss
         policy_loss = -sum(
-            adv * math.exp(p - r) for adv, p, r in zip(advantages, p_log, r_log, strict=False)
+            adv * math.exp(p - r)
+            for adv, p, r in zip(advantages, p_log, r_log, strict=False)
         ) / max(1, len(advantages))
         policy_loss += self.config.beta_kl * kl
 

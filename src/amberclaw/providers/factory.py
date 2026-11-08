@@ -11,11 +11,21 @@ console = Console()
 
 def make_provider(config: Config) -> LLMProvider:
     """Create the appropriate LLM provider from config."""
-    from amberclaw.providers.azure_openai_provider import AzureOpenAIProvider
-    from amberclaw.providers.custom_provider import CustomProvider
-    from amberclaw.providers.litellm_provider import LiteLLMProvider
-    from amberclaw.providers.openai_codex_provider import OpenAICodexProvider
-    from amberclaw.providers.registry import find_by_name
+    from amberclaw.providers.azure_openai_provider import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+        AzureOpenAIProvider,
+    )
+    from amberclaw.providers.custom_provider import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+        CustomProvider,
+    )
+    from amberclaw.providers.litellm_provider import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+        LiteLLMProvider,
+    )
+    from amberclaw.providers.openai_codex_provider import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+        OpenAICodexProvider,
+    )
+    from amberclaw.providers.registry import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+        find_by_name,
+    )
 
     model = config.agents.defaults.model
     provider_name = config.get_provider_name(model)
@@ -53,7 +63,9 @@ def make_provider(config: Config) -> LLMProvider:
 
     # Ollama: direct local endpoint, supports vision
     if provider_name == "ollama":
-        from amberclaw.providers.ollama_provider import OllamaProvider
+        from amberclaw.providers.ollama_provider import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            OllamaProvider,
+        )
 
         return OllamaProvider(
             api_key=p.api_key if p else None,
@@ -63,7 +75,9 @@ def make_provider(config: Config) -> LLMProvider:
 
     # vLLM: local model runner and OpenAI-compatible provider
     if provider_name == "vllm":
-        from amberclaw.providers.vllm import VLLMProvider
+        from amberclaw.providers.vllm import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            VLLMProvider,
+        )
 
         return VLLMProvider(
             api_key=p.api_key if p else None,

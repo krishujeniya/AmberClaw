@@ -22,7 +22,9 @@ def status() -> None:
     )
 
     if config_path.exists():
-        from amberclaw.providers.registry import PROVIDERS
+        from amberclaw.providers.registry import (  # noqa: PLC0415 - defer runtime and platform initialization until command use
+            PROVIDERS,
+        )
 
         console.print(f"Model: {cfg.agents.defaults.model}")
 

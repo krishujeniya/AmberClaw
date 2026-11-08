@@ -38,7 +38,10 @@ class MemoryNudgeEvaluator:
             return None
 
         assistant_turns = sum(1 for m in messages if m.get("role") == "assistant")
-        if assistant_turns > 0 and assistant_turns % self.underlying_system.TURN_FREQUENCY == 0:
+        if (
+            assistant_turns > 0
+            and assistant_turns % self.underlying_system.TURN_FREQUENCY == 0
+        ):
             trigger_type = NudgeTriggerType.PERIODIC_TURN
         else:
             trigger_type = NudgeTriggerType.KEYWORD_PATTERN

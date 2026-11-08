@@ -4,7 +4,7 @@ Provides persistent conversation history, turn tracking, and FTS5 full-text sear
 """
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from amberclaw.memory.session_db import SessionDB
 
@@ -12,19 +12,19 @@ from amberclaw.memory.session_db import SessionDB
 class SQLiteMemoryManager:
     """High-level memory manager interfacing with SQLite SessionDB."""
 
-    def __init__(self, db_path: str | Path = "data/sessions.db"):
+    def __init__(self, db_path: str | Path = "data/sessions.db") -> None:
         self.db_path = Path(db_path)
         self.session_db = SessionDB(self.db_path)
 
-    def save_turn(
+    def save_turn(  # noqa: PLR0913 - preserve public turn fields and optional multi-scope identifiers
         self,
         session_id: str,
         role: str,
         content: str,
-        metadata: Optional[dict[str, Any]] = None,
-        user_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
-        org_id: Optional[str] = None,
+        metadata: dict[str, Any] | None = None,
+        user_id: str | None = None,
+        agent_id: str | None = None,
+        org_id: str | None = None,
     ) -> int:
         """Save a conversation turn to persistent SQLite storage."""
         return self.session_db.add_turn(
@@ -40,9 +40,9 @@ class SQLiteMemoryManager:
     def get_history(
         self,
         session_id: str,
-        limit: Optional[int] = 50,
-        user_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
+        limit: int | None = 50,
+        user_id: str | None = None,
+        agent_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Retrieve conversation history for a given session."""
         turns = self.session_db.get_turns(
@@ -57,8 +57,8 @@ class SQLiteMemoryManager:
     def search_history(
         self,
         query: str,
-        session_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        session_id: str | None = None,
+        user_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """Perform full-text search (FTS5) over stored conversation turns."""
         return self.session_db.search_turns(

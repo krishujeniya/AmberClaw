@@ -1,14 +1,19 @@
 import pytest
 from fastapi import FastAPI, status
 from fastapi.testclient import TestClient
-from amberclaw.api.middleware import RequestBodyLimitMiddleware, RateLimiterMiddleware
+
+from amberclaw.api.middleware import RateLimiterMiddleware, RequestBodyLimitMiddleware
 
 
 @pytest.fixture
 def test_app():
     app = FastAPI()
-    app.add_middleware(RequestBodyLimitMiddleware, max_bytes=1024 * 1024)  # 1 MB limit for test
-    app.add_middleware(RateLimiterMiddleware, max_requests=3, window_seconds=60)  # 3 req/min for test
+    app.add_middleware(
+        RequestBodyLimitMiddleware, max_bytes=1024 * 1024
+    )  # 1 MB limit for test
+    app.add_middleware(
+        RateLimiterMiddleware, max_requests=3, window_seconds=60
+    )  # 3 req/min for test
 
     @app.get("/health")
     def health():

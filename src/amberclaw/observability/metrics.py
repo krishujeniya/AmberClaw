@@ -81,7 +81,12 @@ class TelemetrySampler:
             return False
 
         if trace_id:
-            h = int(hashlib.md5(trace_id.encode("utf-8")).hexdigest()[:8], 16)  # noqa: S324
+            h = int(
+                hashlib.md5(
+                    trace_id.encode("utf-8"), usedforsecurity=False
+                ).hexdigest()[:8],
+                16,
+            )
             return (h % 10000) / 10000.0 < self.sample_rate
 
         import secrets  # noqa: PLC0415

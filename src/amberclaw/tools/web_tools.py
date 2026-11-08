@@ -3,13 +3,15 @@ AmberClaw Web & Search Tools
 """
 
 import html
+import os
 import re
 
 import httpx
 from pydantic import BaseModel, Field
 
-from amberclaw.config.schema import settings
 from amberclaw.tools.registry import BaseTool
+
+MAX_EXTRACTED_TEXT_CHARS = 10000
 
 
 class WebSearchArgs(BaseModel):
@@ -17,7 +19,7 @@ class WebSearchArgs(BaseModel):
     count: int = Field(default=5, ge=1, le=10, description="Number of results")
 
 
-class WebSearchTool(BaseTool):
+class WebSearchTool(BaseTool[[str, int]]):
     name = "web_search"
     description = "Search the web and return snippets and URLs."
     args_schema = WebSearchArgs
@@ -25,7 +27,7 @@ class WebSearchTool(BaseTool):
     async def run(self, query: str, count: int = 5) -> str:
         # For production, we'd use Tavily/Brave API keys from settings
         # Here we simulate or use a mock for now if no keys are found
-        api_key = settings.providers.extra.get("tavily_api_key")
+        api_key = os.environ.get("TAVILY_API_KEY")
         if not api_key:
             return (
                 f"Error: TAVILY_API_KEY not configured. Simulated search for: {query}"
@@ -58,7 +60,7 @@ class WebFetchArgs(BaseModel):
     url: str = Field(..., description="URL to fetch")
 
 
-class WebFetchTool(BaseTool):
+class WebFetchTool(BaseTool[[str]]):
     name = "web_fetch"
     description = "Fetch and extract clean text from a URL."
     args_schema = WebFetchArgs
@@ -77,7 +79,7 @@ class WebFetchTool(BaseTool):
                 text = html.unescape(text).strip()
                 text = re.sub(r"\n{3,}", "\n\n", text)
 
-                if len(text) > 10000:
+                if len(text) > MAX_EXTRACTED_TEXT_CHARS:
                     text = text[:10000] + "\n\n... (content truncated)"
 
                 return f"Fetched content from {url}:\n\n{text}"

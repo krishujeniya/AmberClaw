@@ -15,7 +15,8 @@ async def test_audio_summarizer():
 
     assert isinstance(result, AudioSummaryResult)
     assert result.title == "Weekly Team Sync"
-    assert result.duration_sec == 5.0
+    expected_result_duration_sec = 5.0
+    assert result.duration_sec == expected_result_duration_sec
     assert len(result.executive_summary) > 0
     assert len(result.action_items) >= 1
     assert len(result.topics) >= 1

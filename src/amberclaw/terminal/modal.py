@@ -30,9 +30,8 @@ def run_bash(command: str, cwd: str = "/workspace") -> dict[str, Any]:
 
     start_time = time.perf_counter()
     try:
-        res = subprocess.run(  # noqa: S602
-            command,
-            shell=True,
+        res = subprocess.run(  # noqa: S603 - execute the requested command inside the remote sandbox
+            ["/bin/bash", "-c", command],
             check=False,
             capture_output=True,
             text=True,
@@ -62,39 +61,28 @@ def run_python(
     code: str, env: dict[str, str] | None = None, cwd: str = "/workspace"
 ) -> dict[str, Any]:
     """Execute python script inside the Modal container."""
-    import io
     import os
+    import subprocess
     import sys
     import time
 
-    if env:
-        os.environ.update(env)
-
-    stdout_buffer = io.StringIO()
-    stderr_buffer = io.StringIO()
-    sys.stdout = stdout_buffer
-    sys.stderr = stderr_buffer
-
     start_time = time.perf_counter()
-    exit_code = 0
     try:
-        os.chdir(cwd)
-        exec_globals = {"__name__": "__main__"}
-        exec(code, exec_globals)  # noqa: S102
-    except SystemExit as e:
-        exit_code = e.code if isinstance(e.code, int) else 0
-    except Exception:
-        import traceback
-
-        traceback.print_exc(file=stderr_buffer)
-        exit_code = 1
-    finally:
-        sys.stdout = sys.__stdout__
-        sys.stderr = sys.__stderr__
+        result = subprocess.run(  # noqa: S603 - execute code inside a separate remote sandbox process
+            [sys.executable, "-c", code],
+            check=False,
+            capture_output=True,
+            text=True,
+            cwd=cwd,
+            env={**os.environ, **(env or {})},
+        )
+        stdout, stderr, exit_code = result.stdout, result.stderr, result.returncode
+    except Exception as exc:
+        stdout, stderr, exit_code = "", f"Execution error: {exc}", -1
 
     return {
-        "stdout": stdout_buffer.getvalue(),
-        "stderr": stderr_buffer.getvalue(),
+        "stdout": stdout,
+        "stderr": stderr,
         "exit_code": exit_code,
         "execution_time_ms": (time.perf_counter() - start_time) * 1000,
     }
@@ -103,7 +91,7 @@ def run_python(
 class ModalTerminalBackend(BaseTerminalBackend):
     """Terminal execution backend running in Modal cloud container sandboxes."""
 
-    def __init__(self, workspace_dir: str, app_name: str = "amberclaw-sandbox"):
+    def __init__(self, workspace_dir: str, app_name: str = "amberclaw-sandbox") -> None:
         self.workspace_dir = str(Path(workspace_dir).resolve())
         self.app_name = app_name
         self._connected = False

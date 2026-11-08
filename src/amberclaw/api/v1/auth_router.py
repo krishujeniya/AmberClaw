@@ -1,12 +1,18 @@
 # ruff: noqa: S105
 """API authentication endpoints with JWT, Rotating Refresh Tokens, API Key Lifecycle, and Break-Glass."""
 
-import os
+import secrets
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
+from amberclaw.api.auth import require_auth_administrator
+from amberclaw.security.credentials import (
+    AuthenticationConfigurationError,
+    get_client_credentials,
+    get_signing_secret,
+)
 from amberclaw.security.tokens import (
     APIKeyManager,
     BreakGlassManager,
@@ -78,10 +84,20 @@ class BreakGlassResponse(BaseModel):
 @router.post("/token", response_model=TokenResponse)
 async def login_for_access_token(request: TokenRequest) -> TokenResponse:
     """Issue JWT access and rotating refresh token for client authentication."""
-    expected_id = os.getenv("AUTH_CLIENT_ID", "admin")
-    expected_secret = os.getenv("AUTH_CLIENT_SECRET", "amberclaw-secret")
+    try:
+        expected_id, expected_secret = get_client_credentials()
+        get_signing_secret()
+    except AuthenticationConfigurationError as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "Client authentication is not configured",
+        ) from exc
 
-    if request.client_id != expected_id or request.client_secret != expected_secret:
+    valid_id = secrets.compare_digest(request.client_id.encode(), expected_id.encode())
+    valid_secret = secrets.compare_digest(
+        request.client_secret.encode(), expected_secret.encode()
+    )
+    if not (valid_id and valid_secret):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid client credentials",
@@ -106,9 +122,13 @@ async def login_for_access_token(request: TokenRequest) -> TokenResponse:
 @router.post("/token/refresh", response_model=TokenPair)
 async def refresh_access_token(request: RefreshTokenRequest) -> TokenPair:
     """Rotate an existing refresh token and obtain a fresh access token."""
-    mgr = RefreshTokenManager()
     try:
+        mgr = RefreshTokenManager()
         return mgr.rotate_refresh_token(request.refresh_token)
+    except AuthenticationConfigurationError as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "JWT authentication is not configured"
+        ) from exc
     except SecurityCompromiseError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -123,7 +143,11 @@ async def refresh_access_token(request: RefreshTokenRequest) -> TokenPair:
         ) from e
 
 
-@router.post("/token/revoke", status_code=status.HTTP_200_OK)
+@router.post(
+    "/token/revoke",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_auth_administrator)],
+)
 async def revoke_token_or_session(request: RevokeTokenRequest) -> dict[str, Any]:
     """Revoke a specific token JTI or all tokens for an entire session."""
     store = TokenRevocationStore.get_instance()
@@ -135,7 +159,10 @@ async def revoke_token_or_session(request: RevokeTokenRequest) -> dict[str, Any]
 
 
 @router.post(
-    "/api-keys", response_model=APIKeyResponse, status_code=status.HTTP_201_CREATED
+    "/api-keys",
+    response_model=APIKeyResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_auth_administrator)],
 )
 async def create_api_key(request: CreateAPIKeyRequest) -> APIKeyResponse:
     """Generate a hashed API key with assigned scopes and expiration."""
@@ -156,7 +183,11 @@ async def create_api_key(request: CreateAPIKeyRequest) -> APIKeyResponse:
     )
 
 
-@router.post("/api-keys/rotate", response_model=APIKeyResponse)
+@router.post(
+    "/api-keys/rotate",
+    response_model=APIKeyResponse,
+    dependencies=[Depends(require_auth_administrator)],
+)
 async def rotate_api_key(request: RotateAPIKeyRequest) -> APIKeyResponse:
     """Rotate an existing API key, invalidating the previous key."""
     mgr = APIKeyManager.get_instance()
@@ -180,7 +211,17 @@ async def rotate_api_key(request: RotateAPIKeyRequest) -> APIKeyResponse:
         ) from e
 
 
-@router.post("/auth/break-glass", response_model=BreakGlassResponse)
+@router.post(
+    "/break-glass",
+    response_model=BreakGlassResponse,
+    dependencies=[Depends(require_auth_administrator)],
+)
+@router.post(
+    "/auth/break-glass",
+    response_model=BreakGlassResponse,
+    dependencies=[Depends(require_auth_administrator)],
+    include_in_schema=False,
+)
 async def trigger_break_glass(request: BreakGlassRequest) -> BreakGlassResponse:
     """Emergency break-glass elevation requiring strict justification and creating an audit record."""
     mgr = BreakGlassManager.get_instance()

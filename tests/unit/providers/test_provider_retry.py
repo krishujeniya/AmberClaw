@@ -11,7 +11,7 @@ class ScriptedProvider(LLMProvider):
         self._responses = list(responses)
         self.calls = 0
 
-    async def chat(self, *args, **kwargs) -> LLMResponse:
+    async def chat(self, *_args, **_kwargs) -> LLMResponse:
         self.calls += 1
         response = self._responses.pop(0)
         if isinstance(response, BaseException):
@@ -45,7 +45,8 @@ async def test_chat_with_retry_retries_transient_error_then_succeeds(
 
     assert response.finish_reason == "stop"
     assert response.content == "ok"
-    assert provider.calls == 2
+    expected_provider_calls = 2
+    assert provider.calls == expected_provider_calls
     assert delays == [1]
 
 
@@ -94,7 +95,8 @@ async def test_chat_with_retry_returns_final_error_after_retries(monkeypatch) ->
     )
 
     assert response.content == "503 final server error"
-    assert provider.calls == 4
+    expected_provider_calls_2 = 4
+    assert provider.calls == expected_provider_calls_2
     assert delays == [1, 2, 4]
 
 

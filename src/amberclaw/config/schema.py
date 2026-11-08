@@ -1,11 +1,15 @@
 """Configuration schema using Pydantic."""
 
+import secrets
 from pathlib import Path
 from typing import Literal
 
+from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+KEYRING_REFERENCE_PARTS = 3
 
 
 class Base(BaseModel):
@@ -19,7 +23,9 @@ class WhatsAppConfig(Base):
 
     enabled: bool = False
     bridge_url: str = "ws://localhost:3001"
-    bridge_token: str = "local-dev-token-please-change"  # Shared token for bridge auth
+    bridge_token: str = Field(
+        default_factory=lambda: secrets.token_urlsafe(32), repr=False
+    )
     allow_from: list[str] = Field(default_factory=list)  # Allowed phone numbers
     spawn_bridge: bool = True  # Dynamically spawn the bridge subprocess
     bridge_port: int = 3001  # Local port for the bridge
@@ -101,7 +107,7 @@ class EmailConfig(Base):
     enabled: bool = False
     consent_granted: bool = False  # Explicit owner permission to access mailbox data
 
-    # IMAP (receive)
+    # Receiving mail through IMAP.
     imap_host: str = ""
     imap_port: int = 993
     imap_username: str = ""
@@ -109,7 +115,7 @@ class EmailConfig(Base):
     imap_mailbox: str = "INBOX"
     imap_use_ssl: bool = True
 
-    # SMTP (send)
+    # Sending mail through SMTP.
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""
@@ -327,7 +333,7 @@ class HeartbeatConfig(Base):
 class GatewayConfig(Base):
     """Gateway/server configuration."""
 
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     port: int = 18790
     environment: str = "development"
     cors_origins: list[str] = Field(
@@ -531,7 +537,9 @@ class Config(BaseSettings):
         model: str | None = None,
     ) -> tuple["ProviderConfig | None", str | None]:
         """Match provider config and its registry name. Returns (config, spec_name)."""
-        from amberclaw.providers.registry import PROVIDERS
+        from amberclaw.providers.registry import (  # noqa: PLC0415 - resolve runtime settings without eager import cycles
+            PROVIDERS,
+        )
 
         forced = self.agents.defaults.provider
         if forced != "auto":
@@ -550,16 +558,23 @@ class Config(BaseSettings):
         # Explicit provider prefix wins — prevents `github-copilot/...codex` matching openai_codex.
         for spec in PROVIDERS:
             p = getattr(self.providers, spec.name, None)
-            if p and model_prefix and normalized_prefix == spec.name:
-                if spec.is_oauth or p.api_key:
-                    return p, spec.name
+            if (
+                p
+                and model_prefix
+                and normalized_prefix == spec.name
+                and (spec.is_oauth or p.api_key)
+            ):
+                return p, spec.name
 
         # Match by keyword (order follows PROVIDERS registry)
         for spec in PROVIDERS:
             p = getattr(self.providers, spec.name, None)
-            if p and any(_kw_matches(kw) for kw in spec.keywords):
-                if spec.is_oauth or p.api_key:
-                    return p, spec.name
+            if (
+                p
+                and any(_kw_matches(kw) for kw in spec.keywords)
+                and (spec.is_oauth or p.api_key)
+            ):
+                return p, spec.name
 
         # Fallback: gateways first, then others (follows registry order)
         # OAuth providers are NOT valid fallbacks — they require explicit model selection
@@ -590,29 +605,38 @@ class Config(BaseSettings):
         # Support keyring resolution: keyring:service:username
         if p.api_key.startswith("keyring:"):
             try:
-                import keyring
+                import keyring  # noqa: PLC0415 - resolve runtime settings without eager import cycles
 
                 parts = p.api_key.split(":")
-                if len(parts) == 3:
+                if len(parts) == KEYRING_REFERENCE_PARTS:
                     _, service, username = parts
-                    return keyring.get_password(service, username)
+                    value: object = keyring.get_password(service, username)
+                    return value if isinstance(value, str) else None
             except Exception:
-                pass
+                logger.debug(
+                    "Optional operation failed in schema; using the existing fallback"
+                )
 
         # Support vault resolution
         if p.api_key.startswith("vault://"):
             try:
-                from amberclaw.security.vault import vault
+                from amberclaw.security.vault import (  # noqa: PLC0415 - resolve runtime settings without eager import cycles
+                    vault,
+                )
 
                 return vault.resolve_secret(p.api_key)
             except Exception:
-                pass
+                logger.debug(
+                    "Optional operation failed in schema; using the existing fallback"
+                )
 
         return p.api_key
 
     def get_api_base(self, model: str | None = None) -> str | None:
         """Get API base URL for the given model. Applies default URLs for known gateways."""
-        from amberclaw.providers.registry import find_by_name
+        from amberclaw.providers.registry import (  # noqa: PLC0415 - resolve runtime settings without eager import cycles
+            find_by_name,
+        )
 
         p, name = self._match_provider(model)
         if p and p.api_base:
@@ -634,7 +658,9 @@ class Config(BaseSettings):
 # Global configuration singleton
 def _get_settings() -> Config:
     try:
-        from amberclaw.config.loader import load_config
+        from amberclaw.config.loader import (  # noqa: PLC0415 - resolve runtime settings without eager import cycles
+            load_config,
+        )
 
         return load_config()
     except Exception:

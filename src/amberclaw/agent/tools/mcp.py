@@ -12,7 +12,7 @@ from amberclaw.agent.tools.base import Tool
 from amberclaw.agent.tools.registry import ToolRegistry
 
 
-async def discover_mcp_servers(host_url: str) -> list[dict]:
+async def discover_mcp_servers(host_url: str) -> list[dict[str, Any]]:
     """
     Discover MCP servers via .well-known/mcp.json.
     Returns a list of server configurations.
@@ -23,7 +23,12 @@ async def discover_mcp_servers(host_url: str) -> list[dict]:
             resp = await client.get(discovery_url)
             if resp.status_code == 200:
                 data = resp.json()
-                servers = data.get("servers", [])
+                raw_servers = data.get("servers", []) if isinstance(data, dict) else []
+                servers = (
+                    [server for server in raw_servers if isinstance(server, dict)]
+                    if isinstance(raw_servers, list)
+                    else []
+                )
                 logger.info(
                     "Found {} MCP servers via discovery at {}", len(servers), host_url
                 )
@@ -36,12 +41,19 @@ async def discover_mcp_servers(host_url: str) -> list[dict]:
 class MCPToolWrapper(Tool):
     """Wraps a single MCP server tool as a amberclaw Tool."""
 
-    def __init__(self, session, server_name: str, tool_def, tool_timeout: int = 30):
+    def __init__(
+        self, session: Any, server_name: str, tool_def: Any, tool_timeout: float = 30
+    ) -> None:
         self._session = session
-        self._original_name = tool_def.name
+        self._original_name = str(tool_def.name)
         self._name = f"mcp_{server_name}_{tool_def.name}"
-        self._description = tool_def.description or tool_def.name
-        self._parameters = tool_def.inputSchema or {"type": "object", "properties": {}}
+        self._description = str(tool_def.description or tool_def.name)
+        schema = tool_def.inputSchema
+        self._parameters: dict[str, Any] = (
+            schema
+            if isinstance(schema, dict) and schema
+            else {"type": "object", "properties": {}}
+        )
         self._tool_timeout = tool_timeout
 
     @property
@@ -129,7 +141,7 @@ class MCPToolWrapper(Tool):
 
 
 async def connect_mcp_servers(
-    mcp_servers: dict,
+    mcp_servers: dict[str, Any],
     registry: ToolRegistry,
     stack: AsyncExitStack,
 ) -> None:

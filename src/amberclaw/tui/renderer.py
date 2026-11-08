@@ -21,7 +21,9 @@ class TUIMessage(BaseModel):
     tool_name: str | None = None
     tool_args: dict[str, Any] | None = None
     tool_output: str | None = None
-    timestamp: str = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%H:%M:%S"))
+    timestamp: str = Field(
+        default_factory=lambda: datetime.datetime.now(datetime.UTC).strftime("%H:%M:%S")
+    )
     is_thought: bool = False
     is_approval_request: bool = False
     approval_ticket_id: str | None = None
@@ -50,12 +52,16 @@ class TUIRenderer:
 
             if msg.tool_args:
                 args_str = str(msg.tool_args)
-                items.append(Text("Arguments: ", style="bold") + Text(args_str, style="cyan"))
+                items.append(
+                    Text("Arguments: ", style="bold") + Text(args_str, style="cyan")
+                )
 
             if msg.tool_output:
                 out_str = msg.tool_output.strip()
                 if out_str.startswith("{") or out_str.startswith("["):
-                    items.append(Syntax(out_str, "json", theme="monokai", word_wrap=True))
+                    items.append(
+                        Syntax(out_str, "json", theme="monokai", word_wrap=True)
+                    )
                 else:
                     items.append(Text(out_str, style=self.theme.text))
 
@@ -78,7 +84,7 @@ class TUIRenderer:
 
         if msg.role == "user":
             header = Text(f"🧑 User ({msg.timestamp})", style=self.theme.user_badge)
-            body = Text(msg.content, style=self.theme.text)
+            body: Text | Markdown = Text(msg.content, style=self.theme.text)
             return Panel(
                 body,
                 title=header.markup,
@@ -86,7 +92,9 @@ class TUIRenderer:
                 padding=(0, 1),
             )
 
-        header = Text(f"🐾 AmberClaw ({msg.timestamp})", style=self.theme.assistant_badge)
+        header = Text(
+            f"🐾 AmberClaw ({msg.timestamp})", style=self.theme.assistant_badge
+        )
         try:
             body = Markdown(msg.content)
         except Exception:
@@ -109,7 +117,10 @@ class TUIRenderer:
         text = Text()
         text.append(f"Action: {action}\n", style="bold yellow")
         text.append(f"Details: {details}\n\n", style="white")
-        text.append(f"To respond, type: /approve {ticket_id}  or  /reject {ticket_id}", style="bold green")
+        text.append(
+            f"To respond, type: /approve {ticket_id}  or  /reject {ticket_id}",
+            style="bold green",
+        )
 
         return Panel(
             text,
@@ -121,7 +132,10 @@ class TUIRenderer:
     def render_timeline(self, messages: list[TUIMessage]) -> Group:
         """Render a full list of messages into a single timeline renderable."""
         if not messages:
-            empty_text = Text("No messages in session yet. Type a message or /help to start.", style=self.theme.muted)
+            empty_text = Text(
+                "No messages in session yet. Type a message or /help to start.",
+                style=self.theme.muted,
+            )
             return Group(Panel(empty_text, border_style="dim"))
 
         rendered = [self.render_message(m) for m in messages]

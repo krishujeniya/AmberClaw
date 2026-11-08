@@ -61,9 +61,9 @@ async def run_async_migrations() -> None:
 
     url = configuration["sqlalchemy.url"]
     if "sqlite" in url and "aiosqlite" not in url:
-        connectable = create_engine(url, poolclass=pool.NullPool)
-        with connectable.begin() as connection:
-            do_run_migrations(connection)
+        sync_engine = create_engine(url, poolclass=pool.NullPool)
+        with sync_engine.begin() as sync_connection:
+            do_run_migrations(sync_connection)
         return
 
     connectable = async_engine_from_config(

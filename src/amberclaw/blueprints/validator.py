@@ -59,10 +59,15 @@ class BlueprintValidator:
 
         # Check duplicate channels
         if len(blueprint.channels) != len(set(blueprint.channels)):
-            warnings.append("Duplicate channel names detected in blueprint channels list.")
+            warnings.append(
+                "Duplicate channel names detected in blueprint channels list."
+            )
 
         # Warnings for high security risk combinations
-        if blueprint.security.sandbox_type == "local" and blueprint.security.allow_network_egress:
+        if (
+            blueprint.security.sandbox_type == "local"
+            and blueprint.security.allow_network_egress
+        ):
             warnings.append(
                 "Local sandbox with unrestricted network egress enabled presents elevated security surface."
             )

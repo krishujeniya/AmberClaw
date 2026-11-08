@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import deque
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any
+from datetime import UTC, datetime
+from http import HTTPStatus
+from typing import Any, TypeVar
 
 import httpx
 from loguru import logger
@@ -61,7 +63,7 @@ class DelayState:
 
     entries: list[MochatBufferedEntry] = field(default_factory=list)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
-    timer: asyncio.Task | None = None
+    timer: asyncio.Task[Any] | None = None
 
 
 @dataclass
@@ -77,12 +79,12 @@ class MochatTarget:
 # ---------------------------------------------------------------------------
 
 
-def _safe_dict(value: Any) -> dict:
+def _safe_dict(value: Any) -> dict[Any, Any]:
     """Return *value* if it's a dict, else empty dict."""
     return value if isinstance(value, dict) else {}
 
 
-def _str_field(src: dict, *keys: str) -> str:
+def _str_field(src: dict[Any, Any], *keys: str) -> str:
     """Return the first non-empty str value found for *keys*, stripped."""
     for k in keys:
         v = src.get(k)
@@ -91,31 +93,52 @@ def _str_field(src: dict, *keys: str) -> str:
     return ""
 
 
-def _make_synthetic_event(
-    message_id: str,
-    author: str,
-    content: Any,
-    meta: Any,
-    group_id: str,
-    converse_id: str,
-    timestamp: Any = None,
-    *,
-    author_info: Any = None,
-) -> dict[str, Any]:
+_Callback = TypeVar("_Callback", bound=Callable[..., Awaitable[None]])
+
+
+def _socket_event(client: Any) -> Callable[[_Callback], _Callback]:
+    def register(callback: _Callback) -> _Callback:
+        client.event(callback)
+        return callback
+
+    return register
+
+
+def _socket_on(client: Any, event: str) -> Callable[[_Callback], _Callback]:
+    def register(callback: _Callback) -> _Callback:
+        client.on(event, callback)
+        return callback
+
+    return register
+
+
+@dataclass
+class _SyntheticMessage:
+    message_id: str
+    author: str
+    content: Any
+    meta: Any
+    group_id: str
+    converse_id: str
+    timestamp: Any = None
+    author_info: Any = None
+
+
+def _make_synthetic_event(message: _SyntheticMessage) -> dict[str, Any]:
     """Build a synthetic ``message.add`` event dict."""
     payload: dict[str, Any] = {
-        "messageId": message_id,
-        "author": author,
-        "content": content,
-        "meta": _safe_dict(meta),
-        "groupId": group_id,
-        "converseId": converse_id,
+        "messageId": message.message_id,
+        "author": message.author,
+        "content": message.content,
+        "meta": _safe_dict(message.meta),
+        "groupId": message.group_id,
+        "converseId": message.converse_id,
     }
-    if author_info is not None:
-        payload["authorInfo"] = _safe_dict(author_info)
+    if message.author_info is not None:
+        payload["authorInfo"] = _safe_dict(message.author_info)
     return {
         "type": "message.add",
-        "timestamp": timestamp or datetime.utcnow().isoformat(),
+        "timestamp": message.timestamp or datetime.now(UTC).isoformat(),
         "payload": payload,
     }
 
@@ -244,7 +267,7 @@ class MochatChannel(BaseChannel):
 
     name = "mochat"
 
-    def __init__(self, config: MochatConfig, bus: MessageBus):
+    def __init__(self, config: MochatConfig, bus: MessageBus) -> None:
         super().__init__(config, bus)
         self.config: MochatConfig = config
         self._http: httpx.AsyncClient | None = None
@@ -254,7 +277,7 @@ class MochatChannel(BaseChannel):
         self._state_dir = get_runtime_subdir("mochat")
         self._cursor_path = self._state_dir / "session_cursors.json"
         self._session_cursor: dict[str, int] = {}
-        self._cursor_save_task: asyncio.Task | None = None
+        self._cursor_save_task: asyncio.Task[Any] | None = None
 
         self._session_set: set[str] = set()
         self._panel_set: set[str] = set()
@@ -268,9 +291,9 @@ class MochatChannel(BaseChannel):
         self._delay_states: dict[str, DelayState] = {}
 
         self._fallback_mode = False
-        self._session_fallback_tasks: dict[str, asyncio.Task] = {}
-        self._panel_fallback_tasks: dict[str, asyncio.Task] = {}
-        self._refresh_task: asyncio.Task | None = None
+        self._session_fallback_tasks: dict[str, asyncio.Task[Any]] = {}
+        self._panel_fallback_tasks: dict[str, asyncio.Task[Any]] = {}
+        self._refresh_task: asyncio.Task[Any] | None = None
         self._target_locks: dict[str, asyncio.Lock] = {}
 
     # ---- lifecycle ---------------------------------------------------------
@@ -292,8 +315,7 @@ class MochatChannel(BaseChannel):
             await self._ensure_fallback_workers()
 
         self._refresh_task = asyncio.create_task(self._refresh_loop())
-        while self._running:
-            await asyncio.sleep(1)
+        await self._stop_event.wait()
 
     async def stop(self) -> None:
         """Stop all workers and clean up resources."""
@@ -309,7 +331,9 @@ class MochatChannel(BaseChannel):
             try:
                 await self._socket.disconnect()
             except Exception:
-                pass
+                logger.debug(
+                    "Optional operation failed in mochat; using the existing fallback"
+                )
             self._socket = None
 
         if self._cursor_save_task:
@@ -349,17 +373,15 @@ class MochatChannel(BaseChannel):
             if is_panel:
                 await self._api_send(
                     "/api/claw/groups/panels/send",
-                    "panelId",
-                    target.id,
+                    MochatTarget(target.id, is_panel=True),
                     content,
                     msg.reply_to,
-                    self._read_group_id(msg.metadata),
+                    group_id=self._read_group_id(msg.metadata),
                 )
             else:
                 await self._api_send(
                     "/api/claw/sessions/send",
-                    "sessionId",
-                    target.id,
+                    MochatTarget(target.id, is_panel=False),
                     content,
                     msg.reply_to,
                 )
@@ -414,7 +436,7 @@ class MochatChannel(BaseChannel):
             serializer=serializer,
         )
 
-        @client.event
+        @_socket_event(client)
         async def connect() -> None:
             self._ws_connected, self._ws_ready = True, False
             logger.info("Mochat websocket connected")
@@ -426,7 +448,7 @@ class MochatChannel(BaseChannel):
                 else self._ensure_fallback_workers()
             )
 
-        @client.event
+        @_socket_event(client)
         async def disconnect() -> None:
             if not self._running:
                 return
@@ -434,15 +456,15 @@ class MochatChannel(BaseChannel):
             logger.warning("Mochat websocket disconnected")
             await self._ensure_fallback_workers()
 
-        @client.event
+        @_socket_event(client)
         async def connect_error(data: Any) -> None:
             logger.error("Mochat websocket connect error: {}", data)
 
-        @client.on("claw.session.events")
+        @_socket_on(client, "claw.session.events")
         async def on_session_events(payload: dict[str, Any]) -> None:
             await self._handle_watch_payload(payload, "session")
 
-        @client.on("claw.panel.events")
+        @_socket_on(client, "claw.panel.events")
         async def on_panel_events(payload: dict[str, Any]) -> None:
             await self._handle_watch_payload(payload, "panel")
 
@@ -475,11 +497,15 @@ class MochatChannel(BaseChannel):
             try:
                 await client.disconnect()
             except Exception:
-                pass
+                logger.debug(
+                    "Optional operation failed in mochat; using the existing fallback"
+                )
             self._socket = None
             return False
 
-    def _build_notify_handler(self, event_name: str):
+    def _build_notify_handler(
+        self, event_name: str
+    ) -> Callable[[Any], Awaitable[None]]:
         async def handler(payload: Any) -> None:
             if event_name == "notify:chat.inbox.append":
                 await self._handle_notify_inbox_append(payload)
@@ -708,14 +734,16 @@ class MochatChannel(BaseChannel):
                         if not isinstance(m, dict):
                             continue
                         evt = _make_synthetic_event(
-                            message_id=str(m.get("messageId") or ""),
-                            author=str(m.get("author") or ""),
-                            content=m.get("content"),
-                            meta=m.get("meta"),
-                            group_id=str(resp.get("groupId") or ""),
-                            converse_id=panel_id,
-                            timestamp=m.get("createdAt"),
-                            author_info=m.get("authorInfo"),
+                            _SyntheticMessage(
+                                message_id=str(m.get("messageId") or ""),
+                                author=str(m.get("author") or ""),
+                                content=m.get("content"),
+                                meta=m.get("meta"),
+                                group_id=str(resp.get("groupId") or ""),
+                                converse_id=panel_id,
+                                timestamp=m.get("createdAt"),
+                                author_info=m.get("authorInfo"),
+                            )
                         )
                         await self._process_inbound_event(panel_id, evt, "panel")
             except asyncio.CancelledError:
@@ -945,14 +973,16 @@ class MochatChannel(BaseChannel):
             return
 
         evt = _make_synthetic_event(
-            message_id=str(payload.get("_id") or payload.get("messageId") or ""),
-            author=str(payload.get("author") or ""),
-            content=payload.get("content"),
-            meta=payload.get("meta"),
-            group_id=group_id,
-            converse_id=panel_id,
-            timestamp=payload.get("createdAt"),
-            author_info=payload.get("authorInfo"),
+            _SyntheticMessage(
+                message_id=str(payload.get("_id") or payload.get("messageId") or ""),
+                author=str(payload.get("author") or ""),
+                content=payload.get("content"),
+                meta=payload.get("meta"),
+                group_id=group_id,
+                converse_id=panel_id,
+                timestamp=payload.get("createdAt"),
+                author_info=payload.get("authorInfo"),
+            )
         )
         await self._process_inbound_event(panel_id, evt, "panel")
 
@@ -976,15 +1006,19 @@ class MochatChannel(BaseChannel):
             return
 
         evt = _make_synthetic_event(
-            message_id=str(detail.get("messageId") or payload.get("_id") or ""),
-            author=str(detail.get("messageAuthor") or ""),
-            content=str(
-                detail.get("messagePlainContent") or detail.get("messageSnippet") or ""
-            ),
-            meta={"source": "notify:chat.inbox.append", "converseId": converse_id},
-            group_id="",
-            converse_id=converse_id,
-            timestamp=payload.get("createdAt"),
+            _SyntheticMessage(
+                message_id=str(detail.get("messageId") or payload.get("_id") or ""),
+                author=str(detail.get("messageAuthor") or ""),
+                content=str(
+                    detail.get("messagePlainContent")
+                    or detail.get("messageSnippet")
+                    or ""
+                ),
+                meta={"source": "notify:chat.inbox.append", "converseId": converse_id},
+                group_id="",
+                converse_id=converse_id,
+                timestamp=payload.get("createdAt"),
+            )
         )
         await self._process_inbound_event(session_id, evt, "session")
 
@@ -1022,7 +1056,7 @@ class MochatChannel(BaseChannel):
                 json.dumps(
                     {
                         "schemaVersion": 1,
-                        "updatedAt": datetime.utcnow().isoformat(),
+                        "updatedAt": datetime.now(UTC).isoformat(),
                         "cursors": self._session_cursor,
                     },
                     ensure_ascii=False,
@@ -1057,7 +1091,7 @@ class MochatChannel(BaseChannel):
         except Exception:
             parsed = response.text
         if isinstance(parsed, dict) and isinstance(parsed.get("code"), int):
-            if parsed["code"] != 200:
+            if parsed["code"] != HTTPStatus.OK:
                 msg = str(
                     parsed.get("message") or parsed.get("name") or "request failed"
                 )
@@ -1069,14 +1103,15 @@ class MochatChannel(BaseChannel):
     async def _api_send(
         self,
         path: str,
-        id_key: str,
-        id_val: str,
+        target: MochatTarget,
         content: str,
         reply_to: str | None,
+        *,
         group_id: str | None = None,
     ) -> dict[str, Any]:
         """Unified send helper for session and panel messages."""
-        body: dict[str, Any] = {id_key: id_val, "content": content}
+        id_key = "panelId" if target.is_panel else "sessionId"
+        body: dict[str, Any] = {id_key: target.id, "content": content}
         if reply_to:
             body["replyTo"] = reply_to
         if group_id:

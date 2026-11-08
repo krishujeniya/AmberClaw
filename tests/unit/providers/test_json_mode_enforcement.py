@@ -69,8 +69,9 @@ def test_make_tool_strict():
     assert strict_tool["function"]["parameters"]["required"] == ["user_id"]
 
 
+@pytest.mark.usefixtures("mock_litellm")
 @pytest.mark.asyncio
-async def test_chat_json_mode_detection(mock_litellm):
+async def test_chat_json_mode_detection():
     provider = LiteLLMProvider(
         api_key="test-key",
         default_model="gpt-4o",
@@ -118,8 +119,9 @@ async def test_chat_json_mode_detection(mock_litellm):
         assert called_kwargs_explicit.get("response_format") == {"type": "json_object"}
 
 
+@pytest.mark.usefixtures("mock_litellm")
 @pytest.mark.asyncio
-async def test_chat_strict_tool_enforcement(mock_litellm):
+async def test_chat_strict_tool_enforcement():
     provider = LiteLLMProvider(
         api_key="test-key",
         default_model="gpt-4o",

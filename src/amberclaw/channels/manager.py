@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
 from typing import Any
 
 from loguru import logger
@@ -22,21 +23,36 @@ class ChannelManager:
     - Route outbound messages
     """
 
-    def __init__(self, config: Config, bus: MessageBus):
+    def __init__(self, config: Config, bus: MessageBus) -> None:
         self.config = config
         self.bus = bus
         self.channels: dict[str, BaseChannel] = {}
-        self._dispatch_task: asyncio.Task | None = None
+        self._dispatch_task: asyncio.Task[Any] | None = None
 
         self._init_channels()
 
     def _init_channels(self) -> None:
         """Initialize channels based on config."""
 
+        self._init_telegram()
+        self._init_whatsapp()
+        self._init_discord()
+        self._init_feishu()
+        self._init_mochat()
+        self._init_dingtalk()
+        self._init_email()
+        self._init_slack()
+        self._init_qq()
+        self._init_matrix()
+        self._validate_allow_from()
+
+    def _init_telegram(self) -> None:
         # Telegram channel
         if self.config.channels.telegram.enabled:
             try:
-                from amberclaw.channels.telegram import TelegramChannel
+                from amberclaw.channels.telegram import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    TelegramChannel,
+                )
 
                 self.channels["telegram"] = TelegramChannel(
                     self.config.channels.telegram,
@@ -47,10 +63,13 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("Telegram channel not available: {}", e)
 
+    def _init_whatsapp(self) -> None:
         # WhatsApp channel
         if self.config.channels.whatsapp.enabled:
             try:
-                from amberclaw.channels.whatsapp import WhatsAppChannel
+                from amberclaw.channels.whatsapp import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    WhatsAppChannel,
+                )
 
                 self.channels["whatsapp"] = WhatsAppChannel(
                     self.config.channels.whatsapp, self.bus
@@ -59,10 +78,13 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("WhatsApp channel not available: {}", e)
 
+    def _init_discord(self) -> None:
         # Discord channel
         if self.config.channels.discord.enabled:
             try:
-                from amberclaw.channels.discord import DiscordChannel
+                from amberclaw.channels.discord import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    DiscordChannel,
+                )
 
                 self.channels["discord"] = DiscordChannel(
                     self.config.channels.discord, self.bus
@@ -71,10 +93,13 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("Discord channel not available: {}", e)
 
+    def _init_feishu(self) -> None:
         # Feishu channel
         if self.config.channels.feishu.enabled:
             try:
-                from amberclaw.channels.feishu import FeishuChannel
+                from amberclaw.channels.feishu import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    FeishuChannel,
+                )
 
                 self.channels["feishu"] = FeishuChannel(
                     self.config.channels.feishu,
@@ -85,10 +110,13 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("Feishu channel not available: {}", e)
 
+    def _init_mochat(self) -> None:
         # Mochat channel
         if self.config.channels.mochat.enabled:
             try:
-                from amberclaw.channels.mochat import MochatChannel
+                from amberclaw.channels.mochat import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    MochatChannel,
+                )
 
                 self.channels["mochat"] = MochatChannel(
                     self.config.channels.mochat, self.bus
@@ -97,10 +125,13 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("Mochat channel not available: {}", e)
 
+    def _init_dingtalk(self) -> None:
         # DingTalk channel
         if self.config.channels.dingtalk.enabled:
             try:
-                from amberclaw.channels.dingtalk import DingTalkChannel
+                from amberclaw.channels.dingtalk import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    DingTalkChannel,
+                )
 
                 self.channels["dingtalk"] = DingTalkChannel(
                     self.config.channels.dingtalk, self.bus
@@ -109,10 +140,13 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("DingTalk channel not available: {}", e)
 
+    def _init_email(self) -> None:
         # Email channel
         if self.config.channels.email.enabled:
             try:
-                from amberclaw.channels.email import EmailChannel
+                from amberclaw.channels.email import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    EmailChannel,
+                )
 
                 self.channels["email"] = EmailChannel(
                     self.config.channels.email, self.bus
@@ -121,10 +155,13 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("Email channel not available: {}", e)
 
+    def _init_slack(self) -> None:
         # Slack channel
         if self.config.channels.slack.enabled:
             try:
-                from amberclaw.channels.slack import SlackChannel
+                from amberclaw.channels.slack import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    SlackChannel,
+                )
 
                 self.channels["slack"] = SlackChannel(
                     self.config.channels.slack, self.bus
@@ -133,10 +170,13 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("Slack channel not available: {}", e)
 
+    def _init_qq(self) -> None:
         # QQ channel
         if self.config.channels.qq.enabled:
             try:
-                from amberclaw.channels.qq import QQChannel
+                from amberclaw.channels.qq import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    QQChannel,
+                )
 
                 self.channels["qq"] = QQChannel(
                     self.config.channels.qq,
@@ -146,10 +186,13 @@ class ChannelManager:
             except ImportError as e:
                 logger.warning("QQ channel not available: {}", e)
 
+    def _init_matrix(self) -> None:
         # Matrix channel
         if self.config.channels.matrix.enabled:
             try:
-                from amberclaw.channels.matrix import MatrixChannel
+                from amberclaw.channels.matrix import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    MatrixChannel,
+                )
 
                 self.channels["matrix"] = MatrixChannel(
                     self.config.channels.matrix,
@@ -158,8 +201,6 @@ class ChannelManager:
                 logger.info("Matrix channel enabled")
             except ImportError as e:
                 logger.warning("Matrix channel not available: {}", e)
-
-        self._validate_allow_from()
 
     def _validate_allow_from(self) -> None:
         for name, ch in self.channels.items():
@@ -201,10 +242,8 @@ class ChannelManager:
         # Stop dispatcher
         if self._dispatch_task:
             self._dispatch_task.cancel()
-            try:
+            with suppress(asyncio.CancelledError):
                 await self._dispatch_task
-            except asyncio.CancelledError:
-                pass
 
         # Stop all channels
         for name, channel in self.channels.items():

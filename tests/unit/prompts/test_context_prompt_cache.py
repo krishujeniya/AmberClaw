@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as datetime_module
+from datetime import UTC
 from datetime import datetime as real_datetime
 from importlib.resources import files as pkg_files
 from pathlib import Path
@@ -11,11 +12,11 @@ from amberclaw.agent.context import ContextBuilder
 
 
 class _FakeDatetime(real_datetime):
-    current = real_datetime(2026, 2, 24, 13, 59)
+    current = real_datetime(2026, 2, 24, 13, 59, tzinfo=UTC)
 
     @classmethod
     def now(cls, tz=None):  # type: ignore[override]
-        return cls.current
+        return cls.current if tz is None else cls.current.astimezone(tz)
 
 
 def _make_workspace(tmp_path: Path) -> Path:
@@ -40,10 +41,10 @@ def test_system_prompt_stays_stable_when_clock_changes(tmp_path, monkeypatch) ->
     workspace = _make_workspace(tmp_path)
     builder = ContextBuilder(workspace)
 
-    _FakeDatetime.current = real_datetime(2026, 2, 24, 13, 59)
+    _FakeDatetime.current = real_datetime(2026, 2, 24, 13, 59, tzinfo=UTC)
     prompt1 = builder.build_system_prompt()
 
-    _FakeDatetime.current = real_datetime(2026, 2, 24, 14, 0)
+    _FakeDatetime.current = real_datetime(2026, 2, 24, 14, 0, tzinfo=UTC)
     prompt2 = builder.build_system_prompt()
 
     assert prompt1 == prompt2

@@ -19,7 +19,9 @@ class CronManager:
     def __init__(self, workspace_or_store: Path | str | None = None) -> None:
         if workspace_or_store is None:
             store_path = Path("~/.amberclaw/cron_jobs.json").expanduser()
-        elif isinstance(workspace_or_store, str) and not workspace_or_store.endswith(".json"):
+        elif isinstance(workspace_or_store, str) and not workspace_or_store.endswith(
+            ".json"
+        ):
             store_path = Path(workspace_or_store) / "cron" / "jobs.json"
         else:
             store_path = Path(workspace_or_store)

@@ -87,7 +87,9 @@ def test_memory_turns_pagination(auth_client, tmp_path, monkeypatch):
     monkeypatch.setattr("amberclaw.api.v1.memory.session_db", test_db)
 
     # Get page 1 (limit 2, offset 0)
-    res_p1 = auth_client.get("/api/v1/memory/sessions/page_session_test/turns?limit=2&offset=0")
+    res_p1 = auth_client.get(
+        "/api/v1/memory/sessions/page_session_test/turns?limit=2&offset=0"
+    )
     assert res_p1.status_code == status.HTTP_200_OK
     turns_p1 = res_p1.json()
     assert len(turns_p1) == 2
@@ -95,7 +97,9 @@ def test_memory_turns_pagination(auth_client, tmp_path, monkeypatch):
     assert turns_p1[1]["turn_index"] == 1
 
     # Get page 2 (limit 2, offset 2)
-    res_p2 = auth_client.get("/api/v1/memory/sessions/page_session_test/turns?limit=2&offset=2")
+    res_p2 = auth_client.get(
+        "/api/v1/memory/sessions/page_session_test/turns?limit=2&offset=2"
+    )
     assert res_p2.status_code == status.HTTP_200_OK
     turns_p2 = res_p2.json()
     assert len(turns_p2) == 2

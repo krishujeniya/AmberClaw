@@ -1,6 +1,5 @@
 """Template variable secret and PII scrubber."""
 
-import re
 from typing import Any
 
 from amberclaw.security.secret_scanner import SecretScanner

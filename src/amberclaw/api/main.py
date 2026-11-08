@@ -2,9 +2,10 @@ import logging
 import os
 import time
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import RequestResponseEndpoint
 
 from amberclaw.api.errors import global_exception_handler, http_exception_handler
 from amberclaw.api.lifespan import os_lifespan
@@ -62,13 +63,15 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins_list,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
 
 @app.middleware("http")
-async def add_security_headers(request, call_next):
+async def add_security_headers(
+    request: Request, call_next: RequestResponseEndpoint
+) -> Response:
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -90,7 +93,9 @@ app.include_router(v1_router.api_router, prefix="/api/v1")
 
 
 @app.middleware("http")
-async def track_prometheus_metrics(request, call_next):
+async def track_prometheus_metrics(
+    request: Request, call_next: RequestResponseEndpoint
+) -> Response:
     start_time = time.perf_counter()
     response = await call_next(request)
     duration = time.perf_counter() - start_time
@@ -100,13 +105,13 @@ async def track_prometheus_metrics(request, call_next):
 
 
 @app.get("/health")
-async def health_check():
+async def health_check() -> dict[str, str]:
     """Basic health check for external load balancers and orchestrators."""
     return {"status": "ok", "system": "AmberClaw AI OS"}
 
 
 @app.get("/metrics")
-async def metrics_endpoint():
+async def metrics_endpoint() -> Response:
     """Prometheus exposition metrics endpoint for monitoring scraping."""
     payload, content_type = get_metrics_payload()
     return Response(content=payload, media_type=content_type)

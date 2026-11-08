@@ -1,4 +1,6 @@
 import json
+import math
+import struct
 
 import pytest
 
@@ -29,8 +31,6 @@ async def test_barge_in_interruption():
     session.state.is_agent_speaking = True
 
     # High amplitude speech PCM chunk to trigger VAD
-    import math
-    import struct
 
     speech_pcm = bytearray()
     for i in range(320):

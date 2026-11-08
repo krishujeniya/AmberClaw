@@ -19,7 +19,7 @@ class SingularityTerminalBackend(BaseTerminalBackend):
         image: str = "docker://python:3.11-slim",
         gpu: bool = False,
         gpu_type: str = "nvidia",
-    ):
+    ) -> None:
         self.workspace_dir = str(Path(workspace_dir).resolve())
         self.image = image
         self.gpu = gpu

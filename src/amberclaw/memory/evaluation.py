@@ -200,7 +200,7 @@ class RAGMetricsTracker:
         "gpt-4o-mini-completion": 0.60,
     }
 
-    def __init__(self, embedding_model: str = "text-embedding-3-small"):
+    def __init__(self, embedding_model: str = "text-embedding-3-small") -> None:
         self.embedding_model = embedding_model
         self.latencies: list[QueryLatency] = []
         self.costs: list[CostProfile] = []

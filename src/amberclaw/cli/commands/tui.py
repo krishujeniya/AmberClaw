@@ -9,7 +9,9 @@ console = Console()
 
 
 def run_tui(
-    theme: str = typer.Option("default", "--theme", "-t", help="TUI theme (default, light, ocean)"),
+    theme: str = typer.Option(
+        "default", "--theme", "-t", help="TUI theme (default, light, ocean)"
+    ),
     session: str = typer.Option("cli:direct", "--session", "-s", help="Session ID"),
 ) -> None:
     """Launch the split-pane AmberClaw Terminal User Interface."""

@@ -1,5 +1,5 @@
-import pytest
 from pathlib import Path
+
 from amberclaw.memory.sqlite_memory import SQLiteMemoryManager
 
 
@@ -26,12 +26,18 @@ def test_sqlite_memory_manager_persistence_and_fts(tmp_path: Path):
 
     # Retrieve history
     history = mem_mgr1.get_history(session_id="sess_alpha")
-    assert len(history) == 2
+    expected_history_count = 2
+    assert len(history) == expected_history_count
     assert history[0]["content"] == "What is AmberClaw AI OS?"
-    assert history[1]["content"] == "AmberClaw is an open, self-hosted zero-trust AI agent runtime."
+    assert (
+        history[1]["content"]
+        == "AmberClaw is an open, self-hosted zero-trust AI agent runtime."
+    )
 
     # Full-Text Search (FTS5)
-    search_results = mem_mgr1.search_history(query="zero-trust", session_id="sess_alpha")
+    search_results = mem_mgr1.search_history(
+        query="zero-trust", session_id="sess_alpha"
+    )
     assert len(search_results) == 1
     assert search_results[0]["role"] == "assistant"
 
@@ -40,6 +46,7 @@ def test_sqlite_memory_manager_persistence_and_fts(tmp_path: Path):
     # Re-open in new instance (simulating restart)
     mem_mgr2 = SQLiteMemoryManager(db_path=db_file)
     reloaded_history = mem_mgr2.get_history(session_id="sess_alpha")
-    assert len(reloaded_history) == 2
+    expected_reloaded_history_count = 2
+    assert len(reloaded_history) == expected_reloaded_history_count
     assert reloaded_history[0]["content"] == "What is AmberClaw AI OS?"
     mem_mgr2.close()

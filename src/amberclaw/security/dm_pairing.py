@@ -40,8 +40,9 @@ def generate_pairing_code(expires_in_seconds: int = 600) -> str:
 
     try:
         file_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    except Exception as e:
-        logger.error("Failed to write pairing codes: {}", e)
+    except OSError:
+        logger.error("Pairing code creation failed: state could not be saved")
+        raise
 
     return code
 
@@ -66,14 +67,15 @@ def verify_and_consume_code(code: str) -> bool:
         # Save cleaned up data back
         try:
             file_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        except Exception:
-            pass
+        except OSError:
+            logger.warning("Expired pairing codes could not be pruned")
         return False
 
     # Valid code! Consume it
     data.pop(code, None)
     try:
         file_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-    except Exception:
-        pass
+    except OSError:
+        logger.error("Pairing denied: code consumption could not be saved")
+        return False
     return True

@@ -8,18 +8,46 @@ from amberclaw.org.agent_node import AgentNode
 from amberclaw.org.chart import OrgChart
 from amberclaw.org.permissions import OrgRole
 
-org_app = typer.Typer(help="Manage organizational hierarchy, roles, and delegation policies.")
+org_app = typer.Typer(
+    help="Manage organizational hierarchy, roles, and delegation policies."
+)
 console = Console()
 
 
 def _get_demo_org_chart() -> OrgChart:
     """Construct standard default org chart for CLI visualization."""
     chart = OrgChart()
-    admin = AgentNode(id="admin", name="Executive Admin", role=OrgRole.ADMIN, department="executive")
-    lead_eng = AgentNode(id="lead_eng", name="Engineering Lead", role=OrgRole.DEPARTMENT_LEAD, department="engineering", manager_id="admin")
-    dev_agent = AgentNode(id="dev_1", name="Senior Developer", role=OrgRole.STAFF_AGENT, department="engineering", manager_id="lead_eng")
-    qa_agent = AgentNode(id="qa_1", name="QA Specialist", role=OrgRole.SPECIALIST_AGENT, department="engineering", manager_id="lead_eng")
-    sales_lead = AgentNode(id="lead_sales", name="Sales Lead", role=OrgRole.DEPARTMENT_LEAD, department="sales", manager_id="admin")
+    admin = AgentNode(
+        id="admin", name="Executive Admin", role=OrgRole.ADMIN, department="executive"
+    )
+    lead_eng = AgentNode(
+        id="lead_eng",
+        name="Engineering Lead",
+        role=OrgRole.DEPARTMENT_LEAD,
+        department="engineering",
+        manager_id="admin",
+    )
+    dev_agent = AgentNode(
+        id="dev_1",
+        name="Senior Developer",
+        role=OrgRole.STAFF_AGENT,
+        department="engineering",
+        manager_id="lead_eng",
+    )
+    qa_agent = AgentNode(
+        id="qa_1",
+        name="QA Specialist",
+        role=OrgRole.SPECIALIST_AGENT,
+        department="engineering",
+        manager_id="lead_eng",
+    )
+    sales_lead = AgentNode(
+        id="lead_sales",
+        name="Sales Lead",
+        role=OrgRole.DEPARTMENT_LEAD,
+        department="sales",
+        manager_id="admin",
+    )
 
     chart.add_agent(admin)
     chart.add_agent(lead_eng)
@@ -65,9 +93,13 @@ def check_delegation(
     allowed = chart.can_delegate(from_agent, to_agent)
 
     if allowed:
-        console.print(f"[bold green]✔ Delegation ALLOWED:[/bold green] Agent '{from_agent}' can delegate tasks to '{to_agent}'.")
+        console.print(
+            f"[bold green]✔ Delegation ALLOWED:[/bold green] Agent '{from_agent}' can delegate tasks to '{to_agent}'."
+        )
     else:
-        console.print(f"[bold red]✖ Delegation DENIED:[/bold red] Agent '{from_agent}' cannot delegate tasks to '{to_agent}'.")
+        console.print(
+            f"[bold red]✖ Delegation DENIED:[/bold red] Agent '{from_agent}' cannot delegate tasks to '{to_agent}'."
+        )
 
 
 @org_app.command("escalate")
@@ -84,4 +116,6 @@ def show_escalation(
 
     console.print(f"[bold]Escalation chain for '{agent_id}':[/bold]")
     for i, mgr in enumerate(path, 1):
-        console.print(f"  {i}. [cyan]{mgr.id}[/cyan] ({mgr.name}) - [yellow]{mgr.role.value}[/yellow] [{mgr.department}]")
+        console.print(
+            f"  {i}. [cyan]{mgr.id}[/cyan] ({mgr.name}) - [yellow]{mgr.role.value}[/yellow] [{mgr.department}]"
+        )

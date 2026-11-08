@@ -18,13 +18,17 @@ from amberclaw.sdk.exceptions import (
 
 def test_sdk_headers_initialization():
     # Bearer token
-    client_jwt = AmberClawClient(base_url="http://127.0.0.1:8000", token="jwt_test_token")
+    client_jwt = AmberClawClient(
+        base_url="http://127.0.0.1:8000", token="jwt_test_token"
+    )
     headers = client_jwt._build_headers()
     assert headers["Authorization"] == "Bearer jwt_test_token"
     assert "X-API-Key" not in headers
 
     # API key
-    client_key = AmberClawClient(base_url="http://127.0.0.1:8000", api_key="ak_test_key")
+    client_key = AmberClawClient(
+        base_url="http://127.0.0.1:8000", api_key="ak_test_key"
+    )
     headers_key = client_key._build_headers()
     assert headers_key["X-API-Key"] == "ak_test_key"
     assert "Authorization" not in headers_key
@@ -112,7 +116,9 @@ def test_sync_client_chat_stream():
 
 @pytest.mark.asyncio
 async def test_async_client_chat_and_stream():
-    async with AsyncAmberClawClient(base_url="http://127.0.0.1:8000", token="token_123") as client:
+    async with AsyncAmberClawClient(
+        base_url="http://127.0.0.1:8000", token="token_123"
+    ) as client:
         # Mock chat
         mock_chat_res = MagicMock()
         mock_chat_res.status_code = 200
@@ -152,7 +158,9 @@ async def test_async_client_chat_and_stream():
 
 @pytest.mark.asyncio
 async def test_async_client_auth_error_handling():
-    async with AsyncAmberClawClient(base_url="http://127.0.0.1:8000", token="bad_token") as client:
+    async with AsyncAmberClawClient(
+        base_url="http://127.0.0.1:8000", token="bad_token"
+    ) as client:
         mock_res = MagicMock()
         mock_res.status_code = 401
         mock_res.is_error = True

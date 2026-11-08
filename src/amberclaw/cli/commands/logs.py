@@ -28,7 +28,9 @@ def _get_audit_log_path(custom_path: Path | None = None) -> Path:
 
 @logs_app.command("tail")
 def logs_tail(
-    lines: int = typer.Option(20, "--lines", "-n", help="Number of recent log lines to display"),
+    lines: int = typer.Option(
+        20, "--lines", "-n", help="Number of recent log lines to display"
+    ),
     log_file: Path | None = typer.Option(
         None, "--file", "-f", help="Path to audit.jsonl log file"
     ),
@@ -70,7 +72,11 @@ def logs_tail(
 
     for e in recent:
         outcome = e.get("outcome", "unknown")
-        outcome_style = "[bold green]✓ success[/bold green]" if outcome == "success" else f"[bold red]✗ {outcome}[/bold red]"
+        outcome_style = (
+            "[bold green]✓ success[/bold green]"
+            if outcome == "success"
+            else f"[bold red]✗ {outcome}[/bold red]"
+        )
         table.add_row(
             str(e.get("index", "-")),
             str(e.get("timestamp", "-"))[:19],

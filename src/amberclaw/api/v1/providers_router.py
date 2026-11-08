@@ -1,11 +1,14 @@
 """API router for LLM provider health check endpoints."""
 
 import os
+from importlib import import_module
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 try:
-    import litellm
+    import_module("litellm")
+
     LITELLM_AVAILABLE = True
 except ImportError:
     LITELLM_AVAILABLE = False
@@ -42,7 +45,8 @@ async def check_provider_health() -> HealthCheckResponse:
         ),
         (
             "azure",
-            "AZURE_OPENAI_API_KEY" in os.environ and bool(os.getenv("AZURE_OPENAI_API_KEY")),
+            "AZURE_OPENAI_API_KEY" in os.environ
+            and bool(os.getenv("AZURE_OPENAI_API_KEY")),
             {"endpoint": os.getenv("AZURE_OPENAI_ENDPOINT", "")},
         ),
         (
@@ -68,8 +72,6 @@ async def check_provider_health() -> HealthCheckResponse:
                 details=details,
             )
         )
-
-    engine_status = "healthy" if LITELLM_AVAILABLE else "degraded"
 
     return HealthCheckResponse(
         status="ok" if LITELLM_AVAILABLE else "degraded",

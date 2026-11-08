@@ -1,5 +1,6 @@
 import logging
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -7,7 +8,6 @@ from amberclaw.providers.resilience import CircuitOpenError, get_circuit_breaker
 
 try:
     from litellm import acompletion
-    from litellm.exceptions import ContextWindowExceededError, RateLimitError
 except ImportError:
     acompletion = None
 
@@ -26,7 +26,7 @@ class LLMRouter:
     with automatic CircuitBreaker fault isolation.
     """
 
-    def __init__(self, default_model: str = "gpt-4o"):
+    def __init__(self, default_model: str = "gpt-4o") -> None:
         self.default_model = default_model
         if not acompletion:
             logger.warning("litellm is not installed. LLM routing will fail.")
@@ -36,10 +36,14 @@ class LLMRouter:
         messages: list[LLMMessage],
         model: str | None = None,
         temperature: float = 0.7,
-        fallback_fn: object | None = None,
-        **kwargs,
+        fallback_fn: Callable[..., str | Awaitable[str]] | None = None,
+        **kwargs: Any,
     ) -> str:
         """Generate a synchronous text response from the configured LLM with circuit breaker protection."""
+        if acompletion is None:
+            raise RuntimeError(
+                "LiteLLM is not installed. Install litellm to use LLM routing."
+            )
         target_model = model or self.default_model
         formatted_messages = [{"role": m.role, "content": m.content} for m in messages]
         circuit = get_circuit_breaker(f"llm_{target_model}")
@@ -62,12 +66,15 @@ class LLMRouter:
                     f"LLM Token Usage [{target_model}]: "
                     f"prompt={prompt_tokens}, completion={completion_tokens}, total={total_tokens}"
                 )
-            return response.choices[0].message.content
+            content = response.choices[0].message.content
+            if content is None:
+                return ""
+            if not isinstance(content, str):
+                raise TypeError("LLM response content must be a string or None")
+            return content
 
         try:
             return await circuit.call_async(_execute_call, fallback_fn=fallback_fn)
-        except (RateLimitError, ContextWindowExceededError):
-            raise
         except Exception as e:
             logger.error(f"Error during LLM generation for {target_model}: {e}")
             raise
@@ -77,9 +84,13 @@ class LLMRouter:
         messages: list[LLMMessage],
         model: str | None = None,
         temperature: float = 0.7,
-        **kwargs,
+        **kwargs: Any,
     ) -> AsyncGenerator[str, None]:
         """Generate a streaming text response from the configured LLM."""
+        if acompletion is None:
+            raise RuntimeError(
+                "LiteLLM is not installed. Install litellm to use LLM routing."
+            )
         target_model = model or self.default_model
         formatted_messages = [{"role": m.role, "content": m.content} for m in messages]
         circuit = get_circuit_breaker(f"llm_{target_model}")

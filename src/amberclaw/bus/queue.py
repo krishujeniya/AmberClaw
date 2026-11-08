@@ -70,7 +70,7 @@ class MessageBus:
         self.dead_letter_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue(
             maxsize=maxsize
         )
-        self._listener_task: asyncio.Task | None = None
+        self._listener_task: asyncio.Task[Any] | None = None
 
     def _push_to_dlq(self, item: Any, reason: str) -> None:
         """Route overflow or failed message to the Dead Letter Queue."""
@@ -123,8 +123,8 @@ class MessageBus:
                     msg = _deserialize_inbound(data)
                     await self.publish_inbound(msg)
                 elif channel == "amberclaw_outbound":
-                    msg = _deserialize_outbound(data)
-                    await self.publish_outbound(msg)
+                    outbound = _deserialize_outbound(data)
+                    await self.publish_outbound(outbound)
                 elif channel == "amberclaw_system_events":
                     event = _deserialize_system_event(data)
                     await self.publish_system_event(event)

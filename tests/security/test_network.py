@@ -3,6 +3,7 @@
 import socket
 import subprocess
 import sys
+
 import pytest
 
 from amberclaw.security.egress_controller import (
@@ -134,7 +135,10 @@ def test_egress_sandbox_runtime_blocking():
             socket.getaddrinfo("api.openai.com", 80)
 
         # 3. Binary context restriction (git is only allowed github.com)
-        with binary_context("git"), pytest.raises(NetworkAccessDenied, match="denied by policy"):
+        with (
+            binary_context("git"),
+            pytest.raises(NetworkAccessDenied, match="denied by policy"),
+        ):
             socket.getaddrinfo("api.openai.com", 443)
 
 
@@ -153,7 +157,7 @@ def test_process_isolation_and_resource_limits():
         "apply_resource_limits(ResourceLimits(max_memory_bytes=256*1024*1024)); "
         "print('OK')"
     )
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603 - fixed Python interpreter and locally constructed test code
         [sys.executable, "-c", code],
         capture_output=True,
         text=True,

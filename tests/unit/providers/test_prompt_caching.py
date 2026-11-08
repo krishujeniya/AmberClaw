@@ -26,7 +26,7 @@ def test_supports_cache_control_flag():
     )
 
     # Mock capabilities to support caching
-    def mock_get_capabilities(model):
+    def mock_get_capabilities(model):  # noqa: ARG001 - preserve the fake SDK keyword contract
         return {"prompt_caching": True}
 
     provider_enabled.get_capabilities = MagicMock(side_effect=mock_get_capabilities)
@@ -78,8 +78,9 @@ def test_apply_cache_control_breakpoints():
     assert new_msgs[4]["content"][0]["cache_control"] == {"type": "ephemeral"}
 
 
+@pytest.mark.usefixtures("mock_litellm")
 @pytest.mark.asyncio
-async def test_openrouter_edge_cache_header(mock_litellm):
+async def test_openrouter_edge_cache_header():
     # Setup LiteLLMProvider with openrouter gateway
     provider = LiteLLMProvider(
         api_key="sk-or-testkey",
@@ -105,5 +106,5 @@ async def test_openrouter_edge_cache_header(mock_litellm):
         await provider.chat(messages=messages)
 
         # Assert X-OpenRouter-Cache header is present
-        called_args, called_kwargs = mock_acompletion.call_args
+        _called_args, called_kwargs = mock_acompletion.call_args
         assert called_kwargs["extra_headers"].get("X-OpenRouter-Cache") == "true"

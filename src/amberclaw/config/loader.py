@@ -1,25 +1,30 @@
 """Configuration loading utilities."""
 
 import json
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
 
 from amberclaw.config.schema import Config
 
 # Global variable to store current config path (for multi-instance support)
-_current_config_path: Path | None = None
+_current_config_path: ContextVar[Path | None] = ContextVar(
+    "current_config_path", default=None
+)
 
 
 def set_config_path(path: Path) -> None:
     """Set the current config path (used to derive data directory)."""
-    global _current_config_path
-    _current_config_path = path
+    _current_config_path.set(path)
 
 
 def get_config_path() -> Path:
     """Get the configuration file path. Checks .yaml then .json."""
-    if _current_config_path:
-        return _current_config_path
+    current_path = _current_config_path.get()
+    if current_path:
+        return current_path
 
     base = Path.home() / ".amberclaw"
     yaml_path = base / "config.yaml"
@@ -42,7 +47,7 @@ def load_config(config_path: Path | None = None) -> Config:
         try:
             content = path.read_text(encoding="utf-8")
             if path.suffix in (".yaml", ".yml"):
-                import yaml
+                import yaml  # noqa: PLC0415 - resolve runtime settings without eager import cycles
 
                 data = yaml.safe_load(content)
             else:
@@ -57,8 +62,9 @@ def load_config(config_path: Path | None = None) -> Config:
                     return config_obj
                 return Config.model_validate(data)
         except Exception as e:
-            print(f"Warning: Failed to load config from {path}: {e}")
-            print("Using default configuration.")
+            logger.warning(
+                "Failed to load configuration ({}); using defaults.", type(e).__name__
+            )
 
     return Config()
 
@@ -76,7 +82,7 @@ def save_config(config: Config, config_path: Path | None = None) -> None:
 
     data = config.model_dump(by_alias=True)
 
-    with open(path, "w", encoding="utf-8") as f:
+    with Path(path).open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
 
@@ -121,7 +127,9 @@ def _migrate_secrets_to_vault(data: dict[str, Any]) -> tuple[dict[str, Any], boo
     if not isinstance(providers, dict):
         return data, False
 
-    from amberclaw.security.vault import vault
+    from amberclaw.security.vault import (  # noqa: PLC0415 - resolve runtime settings without eager import cycles
+        vault,
+    )
 
     mutated = False
     for provider_name, provider_data in providers.items():

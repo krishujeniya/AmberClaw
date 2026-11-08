@@ -40,5 +40,5 @@ api_router.include_router(protected_router)
 
 
 @api_router.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {"message": "Welcome to the AmberClaw API v1"}

@@ -17,8 +17,12 @@ class TUITheme(BaseModel):
     success: str = Field(default="green3", description="Success indicator")
     warning: str = Field(default="yellow3", description="Warning indicator")
     error: str = Field(default="red3", description="Error indicator")
-    user_badge: str = Field(default="bold bright_cyan", description="User message badge")
-    assistant_badge: str = Field(default="bold deep_orange", description="Assistant message badge")
+    user_badge: str = Field(
+        default="bold bright_cyan", description="User message badge"
+    )
+    assistant_badge: str = Field(
+        default="bold deep_orange", description="Assistant message badge"
+    )
     tool_badge: str = Field(default="bold gold1", description="Tool execution badge")
 
 

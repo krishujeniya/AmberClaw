@@ -46,7 +46,7 @@ class TraceContext:
         parent_span_id: str | None = None,
         sampled: bool = True,
         correlation_id: str | None = None,
-    ):
+    ) -> None:
         self.trace_id = trace_id or secrets.token_hex(16)  # 32 hex chars
         self.span_id = span_id or secrets.token_hex(8)  # 16 hex chars
         self.parent_span_id = parent_span_id
@@ -108,7 +108,7 @@ class TraceSpan:
         context: TraceContext,
         kind: SpanKind = SpanKind.INTERNAL,
         attributes: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         self.name = name
         self.context = context
         self.kind = kind
@@ -186,7 +186,7 @@ class TraceSpan:
 class Tracer:
     """Manages span creation, contextual propagation, and export buffering."""
 
-    def __init__(self, service_name: str = "amberclaw-os"):
+    def __init__(self, service_name: str = "amberclaw-os") -> None:
         self.service_name = service_name
         self._finished_spans: list[TraceSpan] = []
 

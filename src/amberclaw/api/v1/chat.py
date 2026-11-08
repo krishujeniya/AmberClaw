@@ -2,6 +2,7 @@ from collections.abc import AsyncGenerator
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from amberclaw.api.stream.protocol import done_frame, error_frame, token_frame
@@ -77,7 +78,7 @@ async def chat_completion(request: ChatMessageRequest) -> ChatMessageResponse:
 
 
 @router.post("/stream")
-async def chat_stream(request: ChatStreamRequest):
+async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
     """Server-Sent Events (SSE) streaming chat endpoint emitting token and terminal frames."""
     model_name = request.model or "gpt-4o"
     system_content = request.system_prompt or "You are AmberClaw AI Assistant."

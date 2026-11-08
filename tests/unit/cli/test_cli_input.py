@@ -12,7 +12,7 @@ def mock_prompt_session():
     mock_session = MagicMock()
     mock_session.prompt_async = AsyncMock()
     with (
-        patch("amberclaw.cli.commands.utils._PROMPT_SESSION", mock_session),
+        patch.object(utils._terminal_state, "prompt_session", mock_session),
         patch("amberclaw.cli.commands.utils.patch_stdout"),
     ):
         yield mock_session
@@ -43,10 +43,10 @@ async def test_read_interactive_input_async_handles_eof(mock_prompt_session):
 def test_init_prompt_session_creates_session():
     """Test that _init_prompt_session initializes the global session."""
     # Ensure global is None before test
-    utils._PROMPT_SESSION = None
+    utils._terminal_state.prompt_session = None
 
     with (
-        patch("amberclaw.cli.commands.utils.PromptSession") as MockSession,
+        patch("amberclaw.cli.commands.utils.PromptSession") as mock_session,
         patch("amberclaw.cli.commands.utils.FileHistory"),
         patch("pathlib.Path.home") as mock_home,
     ):
@@ -54,8 +54,8 @@ def test_init_prompt_session_creates_session():
 
         utils._init_prompt_session()
 
-        assert utils._PROMPT_SESSION is not None
-        MockSession.assert_called_once()
-        _, kwargs = MockSession.call_args
+        assert utils._terminal_state.prompt_session is not None
+        mock_session.assert_called_once()
+        _, kwargs = mock_session.call_args
         assert kwargs["multiline"] is False
         assert kwargs["enable_open_in_editor"] is False

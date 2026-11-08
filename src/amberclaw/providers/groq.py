@@ -1,5 +1,7 @@
 """Groq high-speed LPU inference provider implementation."""
 
+from typing import Any
+
 from amberclaw.providers.litellm_provider import LiteLLMProvider
 
 
@@ -11,7 +13,7 @@ class GroqProvider(LiteLLMProvider):
         api_key: str | None = None,
         api_base: str | None = None,
         default_model: str = "groq/llama-3.3-70b-versatile",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             api_key=api_key,

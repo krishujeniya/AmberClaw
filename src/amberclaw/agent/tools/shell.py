@@ -2,7 +2,10 @@
 
 import asyncio
 import os
+import platform
 import re
+import signal
+from contextlib import suppress
 from pathlib import Path
 
 from pydantic import BaseModel, Field
@@ -35,7 +38,7 @@ class ExecTool(PydanticTool):
     def args_schema(self) -> type[ExecArgs]:
         return ExecArgs
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - retain the public execution policy keyword contract
         self,
         timeout: int = 60,
         working_dir: str | None = None,
@@ -43,7 +46,7 @@ class ExecTool(PydanticTool):
         allow_patterns: list[str] | None = None,
         restrict_to_workspace: bool = True,
         path_append: str = "",
-    ):
+    ) -> None:
         super().__init__()
         self.timeout = timeout
         self.working_dir = working_dir
@@ -67,7 +70,11 @@ class ExecTool(PydanticTool):
         self.path_append = path_append
 
     async def run(self, args: ExecArgs) -> str:
-        cwd = args.working_dir or self.working_dir or os.getcwd()
+        cwd = (
+            args.working_dir
+            or self.working_dir
+            or str(await asyncio.to_thread(Path.cwd))
+        )
         guard_error = self._guard_command(args.command, cwd)
         if guard_error:
             return guard_error
@@ -77,18 +84,17 @@ class ExecTool(PydanticTool):
             env["PATH"] = env.get("PATH", "") + os.pathsep + self.path_append
 
         preexec = None
-        if self.restrict_to_workspace:
-            import platform
+        if self.restrict_to_workspace and platform.system() == "Linux":
+            from amberclaw.security.landlock import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                apply_sandbox,
+            )
 
-            if platform.system() == "Linux":
-                from amberclaw.security.landlock import apply_sandbox
+            workspace_dir = str(await asyncio.to_thread(Path(cwd).resolve))
 
-                workspace_dir = os.path.abspath(cwd)
+            def _sandbox_preexec() -> None:
+                apply_sandbox(workspace_dir)
 
-                def _sandbox_preexec():
-                    apply_sandbox(workspace_dir)
-
-                preexec = _sandbox_preexec
+            preexec = _sandbox_preexec
 
         try:
             process = await asyncio.create_subprocess_shell(
@@ -98,6 +104,7 @@ class ExecTool(PydanticTool):
                 cwd=cwd,
                 env=env,
                 preexec_fn=preexec,
+                start_new_session=os.name == "posix",
             )
 
             try:
@@ -105,14 +112,11 @@ class ExecTool(PydanticTool):
                     process.communicate(), timeout=self.timeout
                 )
             except TimeoutError:
-                process.kill()
-                # Wait for the process to fully terminate so pipes are
-                # drained and file descriptors are released.
-                try:
-                    await asyncio.wait_for(process.wait(), timeout=5.0)
-                except TimeoutError:
-                    pass
+                await self._terminate_process(process)
                 return f"Error: Command timed out after {self.timeout} seconds"
+            except asyncio.CancelledError:
+                await self._terminate_process(process)
+                raise
 
             output_parts = []
 
@@ -142,6 +146,18 @@ class ExecTool(PydanticTool):
         except Exception as e:
             return f"Error executing command: {e!s}"
 
+    @staticmethod
+    async def _terminate_process(process: asyncio.subprocess.Process) -> None:
+        # The shell owns a new POSIX session. Kill its descendants even if the
+        # shell already exited while a child retained its output pipes.
+        with suppress(ProcessLookupError):
+            if os.name == "posix":
+                os.killpg(process.pid, signal.SIGKILL)
+            else:
+                process.kill()
+        with suppress(TimeoutError):
+            await asyncio.wait_for(process.communicate(), timeout=5.0)
+
     def _guard_command(self, command: str, cwd: str) -> str | None:
         """Best-effort safety guard for potentially destructive commands."""
         cmd = command.strip()
@@ -151,9 +167,10 @@ class ExecTool(PydanticTool):
             if re.search(pattern, lower):
                 return "Error: Command blocked by safety guard (dangerous pattern detected)"
 
-        if self.allow_patterns:
-            if not any(re.search(p, lower) for p in self.allow_patterns):
-                return "Error: Command blocked by safety guard (not in allowlist)"
+        if self.allow_patterns and not any(
+            re.search(p, lower) for p in self.allow_patterns
+        ):
+            return "Error: Command blocked by safety guard (not in allowlist)"
 
         if self.restrict_to_workspace:
             if "..\\" in cmd or "../" in cmd:
@@ -161,16 +178,19 @@ class ExecTool(PydanticTool):
                     "Error: Command blocked by safety guard (path traversal detected)"
                 )
 
+            return self._guard_paths(cmd, cwd)
+
+        return None
+
+    def _guard_paths(self, command: str, cwd: str) -> str | None:
+        try:
             cwd_path = Path(cwd).resolve()
-
-            for raw in self._extract_absolute_paths(cmd):
-                try:
-                    p = Path(raw.strip()).resolve()
-                except Exception:
-                    continue
-                if p.is_absolute() and cwd_path not in p.parents and p != cwd_path:
+            for raw in self._extract_absolute_paths(command):
+                path = Path(raw.strip()).resolve()
+                if path.is_absolute() and not path.is_relative_to(cwd_path):
                     return "Error: Command blocked by safety guard (path outside working dir)"
-
+        except (OSError, RuntimeError, ValueError):
+            return "Error: Command blocked by safety guard (unresolvable path or working directory)"
         return None
 
     @staticmethod

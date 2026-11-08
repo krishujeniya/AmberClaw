@@ -8,7 +8,7 @@ from amberclaw.core.events import Event, bus
 from amberclaw.tools.toolsets import register_default_tools
 
 
-async def initialize_os():
+async def initialize_os() -> None:
     """Perform global OS initialization."""
     logger.info("Initializing AmberClaw AI OS...")
 

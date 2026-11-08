@@ -22,13 +22,14 @@ def parse_natural_schedule(text: str, tz: str | None = None) -> CronSchedule:
 
     # 1. Raw 5-part cron expression
     parts = clean.split()
-    if len(parts) == 5 and all(
-        re.match(r"^[\d\*\/\,\-]+$", p) for p in parts
-    ):
+    if len(parts) == 5 and all(re.match(r"^[\d\*\/\,\-]+$", p) for p in parts):
         return CronSchedule(kind="cron", expr=clean, tz=tz)
 
     # 2. "every N [seconds|minutes|hours|days]"
-    every_match = re.match(r"^every\s+(\d+)\s*(s|sec|second|seconds|m|min|minute|minutes|h|hr|hour|hours|d|day|days)?$", clean)
+    every_match = re.match(
+        r"^every\s+(\d+)\s*(s|sec|second|seconds|m|min|minute|minutes|h|hr|hour|hours|d|day|days)?$",
+        clean,
+    )
     if every_match:
         val = int(every_match.group(1))
         unit = (every_match.group(2) or "m").lower()
@@ -67,7 +68,10 @@ def parse_natural_schedule(text: str, tz: str | None = None) -> CronSchedule:
         return CronSchedule(kind="cron", expr=f"{minute} {hour} * * *", tz=tz)
 
     # 4. "in N [minutes|hours]"
-    in_match = re.match(r"^in\s+(\d+)\s*(s|sec|second|seconds|m|min|minute|minutes|h|hr|hour|hours)?$", clean)
+    in_match = re.match(
+        r"^in\s+(\d+)\s*(s|sec|second|seconds|m|min|minute|minutes|h|hr|hour|hours)?$",
+        clean,
+    )
     if in_match:
         val = int(in_match.group(1))
         unit = (in_match.group(2) or "m").lower()

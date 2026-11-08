@@ -279,7 +279,7 @@ class WasmTerminalBackend(BaseTerminalBackend):
         memory_bytes: int = 16 * 1024 * 1024,
         fuel: int = 20_000_000,
         host_result_bytes: int = 256 * 1024,
-    ):
+    ) -> None:
         self.workspace_dir = str(Path(workspace_dir).resolve())
         self.memory_bytes = memory_bytes
         self.fuel = fuel

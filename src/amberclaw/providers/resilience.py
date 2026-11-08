@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import inspect
 import time
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from enum import StrEnum
-from typing import Any
+from types import TracebackType
+from typing import Any, TypeVar
 
 from loguru import logger
 
@@ -21,7 +24,7 @@ class CircuitState(StrEnum):
 class CircuitOpenError(RuntimeError):
     """Raised when an execution is attempted on an open circuit."""
 
-    def __init__(self, circuit_name: str, cooldown_remaining: float):
+    def __init__(self, circuit_name: str, cooldown_remaining: float) -> None:
         super().__init__(
             f"Circuit '{circuit_name}' is OPEN. Fast-failing request (retry in {cooldown_remaining:.1f}s)."
         )
@@ -29,14 +32,19 @@ class CircuitOpenError(RuntimeError):
         self.cooldown_remaining = cooldown_remaining
 
 
+_Result = TypeVar("_Result")
+
 _LATENCY_PENALTY_THRESHOLD_MS = 2000.0
 _LATENCY_PENALTY_SCALE = 10000.0
+_HTTP_BAD_REQUEST = 400
+_HTTP_INTERNAL_SERVER_ERROR = 500
+_HTTP_TOO_MANY_REQUESTS = 429
 
 
 class ProviderHealthTracker:
     """Tracks sliding window execution statistics and computes dynamic health score (0.0 to 1.0)."""
 
-    def __init__(self, name: str, window_size: int = 50):
+    def __init__(self, name: str, window_size: int = 50) -> None:
         self.name = name
         self.window_size = window_size
         self._history: deque[tuple[float, bool, float]] = deque(maxlen=window_size)
@@ -123,7 +131,7 @@ class CircuitBreaker:
         failure_threshold: int = 5,
         recovery_timeout_s: float = 30.0,
         half_open_success_threshold: int = 2,
-    ):
+    ) -> None:
         self.name = name
         self.failure_threshold = failure_threshold
         self.recovery_timeout_s = recovery_timeout_s
@@ -201,11 +209,11 @@ class CircuitBreaker:
 
     async def call_async(
         self,
-        coro_fn: Callable[..., Any],
+        coro_fn: Callable[..., Awaitable[_Result]],
         *args: Any,
-        fallback_fn: Callable[..., Any] | None = None,
+        fallback_fn: Callable[..., _Result | Awaitable[_Result]] | None = None,
         **kwargs: Any,
-    ) -> Any:
+    ) -> _Result:
         """Execute an async coroutine with circuit breaker protection."""
         if not self.can_execute():
             cooldown_left = max(
@@ -215,9 +223,10 @@ class CircuitBreaker:
                 logger.info(
                     f"CircuitBreaker [{self.name}] open; executing fallback function."
                 )
-                if asyncio.iscoroutinefunction(fallback_fn):
-                    return await fallback_fn(*args, **kwargs)
-                return fallback_fn(*args, **kwargs)
+                fallback_result = fallback_fn(*args, **kwargs)
+                if inspect.isawaitable(fallback_result):
+                    return await fallback_result
+                return fallback_result
             raise CircuitOpenError(self.name, cooldown_left)
 
         start_time = time.perf_counter()
@@ -226,9 +235,18 @@ class CircuitBreaker:
             latency_ms = (time.perf_counter() - start_time) * 1000.0
             self.record_success(latency_ms=latency_ms)
             return result
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
-            latency_ms = (time.perf_counter() - start_time) * 1000.0
-            self.record_failure(e, latency_ms=latency_ms)
+            status_code = getattr(e, "status_code", None) or getattr(e, "status", None)
+            is_client_error = (
+                isinstance(status_code, int)
+                and _HTTP_BAD_REQUEST <= status_code < _HTTP_INTERNAL_SERVER_ERROR
+                and status_code != _HTTP_TOO_MANY_REQUESTS
+            )
+            if not is_client_error:
+                latency_ms = (time.perf_counter() - start_time) * 1000.0
+                self.record_failure(e, latency_ms=latency_ms)
             raise
 
 
@@ -261,29 +279,37 @@ class BulkheadExhaustedError(RuntimeError):
 class Bulkhead:
     """Limits concurrent executions to prevent cascading resource starvation across worker pools."""
 
-    def __init__(self, name: str, max_concurrent: int = 10):
+    def __init__(self, name: str, max_concurrent: int = 10) -> None:
         self.name = name
         self.max_concurrent = max_concurrent
-        self._semaphore = asyncio.Semaphore(max_concurrent)
+        self._semaphore = asyncio.BoundedSemaphore(max_concurrent)
+        self._lock = asyncio.Lock()
         self.active_count: int = 0
 
     async def acquire(self) -> None:
         """Acquire a concurrent execution slot in the bulkhead."""
-        if self.active_count >= self.max_concurrent:
-            raise BulkheadExhaustedError(
-                f"Bulkhead [{self.name}] saturated: maximum {self.max_concurrent} concurrent calls active"
-            )
-        await self._semaphore.acquire()
-        self.active_count += 1
+        async with self._lock:
+            if self.active_count >= self.max_concurrent:
+                raise BulkheadExhaustedError(
+                    f"Bulkhead [{self.name}] saturated: maximum {self.max_concurrent} concurrent calls active"
+                )
+            await self._semaphore.acquire()
+            self.active_count += 1
 
     def release(self) -> None:
         """Release a concurrent execution slot."""
         self.active_count = max(0, self.active_count - 1)
-        self._semaphore.release()
+        with contextlib.suppress(ValueError):
+            self._semaphore.release()
 
     async def __aenter__(self) -> Bulkhead:
         await self.acquire()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         self.release()

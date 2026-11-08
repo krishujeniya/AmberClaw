@@ -30,7 +30,8 @@ async def test_rl_orchestrator_lifecycle():
     # Give event loop a moment to start the processes
     await asyncio.sleep(0.5)
 
-    assert len(orchestrator.processes) == 2
+    expected_orchestrator_processes_count = 2
+    assert len(orchestrator.processes) == expected_orchestrator_processes_count
     for proc in orchestrator.processes.values():
         assert proc.returncode is None  # Process is running
 

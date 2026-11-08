@@ -29,7 +29,9 @@ async def test_circuit_breaker_normal_closed_execution():
 
 @pytest.mark.asyncio
 async def test_circuit_breaker_trips_to_open():
-    cb = CircuitBreaker(name="test_provider_trip", failure_threshold=3, recovery_timeout_s=10.0)
+    cb = CircuitBreaker(
+        name="test_provider_trip", failure_threshold=3, recovery_timeout_s=10.0
+    )
 
     async def mock_fail():
         raise RuntimeError("Provider 500 downstream failure")

@@ -3,9 +3,11 @@
 import uuid
 from typing import Any
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
+from loguru import logger
 from pydantic import BaseModel, Field
+from starlette.exceptions import HTTPException
 
 from amberclaw.security.secret_scanner import SecretScanner
 
@@ -16,7 +18,9 @@ class APIErrorDetail(BaseModel):
     code: str = Field(..., description="Machine-readable error code")
     message: str = Field(..., description="Human-readable error description")
     request_id: str = Field(..., description="Unique correlation ID for tracing")
-    details: dict[str, Any] = Field(default_factory=dict, description="Safe context metadata")
+    details: dict[str, Any] = Field(
+        default_factory=dict, description="Safe context metadata"
+    )
 
 
 class APIErrorEnvelope(BaseModel):
@@ -25,9 +29,13 @@ class APIErrorEnvelope(BaseModel):
     error: APIErrorDetail
 
 
-async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
-    """Handle FastAPI HTTPExceptions with a structured error envelope."""
-    request_id = getattr(request.state, "correlation_id", f"req_{uuid.uuid4().hex[:12]}")
+async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Handle Starlette/FastAPI HTTP errors through the exception-handler protocol."""
+    if not isinstance(exc, HTTPException):
+        return await global_exception_handler(request, exc)
+    request_id = getattr(
+        request.state, "correlation_id", f"req_{uuid.uuid4().hex[:12]}"
+    )
     code = getattr(exc, "code", "HTTP_ERROR")
     if exc.status_code == status.HTTP_401_UNAUTHORIZED:
         code = "UNAUTHORIZED"
@@ -54,7 +62,10 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle unhandled server exceptions safely without leaking stack traces or internal secrets."""
-    request_id = getattr(request.state, "correlation_id", f"req_{uuid.uuid4().hex[:12]}")
+    request_id = getattr(
+        request.state, "correlation_id", f"req_{uuid.uuid4().hex[:12]}"
+    )
+    logger.error("Unhandled {} for request {}", type(exc).__name__, request_id)
 
     envelope = APIErrorEnvelope(
         error=APIErrorDetail(

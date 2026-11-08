@@ -6,9 +6,11 @@ def test_grpo_advantage_computation():
     rewards = [1.0, 2.0, 3.0, 4.0]
     advantages = trainer.compute_group_advantages(rewards)
 
-    assert len(advantages) == 4
+    expected_advantages_count = 4
+    assert len(advantages) == expected_advantages_count
     # Mean of normalized advantages should be ~0.0
-    assert abs(sum(advantages) / 4) < 1e-5
+    maximum_advantages_sum_abs = 1e-5
+    assert abs(sum(advantages) / 4) < maximum_advantages_sum_abs
     # Relative ordering preserved
     assert advantages[0] < advantages[1] < advantages[2] < advantages[3]
 
@@ -42,10 +44,11 @@ def test_grpo_train_step():
     assert result.reward_std > 0.0
 
 
-def test_grpo_checkpoint():
+def test_grpo_checkpoint(tmp_path):
     trainer = GRPOTrainer()
-    checkpoint_path = trainer.save_checkpoint("/tmp/test_grpo_ckpt.pt")
-    assert checkpoint_path == "/tmp/test_grpo_ckpt.pt"
+    target = str(tmp_path / "test_grpo_ckpt.pt")
+    checkpoint_path = trainer.save_checkpoint(target)
+    assert checkpoint_path == target
 
-    loaded = trainer.load_checkpoint("/tmp/test_grpo_ckpt.pt")
+    loaded = trainer.load_checkpoint(target)
     assert loaded is True

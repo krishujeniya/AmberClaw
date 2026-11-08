@@ -45,11 +45,13 @@ except ImportError as e:
     class Document:  # type: ignore
         """Fallback Document stub class when LangChain is not installed."""
 
-        def __init__(self, page_content: str, metadata: dict[str, Any] | None = None):
+        def __init__(
+            self, page_content: str, metadata: dict[str, Any] | None = None
+        ) -> None:
             self.page_content = page_content
             self.metadata = metadata or {}
 
-    class FallbackRetriever:  # type: ignore
+    class FallbackRetriever:
         def __init__(
             self, docs: list[Any], search_kwargs: dict[str, Any] | None = None
         ) -> None:
@@ -73,7 +75,7 @@ except ImportError as e:
         def get_relevant_documents(self, query: str) -> list[Any]:
             return self.invoke(query)
 
-    class FallbackVectorStore:  # type: ignore
+    class FallbackVectorStore:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             self.docs: list[Any] = []
 
@@ -103,7 +105,7 @@ except ImportError as e:
                     if getattr(d, "metadata", {}).get("org_id") != where["org_id"]
                 ]
 
-    class FallbackBM25:  # type: ignore
+    class FallbackBM25:
         def __init__(self, docs: list[Any] | None = None) -> None:
             self.docs = list(docs or [])
             self.k = 5
@@ -121,11 +123,11 @@ except ImportError as e:
         def get_relevant_documents(self, query: str) -> list[Any]:
             return self.docs[: self.k]
 
-    class FallbackOpenAIEmbeddings:  # type: ignore
+    class FallbackOpenAIEmbeddings:
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             pass
 
-    Chroma = FallbackVectorStore  # type: ignore
+    Chroma = FallbackVectorStore
     OpenAIEmbeddings = FallbackOpenAIEmbeddings  # type: ignore
     BM25Retriever = FallbackBM25  # type: ignore
     EnsembleRetriever = None  # type: ignore
@@ -179,7 +181,7 @@ class DocumentIngestor:
         workspace: Path | None = None,
         collection: str = "amberclaw_docs",
         embedding_model: str | None = None,
-    ):
+    ) -> None:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.workspace = workspace
@@ -373,7 +375,7 @@ class HybridRetriever:
         db_dir: Path,
         collection_name: str = "amberclaw_docs",
         embedding_version: str = "v1",
-    ):
+    ) -> None:
         if not _RAG_ENABLED:
             logger.debug(
                 "Optional RAG dependencies missing; initializing HybridRetriever with fallback storage."
@@ -462,21 +464,24 @@ class HybridRetriever:
                 for d in self.bm25_docs
             ]
             content = json.dumps(serialized_docs, ensure_ascii=False, indent=2)
-            self.docs_path.write_text(content, encoding="utf-8")
-            self.bm25_path.write_text(
-                json.dumps(
-                    {
-                        "status": "ready",
-                        "doc_count": len(self.bm25_docs),
-                        "new_chunks_indexed": new_chunks_indexed,
-                        "embedding_version": self.embedding_version,
-                    },
-                    indent=2,
-                ),
-                encoding="utf-8",
+            tmp_docs = self.docs_path.with_suffix(".tmp")
+            tmp_docs.write_text(content, encoding="utf-8")
+            tmp_docs.replace(self.docs_path)
+
+            bm25_payload = json.dumps(
+                {
+                    "status": "ready",
+                    "doc_count": len(self.bm25_docs),
+                    "new_chunks_indexed": new_chunks_indexed,
+                    "embedding_version": self.embedding_version,
+                },
+                indent=2,
             )
+            tmp_bm25 = self.bm25_path.with_suffix(".tmp")
+            tmp_bm25.write_text(bm25_payload, encoding="utf-8")
+            tmp_bm25.replace(self.bm25_path)
         except Exception as e:
-            logger.error(f"Failed to persist BM25 index to disk: {e}")
+            logger.error("Failed to persist BM25 index to disk: {}", e)
 
     def ingest(self, docs: list["Document"], org_id: str | None = None) -> int:
         """Incrementally add documents to the retriever, skipping duplicates.

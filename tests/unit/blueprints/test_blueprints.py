@@ -54,7 +54,9 @@ def test_blueprint_validator():
     # 1. Valid Blueprint
     valid_bp = BlueprintSchema(
         name="valid-bp",
-        agent=AgentBlueprintConfig(model_name="claude-3-5-sonnet-20241022", temperature=0.3),
+        agent=AgentBlueprintConfig(
+            model_name="claude-3-5-sonnet-20241022", temperature=0.3
+        ),
         security=SecurityBlueprintConfig(sandbox_type="docker"),
         skills=["summarize", "weather"],
     )
@@ -63,8 +65,12 @@ def test_blueprint_validator():
     assert len(res.errors) == 0
 
     # 2. Invalid sandbox type and empty name (constructed via model_construct for raw check)
-    invalid_agent = AgentBlueprintConfig.model_construct(model_name="gpt-4o", temperature=2.5)
-    invalid_sec = SecurityBlueprintConfig.model_construct(sandbox_type="invalid_sandbox_xyz")
+    invalid_agent = AgentBlueprintConfig.model_construct(
+        model_name="gpt-4o", temperature=2.5
+    )
+    invalid_sec = SecurityBlueprintConfig.model_construct(
+        sandbox_type="invalid_sandbox_xyz"
+    )
     invalid_bp = BlueprintSchema.model_construct(
         name="",
         agent=invalid_agent,
@@ -89,7 +95,9 @@ def test_blueprint_applier():
     assert report.success is True
     assert report.blueprint_name == "developer"
     assert report.applied_settings["existing_key"] == "val"
-    assert report.applied_settings["agent"]["model_name"] == "claude-3-5-sonnet-20241022"
+    assert (
+        report.applied_settings["agent"]["model_name"] == "claude-3-5-sonnet-20241022"
+    )
     assert "github" in report.applied_settings["skills"]
 
 

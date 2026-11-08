@@ -39,10 +39,16 @@ class KMSSecretManager:
         meta = metadata or {}
 
         # 1. Obtain DEK from KMS
-        plaintext_dek, encrypted_dek = await self.provider.generate_data_key(target_key_id)
+        plaintext_dek, encrypted_dek = await self.provider.generate_data_key(
+            target_key_id
+        )
 
         # 2. Serialize payload
-        payload_str = json.dumps(secret_value) if isinstance(secret_value, dict) else str(secret_value)
+        payload_str = (
+            json.dumps(secret_value)
+            if isinstance(secret_value, dict)
+            else str(secret_value)
+        )
         payload_bytes = payload_str.encode("utf-8")
 
         # 3. Encrypt payload with AES-256-GCM using plaintext DEK
@@ -86,13 +92,22 @@ class KMSSecretManager:
                 plaintext_dek = cached_dek
 
         if plaintext_dek is None:
-            plaintext_dek = await self.provider.decrypt_data_key(envelope.key_id, encrypted_dek)
+            plaintext_dek = await self.provider.decrypt_data_key(
+                envelope.key_id, encrypted_dek
+            )
             if self.config.dek_cache_ttl_sec > 0:
-                self._dek_cache[cache_key] = (plaintext_dek, now + self.config.dek_cache_ttl_sec)
+                self._dek_cache[cache_key] = (
+                    plaintext_dek,
+                    now + self.config.dek_cache_ttl_sec,
+                )
 
         # Recombine ciphertext and tag for AESGCM
         ciphertext_and_tag = ciphertext + tag
-        aad = json.dumps(envelope.metadata, sort_keys=True).encode("utf-8") if envelope.metadata else b""
+        aad = (
+            json.dumps(envelope.metadata, sort_keys=True).encode("utf-8")
+            if envelope.metadata
+            else b""
+        )
 
         aesgcm = AESGCM(plaintext_dek)
         decrypted_bytes = aesgcm.decrypt(nonce, ciphertext_and_tag, aad or None)
@@ -105,5 +120,11 @@ class KMSSecretManager:
     ) -> EncryptedDataEnvelope:
         """Decrypt secret with current key and re-encrypt under new Master Key."""
         plaintext = await self.decrypt_secret(envelope)
-        logger.info("Rotating secret envelope from key '{}' to '{}'", envelope.key_id, new_key_id)
-        return await self.encrypt_secret(plaintext, key_id=new_key_id, metadata=envelope.metadata)
+        logger.info(
+            "Rotating secret envelope from key '{}' to '{}'",
+            envelope.key_id,
+            new_key_id,
+        )
+        return await self.encrypt_secret(
+            plaintext, key_id=new_key_id, metadata=envelope.metadata
+        )

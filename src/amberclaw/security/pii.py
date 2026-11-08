@@ -1,6 +1,7 @@
 """PII Redactor for masking sensitive user data using Presidio or Regex fallback."""
 
 import re
+from typing import Any
 
 from loguru import logger
 
@@ -16,7 +17,7 @@ PHONE_REGEX = re.compile(r"\b(?:\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\
 class PIIRedactor:
     """PII Redactor for identifying and masking sensitive data in text."""
 
-    def __init__(self, placeholders: dict[str, str] | None = None):
+    def __init__(self, placeholders: dict[str, str] | None = None) -> None:
         self.placeholders = placeholders or {
             "email": "[REDACTED_EMAIL]",
             "ip": "[REDACTED_IP]",
@@ -29,8 +30,8 @@ class PIIRedactor:
 
         # Try to initialize Microsoft Presidio
         self.presidio_available = False
-        self._analyzer = None
-        self._anonymizer = None
+        self._analyzer: Any | None = None
+        self._anonymizer: Any | None = None
 
         try:
             from presidio_analyzer import AnalyzerEngine  # noqa: PLC0415
@@ -60,8 +61,13 @@ class PIIRedactor:
     def _redact_presidio(self, text: str) -> str:
         from presidio_anonymizer.entities import OperatorConfig  # noqa: PLC0415
 
-        # Analyze text for PII
-        results = self._analyzer.analyze(
+        # Optional SDK engines may disappear or fail during initialization.
+        analyzer, anonymizer = self._analyzer, self._anonymizer
+        if analyzer is None or anonymizer is None:
+            raise RuntimeError("Presidio engines are unavailable")
+
+        # Presidio is optional and untyped; validate its output at the boundary.
+        results = analyzer.analyze(
             text=text,
             language="en",
             entities=[
@@ -109,12 +115,15 @@ class PIIRedactor:
         }
 
         # Anonymize using the custom operators
-        anonymized = self._anonymizer.anonymize(
+        anonymized = anonymizer.anonymize(
             text=text,
             analyzer_results=results,
             operators=operators,
         )
-        return anonymized.text
+        redacted: object = anonymized.text
+        if not isinstance(redacted, str):
+            raise TypeError("Presidio anonymizer returned non-string text")
+        return redacted
 
     def _redact_regex(self, text: str) -> str:
         # Redact emails

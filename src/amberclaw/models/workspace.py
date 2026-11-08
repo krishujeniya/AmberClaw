@@ -13,6 +13,8 @@ class WorkspaceModel(BaseModel):
     name: str = Field(..., description="Human-readable workspace label.")
     root_path: str = Field(..., description="Root filesystem directory path.")
     company_id: str | None = Field(default=None, description="Owning organization ID.")
-    is_isolated: bool = Field(default=True, description="Enforce sandboxed execution boundaries.")
+    is_isolated: bool = Field(
+        default=True, description="Enforce sandboxed execution boundaries."
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     settings: dict[str, Any] = Field(default_factory=dict)

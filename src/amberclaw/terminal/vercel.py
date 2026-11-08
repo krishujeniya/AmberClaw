@@ -24,7 +24,7 @@ class VercelTerminalBackend(BaseTerminalBackend):
         project_id: str | None = None,
         team_id: str | None = None,
         sandbox_timeout_ms: int = 300_000,
-    ):
+    ) -> None:
         self.workspace_dir = str(Path(workspace_dir).resolve())
         self.runtime = runtime
         self.token = token

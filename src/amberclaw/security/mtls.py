@@ -108,7 +108,11 @@ def create_client_ssl_context(config: MTLSConfig) -> ssl.SSLContext:
     if config.ciphers:
         ctx.set_ciphers(config.ciphers)
 
-    ctx.verify_mode = ssl.CERT_REQUIRED if config.verify_peer else ssl.CERT_NONE
+    if config.verify_peer:
+        ctx.verify_mode = ssl.CERT_REQUIRED
+    else:
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
     ctx.load_verify_locations(cafile=str(ca_file))
     ctx.load_cert_chain(
         certfile=str(cert_file),

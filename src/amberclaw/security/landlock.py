@@ -7,27 +7,22 @@ import platform
 import sys
 from pathlib import Path
 
+from loguru import logger
+
 # Only define structures and symbols if on Linux
 IS_LINUX = platform.system() == "Linux"
 
-# Landlock structures
-if IS_LINUX:
 
-    class LandlockRulesetAttr(ctypes.Structure):
-        _fields_ = [("handled_access_fs", ctypes.c_uint64)]
+# ctypes structures are portable; only invoking the syscalls requires Linux.
+class LandlockRulesetAttr(ctypes.Structure):
+    _fields_ = [("handled_access_fs", ctypes.c_uint64)]
 
-    class LandlockPathBeneathAttr(ctypes.Structure):
-        _fields_ = [
-            ("allowed_access", ctypes.c_uint64),
-            ("parent_fd", ctypes.c_int32),
-        ]
-else:
 
-    class LandlockRulesetAttr:
-        pass
-
-    class LandlockPathBeneathAttr:
-        pass
+class LandlockPathBeneathAttr(ctypes.Structure):
+    _fields_ = [
+        ("allowed_access", ctypes.c_uint64),
+        ("parent_fd", ctypes.c_int32),
+    ]
 
 
 # Access rights
@@ -97,7 +92,9 @@ def _add_path_rule(libc: ctypes.CDLL, ruleset_fd: int, path: str, access: int) -
             0,
         )
     except Exception:
-        pass
+        logger.debug(
+            "Optional operation failed in landlock; using the existing fallback"
+        )
     finally:
         os.close(fd)
 
@@ -134,7 +131,7 @@ def apply_sandbox(workspace_path: str | Path) -> bool:
         # Set workspace path as read/write
         paths_read_write = [
             str(workspace_path),
-            "/tmp",
+            "/tmp",  # noqa: S108 - directory policy, not a temporary file
             "/dev/null",
             "/dev/urandom",
             "/dev/zero",
@@ -147,19 +144,18 @@ def apply_sandbox(workspace_path: str | Path) -> bool:
             paths_read_only.append(sys.base_prefix)
 
         for p in paths_read_write:
-            if os.path.exists(p):
+            if Path(p).exists():
                 _add_path_rule(libc, ruleset_fd, p, ACCESS_FS_ALL)
 
         for p in paths_read_only:
-            if os.path.exists(p):
+            if Path(p).exists():
                 _add_path_rule(libc, ruleset_fd, p, ACCESS_FS_READ)
 
         # Enforce restrict self
-        if libc.prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) < 0:
-            os.close(ruleset_fd)
-            return False
-
-        if libc.syscall(SYS_LANDLOCK_RESTRICT_SELF, ruleset_fd, 0) < 0:
+        if (
+            libc.prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0) < 0
+            or libc.syscall(SYS_LANDLOCK_RESTRICT_SELF, ruleset_fd, 0) < 0
+        ):
             os.close(ruleset_fd)
             return False
 

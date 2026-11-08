@@ -27,7 +27,9 @@ _current_tenant_var: contextvars.ContextVar[str | None] = contextvars.ContextVar
 class CrossTenantAccessViolationError(PermissionError):
     """Raised when an operation attempts to access or manipulate data across tenant boundaries."""
 
-    def __init__(self, requested_tenant: str | None, current_tenant: str | None):
+    def __init__(
+        self, requested_tenant: str | None, current_tenant: str | None
+    ) -> None:
         super().__init__(
             f"Cross-tenant access violation: Current tenant '{current_tenant}' cannot access "
             f"resources belonging to tenant '{requested_tenant}'."
@@ -39,11 +41,11 @@ class CrossTenantAccessViolationError(PermissionError):
 class TenantContext:
     """Task- and thread-safe context manager for tenant execution scoping."""
 
-    def __init__(self, tenant_id: str):
+    def __init__(self, tenant_id: str) -> None:
         if not tenant_id or not isinstance(tenant_id, str):
             raise ValueError("tenant_id must be a non-empty string")
         self.tenant_id = tenant_id
-        self._token: contextvars.Token | None = None
+        self._token: contextvars.Token[str | None] | None = None
 
     def __enter__(self) -> TenantContext:
         self._token = _current_tenant_var.set(self.tenant_id)
@@ -76,7 +78,7 @@ class TenantIsolatedSessionDB:
     query-level predicate verification.
     """
 
-    def __init__(self, base_dir: Path | str | None = None):
+    def __init__(self, base_dir: Path | str | None = None) -> None:
         self.base_dir = Path(base_dir) if base_dir else Path("data/tenants")
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self._db_instances: dict[str, SessionDB] = {}
@@ -204,7 +206,9 @@ class TenantIsolatedSessionDB:
 class TenantIsolatedStateStore(Generic[T]):
     """Thread-safe persistent JSON state store scoped per tenant partition."""
 
-    def __init__(self, base_dir: Path | str, model_cls: type[T], file_name: str):
+    def __init__(
+        self, base_dir: Path | str, model_cls: type[T], file_name: str
+    ) -> None:
         self.base_dir = Path(base_dir)
         self.model_cls = model_cls
         self.file_name = file_name

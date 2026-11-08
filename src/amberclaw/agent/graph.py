@@ -19,6 +19,7 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode
 from loguru import logger
 
@@ -56,7 +57,7 @@ class AgentGraph:
         tools: list[Any],
         max_iterations: int = 10,
         mode: str = "react",
-    ):
+    ) -> None:
         self.provider = provider
         # Keep original AC tools for OpenAI tool format; wrap for LangChain ToolNode
         self.ac_tools = list(tools)  # original AmberClaw PydanticTool instances
@@ -67,7 +68,9 @@ class AgentGraph:
         self.mode = mode
         self.runnable = self._build_graph()
 
-    def _build_graph(self):
+    def _build_graph(
+        self,
+    ) -> CompiledStateGraph[AgentState, None, AgentState, AgentState]:
         """Construct the StateGraph based on mode."""
         workflow = StateGraph(AgentState)
 
@@ -123,7 +126,7 @@ class AgentGraph:
         if prompt_modifier:
             messages.append(SystemMessage(content=prompt_modifier))
 
-        processed_msgs = []
+        processed_msgs: list[dict[str, Any]] = []
         for m in messages:
             if isinstance(m, HumanMessage):
                 processed_msgs.append({"role": "user", "content": m.content})
@@ -179,17 +182,23 @@ class AgentGraph:
             ai_msg.additional_kwargs["scratch_pad"] = scratch_pad
 
         if resp.tool_calls:
+
+            def _parse_args(raw: Any) -> dict[str, Any]:
+                if isinstance(raw, dict):
+                    return raw
+                if isinstance(raw, str):
+                    try:
+                        parsed = _json.loads(raw)
+                        return parsed if isinstance(parsed, dict) else {}
+                    except (ValueError, TypeError):
+                        return {}
+                return {}
+
             lc_tool_calls = [
                 {
                     "id": tc.id,
                     "name": tc.name,
-                    "args": tc.arguments
-                    if isinstance(tc.arguments, dict)
-                    else (
-                        _json.loads(tc.arguments)
-                        if isinstance(tc.arguments, str)
-                        else {}
-                    ),
+                    "args": _parse_args(tc.arguments),
                     "type": "tool_call",
                 }
                 for tc in resp.tool_calls
@@ -211,11 +220,12 @@ class AgentGraph:
         logger.debug("Graph: Planner node entry")
         prompt = "Create a detailed step-by-step plan to satisfy the user request. Output a numbered list of steps."
         resp = await self._call_llm_with_state(state, prompt_modifier=prompt)
-        # Parse plan out of text (simple approach for now)
+        # Parse plan out of text supporting both standard newlines and literal escapes
+        raw_lines = str(resp.content).replace("\\n", "\n").splitlines()
         plan = [
             line.strip()
-            for line in str(resp.content).split("\\n")
-            if line.strip() and line[0].isdigit()
+            for line in raw_lines
+            if line.strip() and line.strip()[0].isdigit()
         ]
         return {
             "plan": plan,
@@ -228,7 +238,7 @@ class AgentGraph:
         logger.debug("Graph: Reflect node entry")
 
         # Build trajectory list of dicts for the reflector
-        processed_msgs = []
+        processed_msgs: list[dict[str, Any]] = []
         for m in state["messages"]:
             if isinstance(m, HumanMessage):
                 processed_msgs.append({"role": "user", "content": m.content})

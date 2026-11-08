@@ -4,13 +4,14 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
+
 from amberclaw.templates.template import TemplateManager
 
 
 class TemplateInstaller:
     """Installs rendered template prompt files into a target workspace directory."""
 
-    def __init__(self, template_manager: TemplateManager | None = None):
+    def __init__(self, template_manager: TemplateManager | None = None) -> None:
         self.manager = template_manager or TemplateManager()
 
     def install_workspace(

@@ -12,10 +12,10 @@ _current_sender_id: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 
 
-class RBACPermissionDenied(PermissionError):
+class RBACPermissionDenied(PermissionError):  # noqa: N818 - preserve the exported exception names
     """Exception raised when a user is not permitted to execute a tool."""
 
-    def __init__(self, sender_id: str | None, role: str, tool_name: str):
+    def __init__(self, sender_id: str | None, role: str, tool_name: str) -> None:
         super().__init__(
             f"Permission Denied: User '{sender_id}' with role '{role}' is not allowed to execute tool '{tool_name}'"
         )
@@ -24,10 +24,12 @@ class RBACPermissionDenied(PermissionError):
         self.tool_name = tool_name
 
 
-class ObjectPermissionDenied(PermissionError):
+class ObjectPermissionDenied(PermissionError):  # noqa: N818 - preserve the exported exception names
     """Exception raised when a user is not authorized to access a specific object or resource."""
 
-    def __init__(self, sender_id: str | None, resource_owner_id: str, action: str):
+    def __init__(
+        self, sender_id: str | None, resource_owner_id: str, action: str
+    ) -> None:
         super().__init__(
             f"Object Access Denied: User '{sender_id}' is not authorized to '{action}' resource owned by '{resource_owner_id}'"
         )
@@ -52,7 +54,9 @@ def check_tool_permission(tool_name: str) -> None:
 
     Raises RBACPermissionDenied if unauthorized.
     """
-    from amberclaw.config.schema import settings
+    from amberclaw.config.schema import (  # noqa: PLC0415 - resolve runtime settings without eager import cycles
+        settings,
+    )
 
     if not settings.security.rbac.enabled:
         return
@@ -97,7 +101,9 @@ def check_object_permission(
 
     Raises ObjectPermissionDenied if unauthorized.
     """
-    from amberclaw.config.schema import settings
+    from amberclaw.config.schema import (  # noqa: PLC0415 - resolve runtime settings without eager import cycles
+        settings,
+    )
 
     sender_id = explicit_sender_id or _current_sender_id.get()
 

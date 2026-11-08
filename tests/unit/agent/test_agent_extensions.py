@@ -67,10 +67,19 @@ def test_context_compressor():
 
     messages = [
         {"role": "system", "content": "You are AmberClaw."},
-        {"role": "user", "content": "Let us talk about large scale distributed architectures and database replication strategies in cloud environments."},
-        {"role": "assistant", "content": "Distributed databases use consensus protocols such as Raft or Paxos along with multi-region replication."},
+        {
+            "role": "user",
+            "content": "Let us talk about large scale distributed architectures and database replication strategies in cloud environments.",
+        },
+        {
+            "role": "assistant",
+            "content": "Distributed databases use consensus protocols such as Raft or Paxos along with multi-region replication.",
+        },
         {"role": "user", "content": "What about failover mechanisms?"},
-        {"role": "assistant", "content": "Failover relies on automatic heartbeat quorum sensing and leader reelection."},
+        {
+            "role": "assistant",
+            "content": "Failover relies on automatic heartbeat quorum sensing and leader reelection.",
+        },
         {"role": "user", "content": "Give me a summary."},
     ]
 
@@ -78,7 +87,10 @@ def test_context_compressor():
     assert result.summarized_turn_count > 0
     assert result.tokens_after < result.tokens_before
     assert len(result.compressed_messages) <= len(messages)
-    assert any("[Context Summary of Previous Turns]" in str(m.get("content")) for m in result.compressed_messages)
+    assert any(
+        "[Context Summary of Previous Turns]" in str(m.get("content"))
+        for m in result.compressed_messages
+    )
 
 
 def test_personality_profile():
@@ -100,7 +112,10 @@ def test_insights_engine():
     engine = InsightsEngine()
 
     messages = [
-        {"role": "user", "content": "Please write a python script with pytest tests and verify using docker compose."},
+        {
+            "role": "user",
+            "content": "Please write a python script with pytest tests and verify using docker compose.",
+        },
         {"role": "assistant", "content": "Here is the code."},
     ]
 

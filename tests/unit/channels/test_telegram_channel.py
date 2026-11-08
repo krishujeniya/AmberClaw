@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import ClassVar
 
 import pytest
 
@@ -7,9 +8,12 @@ from amberclaw.bus.queue import MessageBus
 from amberclaw.channels.telegram import TelegramChannel
 from amberclaw.config.schema import TelegramConfig
 
+# Credentials are inert values used only by offline channel fixtures.
+OFFLINE_AUTH_VALUE = "123:abc"
+
 
 class _FakeHTTPXRequest:
-    instances: list["_FakeHTTPXRequest"] = []
+    instances: ClassVar[list["_FakeHTTPXRequest"]] = []
 
     def __init__(self, **kwargs) -> None:
         self.kwargs = kwargs
@@ -20,7 +24,7 @@ class _FakeUpdater:
     def __init__(self, on_start_polling) -> None:
         self._on_start_polling = on_start_polling
 
-    async def start_polling(self, **kwargs) -> None:
+    async def start_polling(self, **_kwargs) -> None:
         self._on_start_polling()
 
 
@@ -94,7 +98,7 @@ class _FakeBuilder:
         return self.app
 
 
-def _make_telegram_update(
+def _make_telegram_update(  # noqa: PLR0913 - mirror the Telegram message fields independently
     *,
     chat_type: str = "group",
     text: str | None = None,
@@ -127,7 +131,7 @@ def _make_telegram_update(
 async def test_start_uses_request_proxy_without_builder_proxy(monkeypatch) -> None:
     config = TelegramConfig(
         enabled=True,
-        token="123:abc",
+        token=OFFLINE_AUTH_VALUE,
         allow_from=["*"],
         proxy="http://127.0.0.1:7890",
     )
@@ -194,7 +198,7 @@ def test_is_allowed_rejects_invalid_legacy_telegram_sender_shapes() -> None:
 
 @pytest.mark.asyncio
 async def test_send_progress_keeps_message_in_topic() -> None:
-    config = TelegramConfig(enabled=True, token="123:abc", allow_from=["*"])
+    config = TelegramConfig(enabled=True, token=OFFLINE_AUTH_VALUE, allow_from=["*"])
     channel = TelegramChannel(config, MessageBus())
     channel._app = _FakeApp(lambda: None)
 
@@ -207,13 +211,20 @@ async def test_send_progress_keeps_message_in_topic() -> None:
         ),
     )
 
-    assert channel._app.bot.sent_messages[0]["message_thread_id"] == 42
+    expected_channel_app_bot_sent_messages_message_thread_id = 42
+    assert (
+        channel._app.bot.sent_messages[0]["message_thread_id"]
+        == expected_channel_app_bot_sent_messages_message_thread_id
+    )
 
 
 @pytest.mark.asyncio
 async def test_send_reply_infers_topic_from_message_id_cache() -> None:
     config = TelegramConfig(
-        enabled=True, token="123:abc", allow_from=["*"], reply_to_message=True
+        enabled=True,
+        token=OFFLINE_AUTH_VALUE,
+        allow_from=["*"],
+        reply_to_message=True,
     )
     channel = TelegramChannel(config, MessageBus())
     channel._app = _FakeApp(lambda: None)
@@ -228,15 +239,26 @@ async def test_send_reply_infers_topic_from_message_id_cache() -> None:
         ),
     )
 
-    assert channel._app.bot.sent_messages[0]["message_thread_id"] == 42
-    assert channel._app.bot.sent_messages[0]["reply_parameters"].message_id == 10
+    expected_channel_app_bot_sent_messages_message_thread_id_2 = 42
+    assert (
+        channel._app.bot.sent_messages[0]["message_thread_id"]
+        == expected_channel_app_bot_sent_messages_message_thread_id_2
+    )
+    expected_channel_app_bot_sent_messages_reply_parameters_message_id = 10
+    assert (
+        channel._app.bot.sent_messages[0]["reply_parameters"].message_id
+        == expected_channel_app_bot_sent_messages_reply_parameters_message_id
+    )
 
 
 @pytest.mark.asyncio
 async def test_group_policy_mention_ignores_unmentioned_group_message() -> None:
     channel = TelegramChannel(
         TelegramConfig(
-            enabled=True, token="123:abc", allow_from=["*"], group_policy="mention"
+            enabled=True,
+            token=OFFLINE_AUTH_VALUE,
+            allow_from=["*"],
+            group_policy="mention",
         ),
         MessageBus(),
     )
@@ -262,7 +284,10 @@ async def test_group_policy_mention_accepts_text_mention_and_caches_bot_identity
 ):
     channel = TelegramChannel(
         TelegramConfig(
-            enabled=True, token="123:abc", allow_from=["*"], group_policy="mention"
+            enabled=True,
+            token=OFFLINE_AUTH_VALUE,
+            allow_from=["*"],
+            group_policy="mention",
         ),
         MessageBus(),
     )
@@ -286,7 +311,8 @@ async def test_group_policy_mention_accepts_text_mention_and_caches_bot_identity
         None,
     )
 
-    assert len(handled) == 2
+    expected_handled_count = 2
+    assert len(handled) == expected_handled_count
     assert channel._app.bot.get_me_calls == 1
 
 
@@ -294,7 +320,10 @@ async def test_group_policy_mention_accepts_text_mention_and_caches_bot_identity
 async def test_group_policy_mention_accepts_caption_mention() -> None:
     channel = TelegramChannel(
         TelegramConfig(
-            enabled=True, token="123:abc", allow_from=["*"], group_policy="mention"
+            enabled=True,
+            token=OFFLINE_AUTH_VALUE,
+            allow_from=["*"],
+            group_policy="mention",
         ),
         MessageBus(),
     )
@@ -324,7 +353,10 @@ async def test_group_policy_mention_accepts_caption_mention() -> None:
 async def test_group_policy_mention_accepts_reply_to_bot() -> None:
     channel = TelegramChannel(
         TelegramConfig(
-            enabled=True, token="123:abc", allow_from=["*"], group_policy="mention"
+            enabled=True,
+            token=OFFLINE_AUTH_VALUE,
+            allow_from=["*"],
+            group_policy="mention",
         ),
         MessageBus(),
     )
@@ -350,7 +382,10 @@ async def test_group_policy_mention_accepts_reply_to_bot() -> None:
 async def test_group_policy_open_accepts_plain_group_message() -> None:
     channel = TelegramChannel(
         TelegramConfig(
-            enabled=True, token="123:abc", allow_from=["*"], group_policy="open"
+            enabled=True,
+            token=OFFLINE_AUTH_VALUE,
+            allow_from=["*"],
+            group_policy="open",
         ),
         MessageBus(),
     )

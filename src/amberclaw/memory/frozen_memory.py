@@ -14,7 +14,7 @@ from loguru import logger
 class FrozenSnapshotMemory:
     """Manages frozen-in-time snapshots of user profile and long-term memory."""
 
-    def __init__(self, workspace: Path):
+    def __init__(self, workspace: Path) -> None:
         self.workspace = workspace
         self.user_path = self.workspace / "USER.md"
         self.memory_path = self.workspace / "memory" / "MEMORY.md"

@@ -59,7 +59,7 @@ class LearningCycleResult(BaseModel):
 class AgentReflector:
     """Evaluates agent execution trajectories and provides correction suggestions."""
 
-    def __init__(self, provider: LLMProvider):
+    def __init__(self, provider: LLMProvider) -> None:
         self.provider = provider
 
     async def reflect(
@@ -79,7 +79,7 @@ class AgentReflector:
         # Build trajectory overview
         trajectory_str = ""
         for i, msg in enumerate(messages):
-            role = msg.get("role")
+            role = str(msg.get("role") or "unknown")
             content = msg.get("content") or ""
             tool_calls = msg.get("tool_calls")
 

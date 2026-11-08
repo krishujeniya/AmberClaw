@@ -67,7 +67,9 @@ class SubagentWorker:
         self.task = task
         self.status = SubagentStatus.PENDING
         self.result: SubagentResult | None = None
-        self._async_task: asyncio.Task[SubagentResult] | None = None
+        self._async_task: asyncio.Task[SubagentResult] | asyncio.Task[None] | None = (
+            None
+        )
 
     async def run(
         self,

@@ -15,7 +15,7 @@ from amberclaw.agent.memory import MemoryStore
 from amberclaw.providers.base import LLMProvider, LLMResponse, ToolCallRequest
 
 
-def _make_session(message_count: int = 30, memory_window: int = 50):
+def _make_session(message_count: int = 30, memory_window: int = 50):  # noqa: ARG001 - preserve the fake SDK keyword contract
     """Create a mock session with messages."""
     session = MagicMock()
     session.messages = [
@@ -49,7 +49,7 @@ class ScriptedProvider(LLMProvider):
         self._responses = list(responses)
         self.calls = 0
 
-    async def chat(self, *args, **kwargs) -> LLMResponse:
+    async def chat(self, *_args, **_kwargs) -> LLMResponse:
         self.calls += 1
         if self._responses:
             return self._responses.pop(0)
@@ -293,5 +293,6 @@ class TestMemoryConsolidationTypeHandling:
         )
 
         assert result is True
-        assert provider.calls == 2
+        expected_provider_calls = 2
+        assert provider.calls == expected_provider_calls
         assert delays == [1]

@@ -18,7 +18,7 @@ from loguru import logger
 class TemporalGraphMemory:
     """Temporal Graph Memory managing entities, relationships, and history."""
 
-    def __init__(self, db_path: Path | str | None = None):
+    def __init__(self, db_path: Path | str | None = None) -> None:
         if db_path is None:
             self.db_path = Path("~/.amberclaw/workspace/graph_memory.json").expanduser()
         else:
@@ -78,11 +78,13 @@ class TemporalGraphMemory:
                     }
                 )
 
-            with self.db_path.open("w", encoding="utf-8") as f:
+            tmp_path = self.db_path.with_suffix(".tmp")
+            with tmp_path.open("w", encoding="utf-8") as f:
                 json.dump({"nodes": nodes_data, "edges": edges_data}, f, indent=2)
+            tmp_path.replace(self.db_path)
             logger.debug("Saved graph memory successfully.")
         except Exception as e:
-            logger.error(f"Failed to save graph memory: {e}")
+            logger.error("Failed to save graph memory: {}", e)
 
     def add_entity(
         self, name: str, entity_type: str, properties: dict[str, Any] | None = None
@@ -233,4 +235,5 @@ class TemporalGraphMemory:
         node_id = name.lower().replace(" ", "_")
         if not self.graph.has_node(node_id):
             return None
-        return self.graph.nodes[node_id].get("history", [])
+        history: list[dict[str, Any]] = self.graph.nodes[node_id].get("history", [])
+        return history

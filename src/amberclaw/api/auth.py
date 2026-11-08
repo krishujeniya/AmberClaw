@@ -1,20 +1,23 @@
 """API Authentication and Authorization dependencies."""
 
 import os
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import HTTPException, Security, status
+import jwt
+from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
-from pydantic import BaseModel
+from jwt import InvalidTokenError
+from pydantic import BaseModel, Field
 
+from amberclaw.security.credentials import (
+    AuthenticationConfigurationError,
+    get_signing_secret,
+)
 from amberclaw.security.tokens import APIKeyManager, TokenRevocationStore
 
 # Secret key and algorithm for JWT tokens
-JWT_SECRET_KEY = os.getenv(
-    "JWT_SECRET_KEY", "amberclaw-insecure-default-change-me-in-prod"
-)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
@@ -27,13 +30,13 @@ security_bearer = HTTPBearer(auto_error=False)
 class TokenData(BaseModel):
     sub: str | None = None
     role: str = "user"
-    scopes: list[str] = []
+    scopes: list[str] = Field(default_factory=list)
 
 
 class UserIdentity(BaseModel):
     user_id: str
     role: str
-    scopes: list[str] = []
+    scopes: list[str] = Field(default_factory=list)
 
 
 def create_access_token(
@@ -45,8 +48,17 @@ def create_access_token(
         expire = datetime.now(UTC) + expires_delta
     else:
         expire = datetime.now(UTC) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
+    to_encode.update({"exp": expire, "type": "access"})
+    try:
+        secret = get_signing_secret()
+    except AuthenticationConfigurationError as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "JWT authentication is not configured"
+        ) from exc
+    token: object = jwt.encode(to_encode, secret, algorithm=ALGORITHM)
+    if not isinstance(token, str):
+        raise TypeError("JWT encoder must return a string token")
+    return token
 
 
 async def get_current_user(
@@ -66,7 +78,7 @@ async def get_current_user(
     token = auth.credentials
 
     # 1. Check direct API Key (legacy or env)
-    if API_KEY and token == API_KEY:
+    if API_KEY and secrets.compare_digest(token.encode(), API_KEY.encode()):
         return UserIdentity(user_id="api_key_user", role="admin", scopes=["*"])
 
     # 2. Check hashed API Key via APIKeyManager
@@ -87,9 +99,16 @@ async def get_current_user(
 
     # 3. Check JWT Token
     try:
-        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
+        payload = jwt.decode(
+            token,
+            get_signing_secret(),
+            algorithms=[ALGORITHM],
+            options={"require": ["exp", "sub"]},
+        )
+        if payload.get("type", "access") != "access":
+            raise InvalidTokenError("Only access tokens can authorize API requests")
+        user_id = payload.get("sub")
+        if not isinstance(user_id, str) or not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token payload: missing sub claim.",
@@ -116,9 +135,21 @@ async def get_current_user(
         role: str = payload.get("role", "user")
         scopes: list[str] = payload.get("scopes", [])
         return UserIdentity(user_id=user_id, role=role, scopes=scopes)
-    except JWTError as e:
+    except AuthenticationConfigurationError as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE, "JWT authentication is not configured"
+        ) from exc
+    except InvalidTokenError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Could not validate credentials: {e}",
             headers={"WWW-Authenticate": "Bearer"},
         ) from e
+
+
+async def require_auth_administrator(
+    identity: UserIdentity = Depends(get_current_user),
+) -> UserIdentity:
+    if identity.role != "admin":
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Administrator access required")
+    return identity

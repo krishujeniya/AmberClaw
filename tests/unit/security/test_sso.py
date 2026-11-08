@@ -1,6 +1,7 @@
 """Unit tests for SAML 2.0 and OIDC Enterprise Single Sign-On."""
 
 import base64
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -11,6 +12,7 @@ from amberclaw.security.sso.saml import (
     generate_sp_metadata,
     parse_and_verify_saml_response,
 )
+from tests.sso_helpers import SigningIdentity
 
 
 def test_saml_metadata_generation() -> None:
@@ -27,10 +29,16 @@ def test_saml_metadata_generation() -> None:
 
 def test_saml_authn_request_builder() -> None:
     """Test building SAML AuthnRequest with redirect URL."""
-    config = SSOConfig(idp_sso_url="https://idp.okta.com/app/amberclaw/sso/saml")
+    config = SSOConfig(
+        idp_sso_url="https://idp.okta.com/app/amberclaw/sso/saml",
+        idp_x509_cert=SigningIdentity().cert,
+    )
     result = build_authn_request(config, relay_state="/dashboard")
     assert "redirect_url" in result
-    assert "https://idp.okta.com/app/amberclaw/sso/saml?SAMLRequest=" in result["redirect_url"]
+    assert (
+        "https://idp.okta.com/app/amberclaw/sso/saml?SAMLRequest="
+        in result["redirect_url"]
+    )
     assert "RelayState=%2Fdashboard" in result["redirect_url"]
     assert len(result["request_id"]) > 0
 
@@ -64,13 +72,10 @@ def test_saml_response_parsing_and_role_mapping() -> None:
 </samlp:Response>"""
 
     b64_response = base64.b64encode(saml_xml.encode("utf-8")).decode("utf-8")
-    profile = parse_and_verify_saml_response(b64_response, config)
-
-    assert profile.email == "alice.engineer@enterprise.com"
-    assert profile.user_id == "alice.engineer@enterprise.com"
-    assert profile.display_name == "Alice Engineer"
-    assert "admin" in profile.roles
-    assert "operator" in profile.roles
+    identity = SigningIdentity()
+    config.idp_x509_cert = identity.cert
+    with pytest.raises(ValueError, match="verification failed"):
+        parse_and_verify_saml_response(b64_response, config, request_id="id_pending")
 
 
 def test_saml_response_failure_status() -> None:
@@ -83,8 +88,41 @@ def test_saml_response_failure_status() -> None:
 </samlp:Response>"""
 
     b64 = base64.b64encode(saml_xml.encode("utf-8")).decode("utf-8")
-    with pytest.raises(ValueError, match="SAML Authentication failed with status"):
+    with pytest.raises(ValueError, match="pending SAML authentication request"):
         parse_and_verify_saml_response(b64, config)
+
+
+def test_saml_signed_response_and_request_correlation():
+    identity = SigningIdentity()
+    config = SSOConfig(idp_x509_cert=identity.cert)
+    response = identity.saml_response(config, "id_pending")
+    profile = parse_and_verify_saml_response(response, config, request_id="id_pending")
+    assert profile.email == "signed.user@example.com"
+    assert profile.roles == ["admin"]
+    with pytest.raises(ValueError, match="verification failed"):
+        parse_and_verify_saml_response(response, config, request_id="id_other")
+    tampered = base64.b64encode(
+        base64.b64decode(response).replace(b"signed.user", b"forged.user")
+    ).decode()
+    with pytest.raises(ValueError, match="verification failed"):
+        parse_and_verify_saml_response(tampered, config, request_id="id_pending")
+
+
+@pytest.mark.parametrize("invalid", ["audience", "recipient", "expired", "certificate"])
+def test_saml_rejects_invalid_signed_assertions(invalid):
+    identity = SigningIdentity()
+    config = SSOConfig(idp_x509_cert=identity.cert)
+    options = {
+        "audience": {"audience": "https://other.example/sp"},
+        "recipient": {"recipient": "https://other.example/callback"},
+        "expired": {"expires": datetime.now(UTC) - timedelta(minutes=10)},
+        "certificate": {},
+    }
+    response = identity.saml_response(config, "id_pending", **options[invalid])
+    if invalid == "certificate":
+        config.idp_x509_cert = SigningIdentity().cert
+    with pytest.raises(ValueError, match="verification failed"):
+        parse_and_verify_saml_response(response, config, request_id="id_pending")
 
 
 def test_oidc_auth_url_and_claims_validation() -> None:

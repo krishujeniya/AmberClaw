@@ -24,7 +24,9 @@ class ClawHubClient:
     """Interface for discovering, installing, and publishing skills to/from ClawHub."""
 
     def __init__(self, local_skills_dir: Path | str | None = None) -> None:
-        self.local_skills_dir = Path(local_skills_dir) if local_skills_dir else Path("./skills")
+        self.local_skills_dir = (
+            Path(local_skills_dir) if local_skills_dir else Path("./skills")
+        )
 
     def install_skill(
         self,

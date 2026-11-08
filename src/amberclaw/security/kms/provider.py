@@ -39,7 +39,9 @@ class LocalEnvelopeKMSProvider(BaseKMSProvider):
     """Local Master-Key Envelope Encryption Provider."""
 
     def __init__(self, master_key_material: bytes | None = None) -> None:
-        raw_key = master_key_material or os.environ.get("AMBERCLAW_MASTER_KEY", "amberclaw-default-local-master-key-32b").encode("utf-8")
+        raw_key = master_key_material or os.environ.get(
+            "AMBERCLAW_MASTER_KEY", "amberclaw-default-local-master-key-32b"
+        ).encode("utf-8")
         self._master_key = HKDF(
             algorithm=hashes.SHA256(),
             length=AES_256_KEY_BYTES,
@@ -80,6 +82,7 @@ class AWSKMSProvider(BaseKMSProvider):
             return self._client
         try:
             import boto3  # noqa: PLC0415
+
             self._client = boto3.client(
                 "kms",
                 region_name=self.config.region,
@@ -117,18 +120,21 @@ class GCPKMSProvider(BaseKMSProvider):
     async def generate_data_key(self, key_id: str) -> tuple[bytes, bytes]:
         plaintext_dek = os.urandom(AES_256_KEY_BYTES)
         if self._client:
-            resp = self._client.encrypt(request={"name": key_id, "plaintext": plaintext_dek})
+            resp = self._client.encrypt(
+                request={"name": key_id, "plaintext": plaintext_dek}
+            )
             return plaintext_dek, bytes(resp.ciphertext)
         fallback = LocalEnvelopeKMSProvider()
         return await fallback.generate_data_key(key_id)
 
     async def decrypt_data_key(self, key_id: str, encrypted_dek: bytes) -> bytes:
         if self._client:
-            resp = self._client.decrypt(request={"name": key_id, "ciphertext": encrypted_dek})
+            resp = self._client.decrypt(
+                request={"name": key_id, "ciphertext": encrypted_dek}
+            )
             return bytes(resp.plaintext)
         fallback = LocalEnvelopeKMSProvider()
         return await fallback.decrypt_data_key(key_id, encrypted_dek)
-
 
 
 class VaultTransitProvider(BaseKMSProvider):
@@ -138,10 +144,8 @@ class VaultTransitProvider(BaseKMSProvider):
         self.config = config
 
     async def generate_data_key(self, key_id: str) -> tuple[bytes, bytes]:
-        plaintext_dek = os.urandom(AES_256_KEY_BYTES)
         fallback = LocalEnvelopeKMSProvider()
-        _, encrypted_dek = await fallback.generate_data_key(key_id)
-        return plaintext_dek, encrypted_dek
+        return await fallback.generate_data_key(key_id)
 
     async def decrypt_data_key(self, key_id: str, encrypted_dek: bytes) -> bytes:
         fallback = LocalEnvelopeKMSProvider()

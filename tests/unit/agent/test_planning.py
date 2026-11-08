@@ -20,7 +20,8 @@ def test_reflection_engine_plan_evaluation():
     )
     assert safe_critique.is_viable is True
     assert safe_critique.risk_level == "low"
-    assert safe_critique.confidence >= 0.9
+    minimum_safe_critique_confidence = 0.9
+    assert safe_critique.confidence >= minimum_safe_critique_confidence
 
     # 3. Risky / destructive plan
     risky_critique = engine.evaluate_plan(
@@ -35,12 +36,16 @@ def test_reflection_engine_action_critique():
     engine = ReflectionEngine()
 
     # Success case
-    ok_critique = engine.critique_action_result("run_command", "Build succeeded. 0 errors.")
+    ok_critique = engine.critique_action_result(
+        "run_command", "Build succeeded. 0 errors."
+    )
     assert ok_critique.is_viable is True
     assert ok_critique.risk_level == "low"
 
     # Failure / error case
-    err_critique = engine.critique_action_result("run_command", "PermissionDenied: Access denied to /root")
+    err_critique = engine.critique_action_result(
+        "run_command", "PermissionDenied: Access denied to /root"
+    )
     assert err_critique.is_viable is False
     assert err_critique.risk_level == "medium"
     assert len(err_critique.suggestions) > 0
@@ -49,9 +54,21 @@ def test_reflection_engine_action_critique():
 def test_delegation_planner_dag_execution():
     planner = DelegationPlanner()
 
-    t1 = SubTaskAssignment(subtask_id="t1", title="Gather Data", target_role="data_engineer")
-    t2 = SubTaskAssignment(subtask_id="t2", title="Train Model", target_role="ml_engineer", dependencies=["t1"])
-    t3 = SubTaskAssignment(subtask_id="t3", title="Evaluate Model", target_role="qa_specialist", dependencies=["t2"])
+    t1 = SubTaskAssignment(
+        subtask_id="t1", title="Gather Data", target_role="data_engineer"
+    )
+    t2 = SubTaskAssignment(
+        subtask_id="t2",
+        title="Train Model",
+        target_role="ml_engineer",
+        dependencies=["t1"],
+    )
+    t3 = SubTaskAssignment(
+        subtask_id="t3",
+        title="Evaluate Model",
+        target_role="qa_specialist",
+        dependencies=["t2"],
+    )
 
     planner.add_subtask(t1)
     planner.add_subtask(t2)
@@ -93,7 +110,8 @@ def test_react_planner_step_parsing():
     assert step1.thought == "I need to query the user list."
     assert step1.action == "fetch_users"
     assert isinstance(step1.action_input, dict)
-    assert step1.action_input["limit"] == 10
+    expected_step1_action_input_limit = 10
+    assert step1.action_input["limit"] == expected_step1_action_input_limit
     assert step1.is_final is False
 
     # Record observation

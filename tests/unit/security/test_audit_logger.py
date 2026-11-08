@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
-from amberclaw.security.audit import SecurityAuditLogger, AuditEvent, redact_secrets
+
+from amberclaw.security.audit import AuditEvent, SecurityAuditLogger, redact_secrets
 
 
 def test_audit_event_schema_defaults():
@@ -23,7 +24,7 @@ def test_redact_secrets():
     }
     redacted = redact_secrets(raw_metadata)
     assert redacted["api_key"] == "[REDACTED_SECRET]"
-    assert redacted["nested"]["password"] == "[REDACTED_SECRET]"
+    assert redacted["nested"]["password"] == "[REDACTED_SECRET]"  # noqa: S105 - synthetic credential or protocol expectation in an offline test
     assert redacted["nested"]["normal"] == "public_data"
     assert "[REDACTED_SECRET]" in redacted["query"]
 
@@ -31,14 +32,14 @@ def test_redact_secrets():
 def test_security_audit_logger_flow(tmp_path: Path):
     logger = SecurityAuditLogger(log_dir=tmp_path)
 
-    event1 = logger.log_event(
+    logger.log_event(
         action="agent.create",
         actor="admin",
         resource_type="agent",
         resource_id="agent_007",
         metadata={"key": "val1"},
     )
-    event2 = logger.log_event(
+    logger.log_event(
         action="tool.execute",
         actor="agent_007",
         resource_type="tool",
@@ -50,7 +51,8 @@ def test_security_audit_logger_flow(tmp_path: Path):
     assert log_file.exists()
 
     lines = log_file.read_text().splitlines()
-    assert len(lines) == 2
+    expected_lines_count = 2
+    assert len(lines) == expected_lines_count
 
     entry1 = json.loads(lines[0])
     entry2 = json.loads(lines[1])

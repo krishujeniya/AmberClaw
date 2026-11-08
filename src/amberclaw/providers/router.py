@@ -45,7 +45,9 @@ class RoutingDecision(BaseModel):
 class ModelRouter:
     """Evaluates candidate models and selects the optimal model given strategy and requirements."""
 
-    def __init__(self, default_strategy: RoutingStrategy = RoutingStrategy.BALANCED):
+    def __init__(
+        self, default_strategy: RoutingStrategy = RoutingStrategy.BALANCED
+    ) -> None:
         self.default_strategy = default_strategy
 
     def satisfies_requirements(

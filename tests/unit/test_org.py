@@ -57,9 +57,23 @@ def test_org_chart_cycle_detection():
 def test_org_chart_hierarchy_and_subordinates():
     chart = OrgChart()
 
-    lead = AgentNode(id="lead_1", name="Lead", role=OrgRole.DEPARTMENT_LEAD, department="eng")
-    staff = AgentNode(id="staff_1", name="Staff", role=OrgRole.STAFF_AGENT, department="eng", manager_id="lead_1")
-    intern = AgentNode(id="intern_1", name="Intern", role=OrgRole.INTERN_AGENT, department="eng", manager_id="staff_1")
+    lead = AgentNode(
+        id="lead_1", name="Lead", role=OrgRole.DEPARTMENT_LEAD, department="eng"
+    )
+    staff = AgentNode(
+        id="staff_1",
+        name="Staff",
+        role=OrgRole.STAFF_AGENT,
+        department="eng",
+        manager_id="lead_1",
+    )
+    intern = AgentNode(
+        id="intern_1",
+        name="Intern",
+        role=OrgRole.INTERN_AGENT,
+        department="eng",
+        manager_id="staff_1",
+    )
 
     chart.add_agent(lead)
     chart.add_agent(staff)
@@ -87,10 +101,30 @@ def test_org_delegation_policies():
     chart = OrgChart(policy=OrgPolicy(strict_hierarchy_enforcement=True))
 
     admin = AgentNode(id="admin_1", name="Admin", role=OrgRole.ADMIN, department="ops")
-    eng_lead = AgentNode(id="eng_lead", name="Eng Lead", role=OrgRole.DEPARTMENT_LEAD, department="engineering")
-    eng_dev = AgentNode(id="eng_dev", name="Developer", role=OrgRole.SPECIALIST_AGENT, department="engineering")
-    eng_intern = AgentNode(id="eng_intern", name="Intern", role=OrgRole.INTERN_AGENT, department="engineering")
-    sales_rep = AgentNode(id="sales_rep", name="Sales Rep", role=OrgRole.SPECIALIST_AGENT, department="sales")
+    eng_lead = AgentNode(
+        id="eng_lead",
+        name="Eng Lead",
+        role=OrgRole.DEPARTMENT_LEAD,
+        department="engineering",
+    )
+    eng_dev = AgentNode(
+        id="eng_dev",
+        name="Developer",
+        role=OrgRole.SPECIALIST_AGENT,
+        department="engineering",
+    )
+    eng_intern = AgentNode(
+        id="eng_intern",
+        name="Intern",
+        role=OrgRole.INTERN_AGENT,
+        department="engineering",
+    )
+    sales_rep = AgentNode(
+        id="sales_rep",
+        name="Sales Rep",
+        role=OrgRole.SPECIALIST_AGENT,
+        department="sales",
+    )
 
     chart.add_agent(admin)
     chart.add_agent(eng_lead)
@@ -128,8 +162,12 @@ def test_org_delegation_policies():
 def test_tenant_boundary_isolation():
     chart = OrgChart()
 
-    tenant_a_admin = AgentNode(id="admin_a", name="Admin A", role=OrgRole.ADMIN, tenant_id="tenant_a")
-    tenant_b_dev = AgentNode(id="dev_b", name="Dev B", role=OrgRole.SPECIALIST_AGENT, tenant_id="tenant_b")
+    tenant_a_admin = AgentNode(
+        id="admin_a", name="Admin A", role=OrgRole.ADMIN, tenant_id="tenant_a"
+    )
+    tenant_b_dev = AgentNode(
+        id="dev_b", name="Dev B", role=OrgRole.SPECIALIST_AGENT, tenant_id="tenant_b"
+    )
 
     chart.add_agent(tenant_a_admin)
     chart.add_agent(tenant_b_dev)
@@ -140,8 +178,16 @@ def test_tenant_boundary_isolation():
 
 def test_org_chart_serialization_roundtrip():
     chart = OrgChart()
-    lead = AgentNode(id="lead_1", name="Lead", role=OrgRole.DEPARTMENT_LEAD, department="ops")
-    spec = AgentNode(id="spec_1", name="Specialist", role=OrgRole.SPECIALIST_AGENT, department="ops", manager_id="lead_1")
+    lead = AgentNode(
+        id="lead_1", name="Lead", role=OrgRole.DEPARTMENT_LEAD, department="ops"
+    )
+    spec = AgentNode(
+        id="spec_1",
+        name="Specialist",
+        role=OrgRole.SPECIALIST_AGENT,
+        department="ops",
+        manager_id="lead_1",
+    )
     chart.add_agent(lead)
     chart.add_agent(spec)
 

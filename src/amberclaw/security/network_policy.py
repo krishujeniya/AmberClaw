@@ -27,10 +27,10 @@ class NetworkPolicy:
         self.enforce_tls_only = enforce_tls_only
         self.binary_rules = binary_rules or {}
 
-        self._compiled_patterns: list[re.Pattern] = []
+        self._compiled_patterns: list[re.Pattern[str]] = []
         self._compile_patterns()
 
-        self._compiled_binary_patterns: dict[str, list[re.Pattern]] = {}
+        self._compiled_binary_patterns: dict[str, list[re.Pattern[str]]] = {}
         self._compile_binary_patterns()
 
     def _compile_patterns(self) -> None:

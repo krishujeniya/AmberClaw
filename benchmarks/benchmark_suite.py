@@ -139,7 +139,8 @@ def benchmark_template_manager(iterations: int = 300) -> dict[str, Any]:
 
 def run_full_benchmark_suite(output_file: Path | None = None) -> dict[str, Any]:
     """Run full benchmark suite across all core modules and export JSON summary."""
-    bench_dir = Path("benchmarks")
+    target_path = output_file or (Path("benchmarks") / "benchmark_results.json")
+    bench_dir = target_path.parent
     bench_dir.mkdir(parents=True, exist_ok=True)
 
     print("🚀 Running AmberClaw Performance Benchmark Suite...")
@@ -151,7 +152,6 @@ def run_full_benchmark_suite(output_file: Path | None = None) -> dict[str, Any]:
         "template_manager_render": benchmark_template_manager(),
     }
 
-    target_path = output_file or (bench_dir / "benchmark_results.json")
     with open(target_path, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
 

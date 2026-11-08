@@ -54,6 +54,8 @@ class HomeAssistantChannel(BaseChannel):
         service_target = (
             msg.metadata.get("service") if msg.metadata else self.config.notify_service
         )
+        if not isinstance(service_target, str) or not service_target:
+            service_target = self.config.notify_service
         url = f"{self.config.base_url.rstrip('/')}/api/services/{service_target.replace('.', '/')}"
 
         headers = {

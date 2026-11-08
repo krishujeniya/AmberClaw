@@ -4,11 +4,14 @@ import os
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class WebSession(BaseModel):
-    session_id: str
+    session_id: str = Field(repr=False)
+    conversation_id: str = Field(
+        default_factory=lambda: "wchat_" + secrets.token_hex(12)
+    )
     user_id: str
     role: str
     created_at: datetime
@@ -18,17 +21,21 @@ class WebSession(BaseModel):
 class WebAuthManager:
     """Manages web dashboard authentication and session tokens."""
 
-    def __init__(self, session_ttl_minutes: int = 480):
+    def __init__(self, session_ttl_minutes: int = 480) -> None:
         self.session_ttl = timedelta(minutes=session_ttl_minutes)
         self._sessions: dict[str, WebSession] = {}
 
     def authenticate_credentials(self, username: str, password: str) -> bool:
         """Authenticate dashboard user credentials against environment defaults."""
-        expected_user = os.getenv("WEB_ADMIN_USER", "admin")
-        expected_pass = os.getenv("WEB_ADMIN_PASS", "amberclaw")
+        expected_user = os.getenv("WEB_ADMIN_USER")
+        expected_pass = os.getenv("WEB_ADMIN_PASS")
+        if not expected_user or not expected_pass:
+            return False
         return secrets.compare_digest(
-            username, expected_user
-        ) and secrets.compare_digest(password, expected_pass)
+            username.encode("utf-8"), expected_user.encode("utf-8")
+        ) and secrets.compare_digest(
+            password.encode("utf-8"), expected_pass.encode("utf-8")
+        )
 
     def create_session(self, user_id: str, role: str = "admin") -> WebSession:
         """Create a new authenticated web session."""

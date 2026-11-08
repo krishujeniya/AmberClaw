@@ -25,7 +25,7 @@ class DaytonaTerminalBackend(BaseTerminalBackend):
         api_url: str | None = None,
         target: str | None = None,
         create_kwargs: dict[str, Any] | None = None,
-    ):
+    ) -> None:
         self.workspace_dir = workspace_dir
         self.api_key = api_key
         self.api_url = api_url

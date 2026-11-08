@@ -13,8 +13,12 @@ class CompressionResult(BaseModel):
     compressed_messages: list[dict[str, Any]]
     tokens_before: int
     tokens_after: int
-    compression_ratio: float = Field(default=1.0, description="tokens_after / tokens_before")
-    summarized_turn_count: int = Field(default=0, description="Number of historical turns condensed")
+    compression_ratio: float = Field(
+        default=1.0, description="tokens_after / tokens_before"
+    )
+    summarized_turn_count: int = Field(
+        default=0, description="Number of historical turns condensed"
+    )
 
 
 class ContextCompressor:
@@ -53,20 +57,21 @@ class ContextCompressor:
         system_msgs = [m for m in messages if m.get("role") == "system"]
         non_system = [m for m in messages if m.get("role") != "system"]
 
-        to_summarize = non_system[:-self.keep_recent]
-        recent = non_system[-self.keep_recent:]
+        to_summarize = non_system[: -self.keep_recent]
+        recent = non_system[-self.keep_recent :]
 
         # Create concise historical summary card
         summary_lines = []
         for m in to_summarize:
             role = m.get("role", "unknown")
             content = str(m.get("content", ""))
-            truncated = content[:_MAX_TRUNCATE_LEN] + ("..." if len(content) > _MAX_TRUNCATE_LEN else "")
+            truncated = content[:_MAX_TRUNCATE_LEN] + (
+                "..." if len(content) > _MAX_TRUNCATE_LEN else ""
+            )
             summary_lines.append(f"- [{role}]: {truncated}")
 
-        summary_content = (
-            "[Context Summary of Previous Turns]\n"
-            + "\n".join(summary_lines)
+        summary_content = "[Context Summary of Previous Turns]\n" + "\n".join(
+            summary_lines
         )
 
         compressed: list[dict[str, Any]] = []

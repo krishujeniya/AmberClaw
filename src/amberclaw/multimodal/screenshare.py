@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import time
 import uuid
 from collections.abc import Callable
@@ -47,7 +48,7 @@ class ScreenShareSession:
         session_id: str | None = None,
         sample_interval_sec: float = 2.0,
         image_processor: ImageProcessor | None = None,
-    ):
+    ) -> None:
         self.session_id = session_id or str(uuid.uuid4())
         self.sample_interval_sec = sample_interval_sec
         self.image_processor = image_processor or ImageProcessor()
@@ -77,10 +78,8 @@ class ScreenShareSession:
         sample = ScreenFrameSample(frame_bytes=frame_bytes, width=width, height=height)
         # Keep queue bounded to latest frame
         if self._frame_queue.full():
-            try:
+            with contextlib.suppress(asyncio.QueueEmpty):
                 self._frame_queue.get_nowait()
-            except asyncio.QueueEmpty:
-                pass
         self._frame_queue.put_nowait(sample)
 
     async def analyze_latest_frame(
@@ -105,7 +104,7 @@ class ScreenShareSession:
         guidance_text = (
             "Screen content analyzed: Visual pair-programming session active."
         )
-        errors = []
+        errors: list[str] = []
 
         if vision_callback:
             try:

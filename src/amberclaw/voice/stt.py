@@ -3,11 +3,14 @@ import io
 import os
 import tempfile
 import wave
+from pathlib import Path
 from typing import Any
 
 import httpx
 from loguru import logger
 from pydantic import BaseModel, Field
+
+MIN_WAV_PAYLOAD_BYTES = 100
 
 
 class STTConfig(BaseModel):
@@ -32,7 +35,7 @@ class STTConfig(BaseModel):
 class SpeechToTextEngine:
     """Multi-provider Speech-To-Text transcription engine."""
 
-    def __init__(self, config: STTConfig | None = None):
+    def __init__(self, config: STTConfig | None = None) -> None:
         self.config = config or STTConfig()
         self._api_key = self.config.api_key or os.environ.get("OPENAI_API_KEY")
         self._backend = "simulated"
@@ -123,7 +126,8 @@ class SpeechToTextEngine:
                 )
                 if resp.status_code == 200:  # noqa: PLR2004
                     result = resp.json()
-                    return result.get("text", "").strip()
+                    text = result.get("text") if isinstance(result, dict) else None
+                    return text.strip() if isinstance(text, str) else ""
                 logger.error(f"Whisper API error ({resp.status_code}): {resp.text}")
         except Exception as ex:
             logger.error(f"Whisper API exception: {ex}")
@@ -145,22 +149,23 @@ class SpeechToTextEngine:
         except Exception as ex:
             logger.error(f"Local Whisper transcription error: {ex}")
         finally:
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+            if Path(tmp_path).exists():
+                Path(tmp_path).unlink()
 
         return self._transcribe_simulated(wav_bytes)
 
     def _transcribe_google(self, wav_bytes: bytes) -> str:
-        import speech_recognition as sr  # noqa: PLC0415
+        import speech_recognition as sr  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
         recognizer = sr.Recognizer()
         with io.BytesIO(wav_bytes) as audio_file:
             try:
                 with sr.AudioFile(audio_file) as source:
                     audio = recognizer.record(source)
-                    return recognizer.recognize_google(
+                    text = recognizer.recognize_google(
                         audio, language=self.config.language
                     )
+                    return text if isinstance(text, str) else ""
             except Exception as ex:
                 logger.error(f"Google STT error: {ex}")
 
@@ -168,7 +173,7 @@ class SpeechToTextEngine:
 
     def _transcribe_simulated(self, wav_bytes: bytes) -> str:
         """Fallback transcription return string."""
-        if len(wav_bytes) < 100:
+        if len(wav_bytes) < MIN_WAV_PAYLOAD_BYTES:
             return ""
         return "[Simulated Audio Speech Transcription]"
 

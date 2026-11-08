@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import AsyncMock
 
 import pytest
@@ -20,7 +21,7 @@ async def test_dynamic_credential_proxy_resolution(
     monkeypatch.setattr(global_vault, "_fernet", None)
 
     # Store a dummy credential in the vault
-    secret_key = "sk-super-duper-secret-12345"
+    secret_key = "sk-super-duper-secret-12345"  # noqa: S105 - synthetic credential or protocol expectation in an offline test
     global_vault.store_secret("providers/openai/api_key", secret_key)
 
     # Ensure clean environment
@@ -50,7 +51,7 @@ async def test_dynamic_credential_proxy_resolution(
         finish_reason = "stop"
 
     class DummyResponse:
-        choices = [DummyChoice()]
+        choices: ClassVar[list[DummyChoice]] = [DummyChoice()]
 
     mock_acompletion.return_value = DummyResponse()
     monkeypatch.setattr(
@@ -66,7 +67,7 @@ async def test_dynamic_credential_proxy_resolution(
 
     # Verify acompletion received the resolved secret key
     assert mock_acompletion.call_count == 1
-    passed_args, passed_kwargs = mock_acompletion.call_args
+    _passed_args, passed_kwargs = mock_acompletion.call_args
     assert passed_kwargs["api_key"] == secret_key
 
     # Verify environment variables were cleaned up afterwards

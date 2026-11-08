@@ -1,5 +1,6 @@
 import contextlib
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -40,7 +41,7 @@ def scan_secrets(
 
     console.print(f"[bold blue]Scanning {scan_path} for secrets...[/bold blue]")
 
-    findings: list[dict] = []
+    findings: list[dict[Any, Any]] = []
     if git_history:
         findings.extend(
             SecretScanner.scan_git_history(scan_path, check_entropy=entropy)

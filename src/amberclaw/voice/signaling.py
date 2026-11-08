@@ -28,7 +28,7 @@ class SignalingMessage(BaseModel):
 class WebRTCSignalingHandler:
     """Signaling handler for managing WebRTC session setup and audio message exchange over WebSockets."""
 
-    def __init__(self, session_manager: RealtimeSessionManager | None = None):
+    def __init__(self, session_manager: RealtimeSessionManager | None = None) -> None:
         self.manager = session_manager or RealtimeSessionManager()
 
     async def handle_signaling_json(

@@ -14,7 +14,9 @@ def parse_skill_markdown(content: str) -> tuple[SkillMetadata, str]:
 
     if not frontmatter_match:
         # No frontmatter, treat entire file as instructions
-        meta = SkillMetadata(name="unnamed_skill", description="Skill without frontmatter")
+        meta = SkillMetadata(
+            name="unnamed_skill", description="Skill without frontmatter"
+        )
         return meta, content.strip()
 
     frontmatter_yaml = frontmatter_match.group(1)

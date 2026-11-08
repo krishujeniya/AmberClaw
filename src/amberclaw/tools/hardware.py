@@ -3,7 +3,7 @@ Hardware and Edge Integration Tools for AmberClaw AI OS
 """
 
 import asyncio
-from typing import Any, Optional
+
 from pydantic import BaseModel, Field
 
 # Graceful imports for optional dependencies
@@ -40,7 +40,7 @@ class GPIOWriteSchema(BaseModel):
     value: int = Field(..., description="Value to set (0 for LOW, 1 for HIGH)")
 
 
-class HardwareControlTool(BaseTool):
+class HardwareControlTool(BaseTool[[str, int, str]]):
     """Tool to send commands to microcontrollers (Arduino/ESP) via Serial."""
 
     name = "hardware_send_command"
@@ -58,7 +58,7 @@ class HardwareControlTool(BaseTool):
             # Run in executor since serial calls are blocking
             loop = asyncio.get_event_loop()
 
-            def _write():
+            def _write() -> str:
                 with serial.Serial(port, baudrate, timeout=1) as ser:
                     ser.write(message.encode("utf-8"))
                     return f"Sent command '{message}' to {port}"
@@ -68,7 +68,7 @@ class HardwareControlTool(BaseTool):
             return f"Hardware Error: {e!s}"
 
 
-class HardwareReadTool(BaseTool):
+class HardwareReadTool(BaseTool[[str, int, float]]):
     """Tool to read sensor data from microcontrollers via Serial."""
 
     name = "hardware_read_sensor"
@@ -84,7 +84,7 @@ class HardwareReadTool(BaseTool):
         try:
             loop = asyncio.get_event_loop()
 
-            def _read():
+            def _read() -> str:
                 with serial.Serial(port, baudrate, timeout=timeout) as ser:
                     line = ser.readline().decode("utf-8").strip()
                     return (
@@ -98,7 +98,7 @@ class HardwareReadTool(BaseTool):
             return f"Hardware Error: {e!s}"
 
 
-class GPIOTool(BaseTool):
+class GPIOTool(BaseTool[[int, int]]):
     """Tool to control Raspberry Pi GPIO pins directly."""
 
     name = "rpi_gpio_control"
@@ -116,7 +116,9 @@ class GPIOTool(BaseTool):
 
         try:
             # We use OutputDevice for generic control
-            from gpiozero import OutputDevice
+            from gpiozero import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                OutputDevice,
+            )
 
             device = OutputDevice(pin)
             if value == 1:
@@ -130,7 +132,7 @@ class GPIOTool(BaseTool):
             return f"GPIO Error: {e!s}"
 
 
-class HardwareScanTool(BaseTool):
+class HardwareScanTool(BaseTool[[]]):
     """Tool to list available hardware ports."""
 
     name = "hardware_list_ports"

@@ -3,11 +3,12 @@
 import asyncio
 import importlib.util
 import json
-import os
 import re
 import threading
+import time
 from collections import OrderedDict
-from typing import Any
+from pathlib import Path
+from typing import Any, ClassVar
 
 from loguru import logger
 
@@ -16,6 +17,10 @@ from amberclaw.bus.queue import MessageBus
 from amberclaw.channels.base import BaseChannel
 from amberclaw.config.paths import get_media_dir
 from amberclaw.config.schema import FeishuConfig
+
+MIN_MARKDOWN_TABLE_LINES = 3
+MAX_RECENT_MESSAGE_IDS = 1000
+
 
 FEISHU_AVAILABLE = importlib.util.find_spec("lark_oapi") is not None
 
@@ -28,7 +33,7 @@ MSG_TYPE_MAP = {
 }
 
 
-def _extract_share_card_content(content_json: dict, msg_type: str) -> str:
+def _extract_share_card_content(content_json: dict[Any, Any], msg_type: str) -> str:
     """Extract text representation from share cards and interactive messages."""
     parts = []
 
@@ -48,7 +53,16 @@ def _extract_share_card_content(content_json: dict, msg_type: str) -> str:
     return "\n".join(parts) if parts else f"[{msg_type}]"
 
 
-def _extract_interactive_content(content: dict) -> list[str]:
+def _extract_card_title(title: Any) -> list[str]:
+    if isinstance(title, dict):
+        text = title.get("content", "") or title.get("text", "")
+        return [f"title: {text}"] if text else []
+    if isinstance(title, str):
+        return [f"title: {title}"]
+    return []
+
+
+def _extract_interactive_content(content: dict[Any, Any]) -> list[str]:
     """Recursively extract text and links from interactive card content."""
     parts = []
 
@@ -61,14 +75,7 @@ def _extract_interactive_content(content: dict) -> list[str]:
     if not isinstance(content, dict):
         return parts
 
-    if "title" in content:
-        title = content["title"]
-        if isinstance(title, dict):
-            title_content = title.get("content", "") or title.get("text", "")
-            if title_content:
-                parts.append(f"title: {title_content}")
-        elif isinstance(title, str):
-            parts.append(f"title: {title}")
+    parts.extend(_extract_card_title(content.get("title")))
 
     for elements in (
         content.get("elements", []) if isinstance(content.get("elements"), list) else []
@@ -93,82 +100,72 @@ def _extract_interactive_content(content: dict) -> list[str]:
     return parts
 
 
-def _extract_element_content(element: dict) -> list[str]:
-    """Extract content from a single card element."""
+def _extract_div_content(element: dict[Any, Any]) -> list[str]:
     parts = []
-
-    if not isinstance(element, dict):
-        return parts
-
-    tag = element.get("tag", "")
-
-    if tag in ("markdown", "lark_md"):
-        content = element.get("content", "")
-        if content:
-            parts.append(content)
-
-    elif tag == "div":
-        text = element.get("text", {})
-        if isinstance(text, dict):
-            text_content = text.get("content", "") or text.get("text", "")
-            if text_content:
-                parts.append(text_content)
-        elif isinstance(text, str):
-            parts.append(text)
-        for field in element.get("fields", []):
-            if isinstance(field, dict):
-                field_text = field.get("text", {})
-                if isinstance(field_text, dict):
-                    c = field_text.get("content", "")
-                    if c:
-                        parts.append(c)
-
-    elif tag == "a":
-        href = element.get("href", "")
-        text = element.get("text", "")
-        if href:
-            parts.append(f"link: {href}")
-        if text:
-            parts.append(text)
-
-    elif tag == "button":
-        text = element.get("text", {})
-        if isinstance(text, dict):
-            c = text.get("content", "")
-            if c:
-                parts.append(c)
-        url = element.get("url", "") or element.get("multi_url", {}).get("url", "")
-        if url:
-            parts.append(f"link: {url}")
-
-    elif tag == "img":
-        alt = element.get("alt", {})
-        parts.append(
-            alt.get("content", "[image]") if isinstance(alt, dict) else "[image]"
-        )
-
-    elif tag == "note":
-        for ne in element.get("elements", []):
-            parts.extend(_extract_element_content(ne))
-
-    elif tag == "column_set":
-        for col in element.get("columns", []):
-            for ce in col.get("elements", []):
-                parts.extend(_extract_element_content(ce))
-
-    elif tag == "plain_text":
-        content = element.get("content", "")
-        if content:
-            parts.append(content)
-
-    else:
-        for ne in element.get("elements", []):
-            parts.extend(_extract_element_content(ne))
-
+    text = element.get("text", {})
+    if isinstance(text, dict):
+        value = text.get("content", "") or text.get("text", "")
+        if value:
+            parts.append(value)
+    elif isinstance(text, str):
+        parts.append(text)
+    for field in element.get("fields", []):
+        if isinstance(field, dict):
+            field_text = field.get("text", {})
+            if isinstance(field_text, dict) and (
+                value := field_text.get("content", "")
+            ):
+                parts.append(value)
     return parts
 
 
-def _extract_post_content(content_json: dict) -> tuple[str, list[str]]:
+def _extract_button_content(element: dict[Any, Any]) -> list[str]:
+    parts = []
+    text = element.get("text", {})
+    if isinstance(text, dict) and (value := text.get("content", "")):
+        parts.append(value)
+    url = element.get("url", "") or element.get("multi_url", {}).get("url", "")
+    if url:
+        parts.append(f"link: {url}")
+    return parts
+
+
+def _extract_leaf_content(element: dict[Any, Any]) -> list[str]:
+    if element.get("tag") == "img":
+        alt = element.get("alt", {})
+        return [alt.get("content", "[image]") if isinstance(alt, dict) else "[image]"]
+    value = element.get("content", "")
+    return [value] if value else []
+
+
+def _extract_element_content(element: dict[Any, Any]) -> list[str]:
+    """Extract one card element, preserving nested card traversal order."""
+    if not isinstance(element, dict):
+        return []
+    tag = element.get("tag", "")
+    if tag in ("markdown", "lark_md", "plain_text", "img"):
+        return _extract_leaf_content(element)
+    if tag == "div":
+        return _extract_div_content(element)
+    if tag == "button":
+        return _extract_button_content(element)
+    if tag == "a":
+        parts = []
+        if href := element.get("href", ""):
+            parts.append(f"link: {href}")
+        if text := element.get("text", ""):
+            parts.append(text)
+        return parts
+    containers = element.get("columns", []) if tag == "column_set" else [element]
+    return [
+        text
+        for container in containers
+        for child in container.get("elements", [])
+        for text in _extract_element_content(child)
+    ]
+
+
+def _extract_post_content(content_json: dict[Any, Any]) -> tuple[str, list[str]]:
     """Extract text and image keys from Feishu post (rich text) message.
 
     Handles three payload shapes:
@@ -177,7 +174,7 @@ def _extract_post_content(content_json: dict) -> tuple[str, list[str]]:
     - Wrapped:   {"post": {"zh_cn": {"title": "...", "content": [...]}}}
     """
 
-    def _parse_block(block: dict) -> tuple[str | None, list[str]]:
+    def _parse_block(block: dict[Any, Any]) -> tuple[str | None, list[str]]:
         if not isinstance(block, dict) or not isinstance(block.get("content"), list):
             return None, []
         texts, images = [], []
@@ -226,7 +223,7 @@ def _extract_post_content(content_json: dict) -> tuple[str, list[str]]:
     return "", []
 
 
-def _extract_post_text(content_json: dict) -> str:
+def _extract_post_text(content_json: dict[Any, Any]) -> str:
     """Extract plain text from Feishu post (rich text) message content.
 
     Legacy wrapper for _extract_post_content, returns only text.
@@ -249,7 +246,9 @@ class FeishuChannel(BaseChannel):
 
     name = "feishu"
 
-    def __init__(self, config: FeishuConfig, bus: MessageBus, groq_api_key: str = ""):
+    def __init__(
+        self, config: FeishuConfig, bus: MessageBus, groq_api_key: str = ""
+    ) -> None:
         super().__init__(config, bus)
         self.config: FeishuConfig = config
         self.groq_api_key = groq_api_key
@@ -277,7 +276,7 @@ class FeishuChannel(BaseChannel):
             logger.error("Feishu app_id and app_secret not configured")
             return
 
-        import lark_oapi as lark
+        import lark_oapi as lark  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
         self._running = True
         self._loop = asyncio.get_running_loop()
@@ -324,10 +323,9 @@ class FeishuChannel(BaseChannel):
         # module-level `loop = asyncio.get_event_loop()` picks up an idle loop
         # instead of the already-running main asyncio loop, which would cause
         # "This event loop is already running" errors.
-        def run_ws():
-            import time
+        def run_ws() -> None:
 
-            import lark_oapi.ws.client as _lark_ws_client
+            import lark_oapi.ws.client as _lark_ws_client  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
             ws_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(ws_loop)
@@ -351,14 +349,13 @@ class FeishuChannel(BaseChannel):
         logger.info("No public IP required - using WebSocket to receive events")
 
         # Keep running until stopped
-        while self._running:
-            await asyncio.sleep(1)
+        await self._stop_event.wait()
 
     async def stop(self) -> None:
         """
         Stop the Feishu bot.
 
-        Notice: lark.ws.Client does not expose stop method， simply exiting the program will close the client.
+        Notice: lark.ws.Client does not expose stop method, simply exiting the program will close the client.
 
         Reference: https://github.com/larksuite/oapi-sdk-python/blob/v2_main/lark_oapi/ws/client.py#L86
         """
@@ -367,7 +364,7 @@ class FeishuChannel(BaseChannel):
 
     def _add_reaction_sync(self, message_id: str, emoji_type: str) -> None:
         """Sync helper for adding reaction (runs in thread pool)."""
-        from lark_oapi.api.im.v1 import (
+        from lark_oapi.api.im.v1 import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
             CreateMessageReactionRequest,
             CreateMessageReactionRequestBody,
             Emoji,
@@ -425,12 +422,12 @@ class FeishuChannel(BaseChannel):
     _CODE_BLOCK_RE = re.compile(r"(```[\s\S]*?```)", re.MULTILINE)
 
     @staticmethod
-    def _parse_md_table(table_text: str) -> dict | None:
+    def _parse_md_table(table_text: str) -> dict[Any, Any] | None:
         """Parse a markdown table into a Feishu table element."""
         lines = [
             _line.strip() for _line in table_text.strip().split("\n") if _line.strip()
         ]
-        if len(lines) < 3:
+        if len(lines) < MIN_MARKDOWN_TABLE_LINES:
             return None
 
         def split(_line: str) -> list[str]:
@@ -452,7 +449,7 @@ class FeishuChannel(BaseChannel):
             ],
         }
 
-    def _build_card_elements(self, content: str) -> list[dict]:
+    def _build_card_elements(self, content: str) -> list[dict[Any, Any]]:
         """Split content into div/markdown + table elements for Feishu card."""
         elements, last_end = [], 0
         for m in self._TABLE_RE.finditer(content):
@@ -471,9 +468,9 @@ class FeishuChannel(BaseChannel):
 
     @staticmethod
     def _split_elements_by_table_limit(
-        elements: list[dict],
+        elements: list[dict[Any, Any]],
         max_tables: int = 1,
-    ) -> list[list[dict]]:
+    ) -> list[list[dict[Any, Any]]]:
         """Split card elements into groups with at most *max_tables* table elements each.
 
         Feishu cards have a hard limit of one table per card (API error 11310).
@@ -482,8 +479,8 @@ class FeishuChannel(BaseChannel):
         """
         if not elements:
             return [[]]
-        groups: list[list[dict]] = []
-        current: list[dict] = []
+        groups: list[list[dict[Any, Any]]] = []
+        current: list[dict[Any, Any]] = []
         table_count = 0
         for el in elements:
             if el.get("tag") == "table":
@@ -500,7 +497,7 @@ class FeishuChannel(BaseChannel):
             groups.append(current)
         return groups or [[]]
 
-    def _split_headings(self, content: str) -> list[dict]:
+    def _split_headings(self, content: str) -> list[dict[Any, Any]]:
         """Split content by headings, converting headings to div elements."""
         protected = content
         code_blocks = []
@@ -510,7 +507,7 @@ class FeishuChannel(BaseChannel):
                 m.group(1), f"\x00CODE{len(code_blocks) - 1}\x00", 1
             )
 
-        elements = []
+        elements: list[dict[str, Any]] = []
         last_end = 0
         for m in self._HEADING_RE.finditer(protected):
             before = protected[last_end : m.start()].strip()
@@ -576,18 +573,14 @@ class FeishuChannel(BaseChannel):
         """Determine the optimal Feishu message format for *content*.
 
         Returns one of:
-        - ``"text"``        – plain text, short and no markdown
-        - ``"post"``        – rich text (links only, moderate length)
-        - ``"interactive"`` – card with full markdown rendering
+        - ``"text"``        - plain text, short and no markdown
+        - ``"post"``        - rich text (links only, moderate length)
+        - ``"interactive"`` - card with full markdown rendering
         """
         stripped = content.strip()
 
         # Complex markdown (code blocks, tables, headings) → always card
-        if cls._COMPLEX_MD_RE.search(stripped):
-            return "interactive"
-
-        # Long content → card (better readability with card layout)
-        if len(stripped) > cls._POST_MAX_LEN:
+        if cls._COMPLEX_MD_RE.search(stripped) or len(stripped) > cls._POST_MAX_LEN:
             return "interactive"
 
         # Has bold/italic/strikethrough → card (post format can't render these)
@@ -617,10 +610,10 @@ class FeishuChannel(BaseChannel):
         Each line becomes a paragraph (row) in the post body.
         """
         lines = content.strip().split("\n")
-        paragraphs: list[list[dict]] = []
+        paragraphs: list[list[dict[Any, Any]]] = []
 
         for line in lines:
-            elements: list[dict] = []
+            elements: list[dict[Any, Any]] = []
             last_end = 0
 
             for m in cls._MD_LINK_RE.finditer(line):
@@ -655,7 +648,7 @@ class FeishuChannel(BaseChannel):
         }
         return json.dumps(post_body, ensure_ascii=False)
 
-    _IMAGE_EXTS = {
+    _IMAGE_EXTS: ClassVar[set[str]] = {
         ".png",
         ".jpg",
         ".jpeg",
@@ -666,9 +659,9 @@ class FeishuChannel(BaseChannel):
         ".tiff",
         ".tif",
     }
-    _AUDIO_EXTS = {".opus"}
-    _VIDEO_EXTS = {".mp4", ".mov", ".avi"}
-    _FILE_TYPE_MAP = {
+    _AUDIO_EXTS: ClassVar[set[str]] = {".opus"}
+    _VIDEO_EXTS: ClassVar[set[str]] = {".mp4", ".mov", ".avi"}
+    _FILE_TYPE_MAP: ClassVar[dict[str, str]] = {
         ".opus": "opus",
         ".mp4": "mp4",
         ".pdf": "pdf",
@@ -682,10 +675,13 @@ class FeishuChannel(BaseChannel):
 
     def _upload_image_sync(self, file_path: str) -> str | None:
         """Upload an image to Feishu and return the image_key."""
-        from lark_oapi.api.im.v1 import CreateImageRequest, CreateImageRequestBody
+        from lark_oapi.api.im.v1 import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            CreateImageRequest,
+            CreateImageRequestBody,
+        )
 
         try:
-            with open(file_path, "rb") as f:
+            with Path(file_path).open("rb") as f:
                 request = (
                     CreateImageRequest.builder()
                     .request_body(
@@ -700,9 +696,11 @@ class FeishuChannel(BaseChannel):
                 if response.success():
                     image_key = response.data.image_key
                     logger.debug(
-                        "Uploaded image {}: {}", os.path.basename(file_path), image_key
+                        "Uploaded image {}: {}", Path(file_path).name, image_key
                     )
-                    return image_key
+                    return (
+                        image_key if isinstance(image_key, str) and image_key else None
+                    )
                 logger.error(
                     "Failed to upload image: code={}, msg={}",
                     response.code,
@@ -715,13 +713,16 @@ class FeishuChannel(BaseChannel):
 
     def _upload_file_sync(self, file_path: str) -> str | None:
         """Upload a file to Feishu and return the file_key."""
-        from lark_oapi.api.im.v1 import CreateFileRequest, CreateFileRequestBody
+        from lark_oapi.api.im.v1 import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            CreateFileRequest,
+            CreateFileRequestBody,
+        )
 
-        ext = os.path.splitext(file_path)[1].lower()
+        ext = Path(file_path).suffix.lower()
         file_type = self._FILE_TYPE_MAP.get(ext, "stream")
-        file_name = os.path.basename(file_path)
+        file_name = Path(file_path).name
         try:
-            with open(file_path, "rb") as f:
+            with Path(file_path).open("rb") as f:
                 request = (
                     CreateFileRequest.builder()
                     .request_body(
@@ -737,7 +738,7 @@ class FeishuChannel(BaseChannel):
                 if response.success():
                     file_key = response.data.file_key
                     logger.debug("Uploaded file {}: {}", file_name, file_key)
-                    return file_key
+                    return file_key if isinstance(file_key, str) and file_key else None
                 logger.error(
                     "Failed to upload file: code={}, msg={}",
                     response.code,
@@ -754,7 +755,9 @@ class FeishuChannel(BaseChannel):
         image_key: str,
     ) -> tuple[bytes | None, str | None]:
         """Download an image from Feishu message by message_id and image_key."""
-        from lark_oapi.api.im.v1 import GetMessageResourceRequest
+        from lark_oapi.api.im.v1 import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            GetMessageResourceRequest,
+        )
 
         try:
             request = (
@@ -788,7 +791,9 @@ class FeishuChannel(BaseChannel):
         resource_type: str = "file",
     ) -> tuple[bytes | None, str | None]:
         """Download a file/audio/media from a Feishu message by message_id and file_key."""
-        from lark_oapi.api.im.v1 import GetMessageResourceRequest
+        from lark_oapi.api.im.v1 import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            GetMessageResourceRequest,
+        )
 
         # Feishu API only accepts 'image' or 'file' as type parameter
         # Convert 'audio' to 'file' for API compatibility
@@ -823,7 +828,7 @@ class FeishuChannel(BaseChannel):
     async def _download_and_save_media(
         self,
         msg_type: str,
-        content_json: dict,
+        content_json: dict[Any, Any],
         message_id: str | None = None,
     ) -> tuple[str | None, str]:
         """
@@ -880,7 +885,10 @@ class FeishuChannel(BaseChannel):
         content: str,
     ) -> bool:
         """Send a single message (text/image/file/interactive) synchronously."""
-        from lark_oapi.api.im.v1 import CreateMessageRequest, CreateMessageRequestBody
+        from lark_oapi.api.im.v1 import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            CreateMessageRequest,
+            CreateMessageRequestBody,
+        )
 
         try:
             request = (
@@ -921,49 +929,13 @@ class FeishuChannel(BaseChannel):
             receive_id_type = "chat_id" if msg.chat_id.startswith("oc_") else "open_id"
             loop = asyncio.get_running_loop()
 
-            for file_path in msg.media:
-                if not os.path.isfile(file_path):
-                    logger.warning("Media file not found: {}", file_path)
-                    continue
-                ext = os.path.splitext(file_path)[1].lower()
-                if ext in self._IMAGE_EXTS:
-                    key = await loop.run_in_executor(
-                        None, self._upload_image_sync, file_path
-                    )
-                    if key:
-                        await loop.run_in_executor(
-                            None,
-                            self._send_message_sync,
-                            receive_id_type,
-                            msg.chat_id,
-                            "image",
-                            json.dumps({"image_key": key}, ensure_ascii=False),
-                        )
-                else:
-                    key = await loop.run_in_executor(
-                        None, self._upload_file_sync, file_path
-                    )
-                    if key:
-                        # Use msg_type "media" for audio/video so users can play inline;
-                        # "file" for everything else (documents, archives, etc.)
-                        if ext in self._AUDIO_EXTS or ext in self._VIDEO_EXTS:
-                            media_type = "media"
-                        else:
-                            media_type = "file"
-                        await loop.run_in_executor(
-                            None,
-                            self._send_message_sync,
-                            receive_id_type,
-                            msg.chat_id,
-                            media_type,
-                            json.dumps({"file_key": key}, ensure_ascii=False),
-                        )
+            await self._send_media(msg.media, receive_id_type, msg.chat_id)
 
             if msg.content and msg.content.strip():
                 fmt = self._detect_msg_format(msg.content)
 
                 if fmt == "text":
-                    # Short plain text – send as simple text message
+                    # Short plain text - send as simple text message
                     text_body = json.dumps(
                         {"text": msg.content.strip()}, ensure_ascii=False
                     )
@@ -977,7 +949,7 @@ class FeishuChannel(BaseChannel):
                     )
 
                 elif fmt == "post":
-                    # Medium content with links – send as rich-text post
+                    # Medium content with links - send as rich-text post
                     post_body = self._markdown_to_post(msg.content)
                     await loop.run_in_executor(
                         None,
@@ -989,7 +961,7 @@ class FeishuChannel(BaseChannel):
                     )
 
                 else:
-                    # Complex / long content – send as interactive card
+                    # Complex / long content - send as interactive card
                     elements = self._build_card_elements(msg.content)
                     for chunk in self._split_elements_by_table_limit(elements):
                         card = {"config": {"wide_screen_mode": True}, "elements": chunk}
@@ -1004,6 +976,48 @@ class FeishuChannel(BaseChannel):
 
         except Exception as e:
             logger.error("Error sending Feishu message: {}", e)
+
+    async def _send_media(
+        self, media: list[str], receive_id_type: str, chat_id: str
+    ) -> None:
+        loop = asyncio.get_running_loop()
+        for file_path in media:
+            if not (await asyncio.to_thread(Path(file_path).is_file)):
+                logger.warning("Media file not found: {}", file_path)
+                continue
+            ext = Path(file_path).suffix.lower()
+            if ext in self._IMAGE_EXTS:
+                key = await loop.run_in_executor(
+                    None, self._upload_image_sync, file_path
+                )
+                if key:
+                    await loop.run_in_executor(
+                        None,
+                        self._send_message_sync,
+                        receive_id_type,
+                        chat_id,
+                        "image",
+                        json.dumps({"image_key": key}, ensure_ascii=False),
+                    )
+            else:
+                key = await loop.run_in_executor(
+                    None, self._upload_file_sync, file_path
+                )
+                if key:
+                    # Use msg_type "media" for audio/video so users can play inline;
+                    # "file" for everything else (documents, archives, etc.)
+                    if ext in self._AUDIO_EXTS or ext in self._VIDEO_EXTS:
+                        media_type = "media"
+                    else:
+                        media_type = "file"
+                    await loop.run_in_executor(
+                        None,
+                        self._send_message_sync,
+                        receive_id_type,
+                        chat_id,
+                        media_type,
+                        json.dumps({"file_key": key}, ensure_ascii=False),
+                    )
 
     def _on_message_sync(self, data: Any) -> None:
         """
@@ -1027,7 +1041,7 @@ class FeishuChannel(BaseChannel):
             self._processed_message_ids[message_id] = None
 
             # Trim cache
-            while len(self._processed_message_ids) > 1000:
+            while len(self._processed_message_ids) > MAX_RECENT_MESSAGE_IDS:
                 self._processed_message_ids.popitem(last=False)
 
             # Skip bot messages
@@ -1042,79 +1056,9 @@ class FeishuChannel(BaseChannel):
             # Add reaction
             await self._add_reaction(message_id, self.config.react_emoji)
 
-            # Parse content
-            content_parts = []
-            media_paths = []
-
-            try:
-                content_json = json.loads(message.content) if message.content else {}
-            except json.JSONDecodeError:
-                content_json = {}
-
-            if msg_type == "text":
-                text = content_json.get("text", "")
-                if text:
-                    content_parts.append(text)
-
-            elif msg_type == "post":
-                text, image_keys = _extract_post_content(content_json)
-                if text:
-                    content_parts.append(text)
-                # Download images embedded in post
-                for img_key in image_keys:
-                    file_path, content_text = await self._download_and_save_media(
-                        "image",
-                        {"image_key": img_key},
-                        message_id,
-                    )
-                    if file_path:
-                        media_paths.append(file_path)
-                    content_parts.append(content_text)
-
-            elif msg_type in ("image", "audio", "file", "media"):
-                file_path, content_text = await self._download_and_save_media(
-                    msg_type,
-                    content_json,
-                    message_id,
-                )
-                if file_path:
-                    media_paths.append(file_path)
-
-                # Transcribe audio using Groq Whisper
-                if msg_type == "audio" and file_path and self.groq_api_key:
-                    try:
-                        from amberclaw.providers.transcription import (
-                            GroqTranscriptionProvider,
-                        )
-
-                        transcriber = GroqTranscriptionProvider(
-                            api_key=self.groq_api_key
-                        )
-                        transcription = await transcriber.transcribe(file_path)
-                        if transcription:
-                            content_text = f"[transcription: {transcription}]"
-                    except Exception as e:
-                        logger.warning("Failed to transcribe audio: {}", e)
-
-                content_parts.append(content_text)
-
-            elif msg_type in (
-                "share_chat",
-                "share_user",
-                "interactive",
-                "share_calendar_event",
-                "system",
-                "merge_forward",
-            ):
-                # Handle share cards and interactive messages
-                text = _extract_share_card_content(content_json, msg_type)
-                if text:
-                    content_parts.append(text)
-
-            else:
-                content_parts.append(MSG_TYPE_MAP.get(msg_type, f"[{msg_type}]"))
-
-            content = "\n".join(content_parts) if content_parts else ""
+            content, media_paths = await self._parse_message_content(
+                msg_type, message.content, message_id
+            )
 
             if not content and not media_paths:
                 return
@@ -1136,6 +1080,83 @@ class FeishuChannel(BaseChannel):
         except Exception as e:
             logger.error("Error processing Feishu message: {}", e)
 
+    async def _parse_message_content(
+        self, msg_type: str, raw_content: str | None, message_id: str
+    ) -> tuple[str, list[str]]:
+        content_parts = []
+        media_paths = []
+
+        try:
+            content_json = json.loads(raw_content) if raw_content else {}
+        except json.JSONDecodeError:
+            content_json = {}
+
+        if msg_type == "text":
+            content_parts.append(content_json.get("text") or "")
+
+        elif msg_type == "post":
+            text, image_keys = _extract_post_content(content_json)
+            if text:
+                content_parts.append(text)
+            # Download images embedded in post
+            for img_key in image_keys:
+                file_path, content_text = await self._download_and_save_media(
+                    "image",
+                    {"image_key": img_key},
+                    message_id,
+                )
+                if file_path:
+                    media_paths.append(file_path)
+                content_parts.append(content_text)
+
+        elif msg_type in ("image", "audio", "file", "media"):
+            file_path, content_text = await self._download_and_save_media(
+                msg_type,
+                content_json,
+                message_id,
+            )
+            if file_path:
+                media_paths.append(file_path)
+
+            if msg_type == "audio":
+                content_text = await self._transcribe_audio(file_path, content_text)
+
+            content_parts.append(content_text)
+
+        elif msg_type in (
+            "share_chat",
+            "share_user",
+            "interactive",
+            "share_calendar_event",
+            "system",
+            "merge_forward",
+        ):
+            # Handle share cards and interactive messages
+            text = _extract_share_card_content(content_json, msg_type)
+            if text:
+                content_parts.append(text)
+
+        else:
+            content_parts.append(MSG_TYPE_MAP.get(msg_type, f"[{msg_type}]"))
+
+        content = "\n".join(content_parts) if content_parts else ""
+        return content, media_paths
+
+    async def _transcribe_audio(self, file_path: str | None, content_text: str) -> str:
+        if file_path and self.groq_api_key:
+            try:
+                from amberclaw.providers.transcription import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    GroqTranscriptionProvider,
+                )
+
+                transcriber = GroqTranscriptionProvider(api_key=self.groq_api_key)
+                transcription = await transcriber.transcribe(file_path)
+                if transcription:
+                    content_text = f"[transcription: {transcription}]"
+            except Exception as e:
+                logger.warning("Failed to transcribe audio: {}", e)
+        return content_text
+
     def _on_reaction_created(self, data: Any) -> None:
         """Ignore reaction events so they do not generate SDK noise."""
         pass
@@ -1144,7 +1165,7 @@ class FeishuChannel(BaseChannel):
         """Ignore read events so they do not generate SDK noise."""
         pass
 
-    def _on_bot_p2p_chat_entered(self, data: Any) -> None:
+    def _on_bot_p2p_chat_entered(self, data: Any) -> None:  # noqa: ARG002 - SDK callback signature
         """Ignore p2p-enter events when a user opens a bot chat."""
         logger.debug("Bot entered p2p chat (user opened chat window)")
         pass

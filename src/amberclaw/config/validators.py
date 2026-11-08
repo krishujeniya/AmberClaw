@@ -44,7 +44,9 @@ def validate_temperature(temp: float) -> tuple[bool, str | None]:
     return True, None
 
 
-def validate_storage_directory(path: Path | str, create_if_missing: bool = False) -> tuple[bool, str | None]:
+def validate_storage_directory(
+    path: Path | str, create_if_missing: bool = False
+) -> tuple[bool, str | None]:
     """Validate that storage directory path is valid and writable."""
     p = Path(path)
     try:

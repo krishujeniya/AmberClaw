@@ -151,4 +151,3 @@ class BackendFactory:
             )
 
         raise ValueError(f"Unknown terminal backend type: '{backend_type}'")
-

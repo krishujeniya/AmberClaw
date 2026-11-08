@@ -12,7 +12,7 @@ def start(
     host: str = typer.Option("127.0.0.1", help="Host IP to bind the OS Gateway to."),
     port: int = typer.Option(8000, help="Port to run the gateway on."),
     reload: bool = typer.Option(False, help="Enable auto-reload for development."),
-):
+) -> None:
     """
     Starts the AmberClaw AI OS core engine and API Gateway.
     """

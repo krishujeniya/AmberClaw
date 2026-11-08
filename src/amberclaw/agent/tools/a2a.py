@@ -67,7 +67,7 @@ class A2ATool(PydanticTool):
     def args_schema(self) -> type[A2AArgs]:
         return A2AArgs
 
-    def __init__(self, a2a_manager: A2AManager):
+    def __init__(self, a2a_manager: A2AManager) -> None:
         super().__init__()
         self.a2a_manager = a2a_manager
 
@@ -102,7 +102,7 @@ class A2ADiscoveryTool(PydanticTool):
     def args_schema(self) -> type[A2ADiscoveryArgs]:
         return A2ADiscoveryArgs
 
-    def __init__(self, a2a_manager: A2AManager):
+    def __init__(self, a2a_manager: A2AManager) -> None:
         super().__init__()
         self.a2a_manager = a2a_manager
 

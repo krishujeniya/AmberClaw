@@ -21,6 +21,8 @@ from amberclaw.bus.queue import MessageBus
 from amberclaw.channels.base import BaseChannel
 from amberclaw.config.schema import EmailConfig
 
+IMAP_FETCH_TUPLE_FIELDS = 2
+
 
 class EmailChannel(BaseChannel):
     """
@@ -50,7 +52,7 @@ class EmailChannel(BaseChannel):
         "Dec",
     )
 
-    def __init__(self, config: EmailConfig, bus: MessageBus):
+    def __init__(self, config: EmailConfig, bus: MessageBus) -> None:
         super().__init__(config, bus)
         self.config: EmailConfig = config
         self._last_subject_by_chat: dict[str, str] = {}
@@ -233,6 +235,14 @@ class EmailChannel(BaseChannel):
             limit=max(1, int(limit)),
         )
 
+    def _create_imap_client(self) -> imaplib.IMAP4:
+        """Create and connect an IMAP4 client with fallback for non-keyword mocks."""
+        client_cls = imaplib.IMAP4_SSL if self.config.imap_use_ssl else imaplib.IMAP4
+        try:
+            return client_cls(self.config.imap_host, self.config.imap_port, timeout=30)
+        except TypeError:
+            return client_cls(self.config.imap_host, self.config.imap_port)
+
     def _fetch_messages(
         self,
         search_criteria: tuple[str, ...],
@@ -243,95 +253,44 @@ class EmailChannel(BaseChannel):
         """Fetch messages by arbitrary IMAP search criteria."""
         messages: list[dict[str, Any]] = []
         mailbox = self.config.imap_mailbox or "INBOX"
-
-        if self.config.imap_use_ssl:
-            client = imaplib.IMAP4_SSL(self.config.imap_host, self.config.imap_port)
-        else:
-            client = imaplib.IMAP4(self.config.imap_host, self.config.imap_port)
+        client = self._create_imap_client()
 
         try:
             client.login(self.config.imap_username, self.config.imap_password)
-            status, _ = client.select(mailbox)
-            if status != "OK":
-                return messages
-
-            status, data = client.search(None, *search_criteria)
-            if status != "OK" or not data:
-                return messages
-
-            ids = data[0].split()
+            ids = self._search_imap_ids(client, mailbox, search_criteria)
             if limit > 0 and len(ids) > limit:
                 ids = ids[-limit:]
             for imap_id in ids:
-                status, fetched = client.fetch(imap_id, "(BODY.PEEK[] UID)")
+                status, fetched = client.fetch(
+                    imap_id.decode("ascii"), "(BODY.PEEK[] UID)"
+                )
                 if status != "OK" or not fetched:
                     continue
 
                 raw_bytes = self._extract_message_bytes(fetched)
-                if raw_bytes is None:
-                    continue
-
                 uid = self._extract_uid(fetched)
-                if dedupe and uid and uid in self._processed_uids:
+                if raw_bytes is None or (
+                    dedupe and uid and uid in self._processed_uids
+                ):
                     continue
 
-                parsed = BytesParser(policy=policy.default).parsebytes(raw_bytes)
-                sender = parseaddr(parsed.get("From", ""))[1].strip().lower()
-                if not sender:
+                item = self._parse_inbound_email(raw_bytes, uid)
+                if item is None:
                     continue
-
-                subject = self._decode_header_value(parsed.get("Subject", ""))
-                date_value = parsed.get("Date", "")
-                message_id = parsed.get("Message-ID", "").strip()
-                body = self._extract_text_body(parsed)
-
-                if not body:
-                    body = "(empty email body)"
-
-                body = body[: self.config.max_body_chars]
-                content = (
-                    f"Email received.\n"
-                    f"From: {sender}\n"
-                    f"Subject: {subject}\n"
-                    f"Date: {date_value}\n\n"
-                    f"{body}"
-                )
-
-                metadata = {
-                    "message_id": message_id,
-                    "subject": subject,
-                    "date": date_value,
-                    "sender_email": sender,
-                    "uid": uid,
-                }
-                messages.append(
-                    {
-                        "sender": sender,
-                        "subject": subject,
-                        "message_id": message_id,
-                        "content": content,
-                        "metadata": metadata,
-                    },
-                )
+                messages.append(item)
 
                 if dedupe and uid:
-                    self._processed_uids.add(uid)
-                    # mark_seen is the primary dedup; this set is a safety net
-                    if len(self._processed_uids) > self._MAX_PROCESSED_UIDS:
-                        # Evict a random half to cap memory; mark_seen is the primary dedup
-                        self._processed_uids = set(
-                            list(self._processed_uids)[
-                                len(self._processed_uids) // 2 :
-                            ],
-                        )
+                    self._remember_uid(uid)
 
                 if mark_seen:
-                    client.store(imap_id, "+FLAGS", "\\Seen")
+                    client.store(imap_id.decode("ascii"), "+FLAGS", "\\Seen")
         finally:
             try:
                 client.logout()
             except Exception:
-                pass
+                logger.debug(
+                    "Optional operation failed in email; using the existing fallback"
+                )
 
         return messages
 
@@ -346,7 +305,7 @@ class EmailChannel(BaseChannel):
         for item in fetched:
             if (
                 isinstance(item, tuple)
-                and len(item) >= 2
+                and len(item) >= IMAP_FETCH_TUPLE_FIELDS
                 and isinstance(item[1], (bytes, bytearray))
             ):
                 return bytes(item[1])
@@ -428,3 +387,64 @@ class EmailChannel(BaseChannel):
         if subject.lower().startswith("re:"):
             return subject
         return f"{prefix}{subject}"
+
+    @staticmethod
+    def _search_imap_ids(
+        client: imaplib.IMAP4, mailbox: str, search_criteria: tuple[str, ...]
+    ) -> list[bytes]:
+        status, _ = client.select(mailbox)
+        if status != "OK":
+            return []
+        status, data = client.search(None, *search_criteria)
+        if status != "OK" or not data or not isinstance(data[0], bytes):
+            return []
+        return data[0].split()
+
+    def _parse_inbound_email(
+        self, raw_bytes: bytes, uid: str | None
+    ) -> dict[str, Any] | None:
+        parsed = BytesParser(policy=policy.default).parsebytes(raw_bytes)
+        sender = parseaddr(parsed.get("From", ""))[1].strip().lower()
+        if not sender:
+            return None
+
+        subject = self._decode_header_value(parsed.get("Subject", ""))
+        date_value = parsed.get("Date", "")
+        message_id = parsed.get("Message-ID", "").strip()
+        body = self._extract_text_body(parsed)
+
+        if not body:
+            body = "(empty email body)"
+
+        body = body[: self.config.max_body_chars]
+        content = (
+            f"Email received.\n"
+            f"From: {sender}\n"
+            f"Subject: {subject}\n"
+            f"Date: {date_value}\n\n"
+            f"{body}"
+        )
+
+        metadata = {
+            "message_id": message_id,
+            "subject": subject,
+            "date": date_value,
+            "sender_email": sender,
+            "uid": uid,
+        }
+        return {
+            "sender": sender,
+            "subject": subject,
+            "message_id": message_id,
+            "content": content,
+            "metadata": metadata,
+        }
+
+    def _remember_uid(self, uid: str) -> None:
+        self._processed_uids.add(uid)
+        # mark_seen is the primary dedup; this set is a safety net
+        if len(self._processed_uids) > self._MAX_PROCESSED_UIDS:
+            # Evict a random half to cap memory; mark_seen is the primary dedup
+            self._processed_uids = set(
+                list(self._processed_uids)[len(self._processed_uids) // 2 :],
+            )

@@ -48,7 +48,7 @@ class MessageTool(PydanticTool):
         default_channel: str = "",
         default_chat_id: str = "",
         default_message_id: str | None = None,
-    ):
+    ) -> None:
         super().__init__()
         self._send_callback = send_callback
         self._default_channel = default_channel

@@ -7,6 +7,9 @@ from amberclaw.bus.queue import MessageBus
 from amberclaw.channels.qq import QQChannel
 from amberclaw.config.schema import QQConfig
 
+# Credentials are inert values used only by offline channel fixtures.
+OFFLINE_AUTH_VALUE = "secret"
+
 
 class _FakeApi:
     def __init__(self) -> None:
@@ -28,7 +31,8 @@ class _FakeClient:
 @pytest.mark.asyncio
 async def test_on_group_message_routes_to_group_chat_id() -> None:
     channel = QQChannel(
-        QQConfig(app_id="app", secret="secret", allow_from=["user1"]), MessageBus()
+        QQConfig(app_id="app", secret=OFFLINE_AUTH_VALUE, allow_from=["user1"]),
+        MessageBus(),
     )
 
     data = SimpleNamespace(
@@ -48,7 +52,8 @@ async def test_on_group_message_routes_to_group_chat_id() -> None:
 @pytest.mark.asyncio
 async def test_send_group_message_uses_group_api_with_msg_seq() -> None:
     channel = QQChannel(
-        QQConfig(app_id="app", secret="secret", allow_from=["*"]), MessageBus()
+        QQConfig(app_id="app", secret=OFFLINE_AUTH_VALUE, allow_from=["*"]),
+        MessageBus(),
     )
     channel._client = _FakeClient()
     channel._chat_type_cache["group123"] = "group"
@@ -66,5 +71,6 @@ async def test_send_group_message_uses_group_api_with_msg_seq() -> None:
     call = channel._client.api.group_calls[0]
     assert call["group_openid"] == "group123"
     assert call["msg_id"] == "msg1"
-    assert call["msg_seq"] == 2
+    expected_call_msg_seq = 2
+    assert call["msg_seq"] == expected_call_msg_seq
     assert not channel._client.api.c2c_calls

@@ -30,7 +30,8 @@ async def test_get_capabilities_via_litellm(mock_litellm):
     assert caps["vision"] is True
     assert caps["tools"] is True
     assert caps["json"] is True
-    assert caps["context_size"] == 128000
+    expected_caps_context_size = 128000
+    assert caps["context_size"] == expected_caps_context_size
     assert caps["prompt_caching"] is True
 
 
@@ -43,7 +44,8 @@ def test_get_capabilities_fallback_logic(mock_litellm):
     # Check vision and context window resolution for claude
     caps_claude = provider.get_capabilities("anthropic/claude-3-5-sonnet")
     assert caps_claude["vision"] is True
-    assert caps_claude["context_size"] == 200000
+    expected_caps_claude_context_size = 200000
+    assert caps_claude["context_size"] == expected_caps_claude_context_size
     assert caps_claude["prompt_caching"] is True
 
     # Check reasoning model detection
@@ -51,7 +53,8 @@ def test_get_capabilities_fallback_logic(mock_litellm):
     assert caps_r1["reasoning"] is True
 
 
-def test_analyze_requirements(mock_litellm):
+@pytest.mark.usefixtures("mock_litellm")
+def test_analyze_requirements():
     provider = LiteLLMProvider(api_key="test-key")
 
     # 1. Vision prompt
@@ -78,8 +81,9 @@ def test_analyze_requirements(mock_litellm):
     assert reqs_reasoning["reasoning"] is True
 
 
+@pytest.mark.usefixtures("mock_litellm")
 @pytest.mark.asyncio
-async def test_dynamic_routing_to_fallback(mock_litellm):
+async def test_dynamic_routing_to_fallback():
     # Setup LiteLLMProvider with a primary model that lacks vision, and a fallback that supports it
     provider = LiteLLMProvider(
         api_key="test-key",
@@ -127,5 +131,5 @@ async def test_dynamic_routing_to_fallback(mock_litellm):
 
         # Verify acompletion was called with the vision-supporting fallback model
         # (resolved from optimal model 'anthropic/claude-3-5-sonnet')
-        called_args, called_kwargs = mock_acompletion.call_args
+        _called_args, called_kwargs = mock_acompletion.call_args
         assert "claude-3-5-sonnet" in called_kwargs["model"]

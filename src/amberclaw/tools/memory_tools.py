@@ -22,7 +22,7 @@ class RememberArgs(BaseModel):
     )
 
 
-class RememberTool(BaseTool):
+class RememberTool(BaseTool[[str, str | None, str | None]]):
     name = "remember"
     description = (
         "Store a fact, preference, or concept in the agent's persistent memory."
@@ -68,7 +68,7 @@ class RecallArgs(BaseModel):
     )
 
 
-class RecallTool(BaseTool):
+class RecallTool(BaseTool[[str, str | None]]):
     name = "recall"
     description = (
         "Recall relevant context, facts, or document chunks using hybrid search."
@@ -96,7 +96,7 @@ class ForgetArgs(BaseModel):
     )
 
 
-class ForgetTool(BaseTool):
+class ForgetTool(BaseTool[[str]]):
     name = "forget"
     description = "Remove or mark matching facts, references, or documents to be forgotten from memory."
     args_schema = ForgetArgs
@@ -114,7 +114,7 @@ class SessionSearchArgs(BaseModel):
     query: str = Field(..., description="The keyword or search query")
 
 
-class SessionSearchTool(BaseTool):
+class SessionSearchTool(BaseTool[[str, str]]):
     name = "session_search"
     description = "Search the complete conversational history of a specific session using full-text search."
     args_schema = SessionSearchArgs
@@ -134,7 +134,7 @@ class SummarizeSessionArgs(BaseModel):
     session_id: str = Field(..., description="The session ID to summarize")
 
 
-class SummarizeSessionTool(BaseTool):
+class SummarizeSessionTool(BaseTool[[str]]):
     name = "summarize_session"
     description = "Generate a summary of all conversation turns in the given session."
     args_schema = SummarizeSessionArgs

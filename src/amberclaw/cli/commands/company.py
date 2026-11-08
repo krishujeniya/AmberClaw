@@ -8,7 +8,9 @@ from amberclaw.org.chart import OrgChart
 from .org import _get_demo_org_chart
 from .utils import console
 
-company_app = typer.Typer(help="Manage company organization structure and hierarchy tree")
+company_app = typer.Typer(
+    help="Manage company organization structure and hierarchy tree"
+)
 
 
 def _build_agent_tree(chart: OrgChart, parent_node: Tree, current_id: str) -> None:

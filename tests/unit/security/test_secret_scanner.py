@@ -130,3 +130,34 @@ def test_scan_file_and_workspace(tmp_path: Path):
     # Test exclusion
     excluded_findings = SecretScanner.scan_workspace(tmp_path, exclude_patterns={"src"})
     assert len(excluded_findings) == 0
+
+
+def test_redact_text_covers_all_secret_families():
+    secrets = [
+        "sk-" + "a" * 48,
+        "sk-ant-" + "b" * 32,
+        "AIzaSy" + "C" * 33,
+        "ghp_" + "d" * 36,
+        "xoxb-" + "1" * 12,
+        "AKIA" + "E" * 16,
+        "-----BEGIN RSA PRIVATE KEY-----\nsecret\n-----END RSA PRIVATE KEY-----",
+    ]
+
+    redacted = SecretScanner.redact_text(" | ".join(secrets))
+
+    for secret in secrets:
+        assert secret not in redacted
+    assert redacted.count("<PRIVATE KEY_REDACTED>") == 1
+
+
+def test_redact_text_pattern_cache_handles_new_family_later():
+    openai_key = "sk-" + "a" * 48
+    google_key = "AIzaSy" + "B" * 33
+
+    assert openai_key not in SecretScanner.redact_text(openai_key)
+    # A later call introducing a different family must still redact it.
+    assert google_key not in SecretScanner.redact_text(google_key)
+
+    both = SecretScanner.redact_text(f"{openai_key} and {google_key}")
+    assert openai_key not in both
+    assert google_key not in both

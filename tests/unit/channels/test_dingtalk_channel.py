@@ -4,6 +4,9 @@ from amberclaw.bus.queue import MessageBus
 from amberclaw.channels.dingtalk import DingTalkChannel
 from amberclaw.config.schema import DingTalkConfig
 
+# Credentials are inert values used only by offline channel fixtures.
+OFFLINE_AUTH_VALUE = "secret"
+
 
 class _FakeResponse:
     def __init__(self, status_code: int = 200, json_body: dict | None = None) -> None:
@@ -27,7 +30,9 @@ class _FakeHttp:
 @pytest.mark.asyncio
 async def test_group_message_keeps_sender_id_and_routes_chat_id() -> None:
     config = DingTalkConfig(
-        client_id="app", client_secret="secret", allow_from=["user1"]
+        client_id="app",
+        client_secret=OFFLINE_AUTH_VALUE,
+        allow_from=["user1"],
     )
     bus = MessageBus()
     channel = DingTalkChannel(config, bus)
@@ -48,7 +53,9 @@ async def test_group_message_keeps_sender_id_and_routes_chat_id() -> None:
 
 @pytest.mark.asyncio
 async def test_group_send_uses_group_messages_api() -> None:
-    config = DingTalkConfig(client_id="app", client_secret="secret", allow_from=["*"])
+    config = DingTalkConfig(
+        client_id="app", client_secret=OFFLINE_AUTH_VALUE, allow_from=["*"]
+    )
     channel = DingTalkChannel(config, MessageBus())
     channel._http = _FakeHttp()
 

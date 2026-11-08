@@ -1,10 +1,11 @@
 """Slack channel implementation using Socket Mode."""
 
-import asyncio
 import re
+from typing import Any, Protocol
 
 import httpx
 from loguru import logger
+from slack_sdk.socket_mode.async_client import AsyncBaseSocketModeClient
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.socket_mode.websockets import SocketModeClient
@@ -16,13 +17,20 @@ from amberclaw.bus.queue import MessageBus
 from amberclaw.channels.base import BaseChannel
 from amberclaw.config.schema import SlackConfig
 
+MIN_MARKDOWN_TABLE_LINES = 2
+
+
+class _SocketLifecycle(Protocol):
+    async def connect(self) -> None: ...
+    async def close(self) -> None: ...
+
 
 class SlackChannel(BaseChannel):
     """Slack channel using Socket Mode."""
 
     name = "slack"
 
-    def __init__(self, config: SlackConfig, bus: MessageBus):
+    def __init__(self, config: SlackConfig, bus: MessageBus) -> None:
         super().__init__(config, bus)
         self.config: SlackConfig = config
         self._web_client: AsyncWebClient | None = None
@@ -53,26 +61,40 @@ class SlackChannel(BaseChannel):
         # Resolve bot user ID for mention handling
         try:
             auth = await self._web_client.auth_test()
-            self._bot_user_id = auth.get("user_id")
+            user_id = auth.get("user_id")
+            self._bot_user_id = user_id if isinstance(user_id, str) else None
             logger.info("Slack bot connected as {}", self._bot_user_id)
         except Exception as e:
             logger.warning("Slack auth_test failed: {}", e)
 
         logger.info("Starting Slack Socket Mode client...")
-        await self._socket_client.connect()
+        lifecycle: _SocketLifecycle = self._socket_client
+        await lifecycle.connect()
 
-        while self._running:
-            await asyncio.sleep(1)
+        await self._stop_event.wait()
 
     async def stop(self) -> None:
         """Stop the Slack client."""
         self._running = False
         if self._socket_client:
             try:
-                await self._socket_client.close()
+                lifecycle: _SocketLifecycle = self._socket_client
+                await lifecycle.close()
             except Exception as e:
                 logger.warning("Slack socket close failed: {}", e)
             self._socket_client = None
+        if self._web_client:
+            try:
+                session = getattr(self._web_client, "session", None)
+                if (
+                    session
+                    and hasattr(session, "close")
+                    and not getattr(session, "closed", False)
+                ):
+                    await session.close()
+            except Exception as e:
+                logger.warning("Slack web client session close failed: {}", e)
+            self._web_client = None
 
     async def send(self, msg: OutboundMessage) -> None:
         """Send a message through Slack."""
@@ -109,7 +131,7 @@ class SlackChannel(BaseChannel):
 
     async def _on_socket_request(
         self,
-        client: SocketModeClient,
+        client: AsyncBaseSocketModeClient,
         req: SocketModeRequest,
     ) -> None:
         """Handle incoming Socket Mode requests."""
@@ -133,9 +155,9 @@ class SlackChannel(BaseChannel):
         chat_id = event.get("channel")
 
         # Ignore bot/system messages (any subtype = not a normal user message)
-        if event.get("subtype"):
-            return
-        if self._bot_user_id and sender_id == self._bot_user_id:
+        if event.get("subtype") or (
+            self._bot_user_id and sender_id == self._bot_user_id
+        ):
             return
 
         # Avoid double-processing: Slack sends both `message` and `app_mention`
@@ -163,11 +185,9 @@ class SlackChannel(BaseChannel):
 
         channel_type = event.get("channel_type") or ""
 
-        if not self._is_allowed(sender_id, chat_id, channel_type):
-            return
-
-        if channel_type != "im" and not self._should_respond_in_channel(
-            event_type, text, chat_id
+        if not self._is_allowed(sender_id, chat_id, channel_type) or (
+            channel_type != "im"
+            and not self._should_respond_in_channel(event_type, text, chat_id)
         ):
             return
 
@@ -178,11 +198,12 @@ class SlackChannel(BaseChannel):
             thread_ts = event.get("ts")
         # Add :eyes: reaction to the triggering message (best-effort)
         try:
-            if self._web_client and event.get("ts"):
+            timestamp = event.get("ts")
+            if self._web_client and isinstance(timestamp, str) and timestamp:
                 await self._web_client.reactions_add(
                     channel=chat_id,
                     name=self.config.react_emoji,
-                    timestamp=event.get("ts"),
+                    timestamp=timestamp,
                 )
         except Exception as e:
             logger.debug("Slack reactions_add failed: {}", e)
@@ -194,35 +215,7 @@ class SlackChannel(BaseChannel):
             else None
         )
 
-        # Handle attachments (AC-074)
-        media_paths: list[str] = []
-        if event.get("files"):
-            from amberclaw.config.paths import get_media_dir
-
-            media_dir = get_media_dir("slack")
-            media_dir.mkdir(parents=True, exist_ok=True)
-
-            for file_info in event["files"]:
-                file_url = file_info.get("url_private_download")
-                filename = file_info.get("name") or "file"
-                if not file_url or not self._web_client:
-                    continue
-
-                try:
-                    # Download using the bot token
-                    headers = {"Authorization": f"Bearer {self.config.bot_token}"}
-                    async with httpx.AsyncClient() as client:
-                        resp = await client.get(file_url, headers=headers)
-                        resp.raise_for_status()
-
-                        file_path = (
-                            media_dir / f"{file_info.get('id', 'file')}_{filename}"
-                        )
-                        file_path.write_bytes(resp.content)
-                        media_paths.append(str(file_path))
-                        text += f"\n[attachment: {file_path}]"
-                except Exception as e:
-                    logger.warning("Failed to download Slack file {}: {}", filename, e)
+        text, media_paths = await self._download_attachments(event, text)
 
         try:
             await self._handle_message(
@@ -241,6 +234,42 @@ class SlackChannel(BaseChannel):
             )
         except Exception:
             logger.exception("Error handling Slack message from {}", sender_id)
+
+    async def _download_attachments(
+        self, event: dict[str, Any], text: str
+    ) -> tuple[str, list[str]]:
+        media_paths: list[str] = []
+        if event.get("files"):
+            from amberclaw.config.paths import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                get_media_dir,
+            )
+
+            media_dir = get_media_dir("slack")
+            media_dir.mkdir(parents=True, exist_ok=True)
+
+            for file_info in event["files"]:
+                file_url = file_info.get("url_private_download")
+                filename = file_info.get("name") or "file"
+                if not file_url or not self._web_client:
+                    continue
+
+                try:
+                    # Download using the bot token
+                    headers = {"Authorization": f"Bearer {self.config.bot_token}"}
+                    async with httpx.AsyncClient() as download_client:
+                        resp = await download_client.get(file_url, headers=headers)
+                        resp.raise_for_status()
+
+                        file_path = (
+                            media_dir / f"{file_info.get('id', 'file')}_{filename}"
+                        )
+                        file_path.write_bytes(resp.content)
+                        media_paths.append(str(file_path))
+                        text += f"\n[attachment: {file_path}]"
+                except Exception as e:
+                    logger.warning("Failed to download Slack file {}: {}", filename, e)
+
+        return text, media_paths
 
     def _is_allowed(self, sender_id: str, chat_id: str, channel_type: str) -> bool:
         if channel_type == "im":
@@ -293,7 +322,7 @@ class SlackChannel(BaseChannel):
         """Fix markdown artifacts that slackify_markdown misses."""
         code_blocks: list[str] = []
 
-        def _save_code(m: re.Match) -> str:
+        def _save_code(m: re.Match[str]) -> str:
             code_blocks.append(m.group(0))
             return f"\x00CB{len(code_blocks) - 1}\x00"
 
@@ -308,10 +337,10 @@ class SlackChannel(BaseChannel):
         return text
 
     @staticmethod
-    def _convert_table(match: re.Match) -> str:
+    def _convert_table(match: re.Match[str]) -> str:
         """Convert a Markdown table to a Slack-readable list."""
         lines = [ln.strip() for ln in match.group(0).strip().splitlines() if ln.strip()]
-        if len(lines) < 2:
+        if len(lines) < MIN_MARKDOWN_TABLE_LINES:
             return match.group(0)
         headers = [h.strip() for h in lines[0].strip("|").split("|")]
         start = 2 if re.fullmatch(r"[|\s:\-]+", lines[1]) else 1

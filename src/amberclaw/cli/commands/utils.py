@@ -1,12 +1,15 @@
 import os
 import select
 import sys
-from typing import cast
+from dataclasses import dataclass
+from typing import Any
 
+from loguru import logger
 from prompt_toolkit import HTML, PromptSession
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.patch_stdout import patch_stdout
 from rich.console import Console
+from rich.live import Live
 from rich.markdown import Markdown
 from rich.text import Text
 
@@ -15,8 +18,16 @@ from amberclaw import __logo__
 console = Console()
 EXIT_COMMANDS = {"exit", "quit", "/exit", "/quit", ":q"}
 
-_PROMPT_SESSION: PromptSession | None = None
-_SAVED_TERM_ATTRS = None
+
+@dataclass
+class _TerminalState:
+    prompt_session: PromptSession[str] | None = None
+    saved_attrs: list[Any] | None = (
+        None  # platform termios returns heterogeneous attributes
+    )
+
+
+_terminal_state = _TerminalState()
 
 
 def _flush_pending_tty_input() -> None:
@@ -28,12 +39,12 @@ def _flush_pending_tty_input() -> None:
         return
 
     try:
-        import termios
+        import termios  # noqa: PLC0415 - defer runtime and platform initialization until command use
 
         termios.tcflush(fd, termios.TCIFLUSH)
         return
     except Exception:
-        pass
+        logger.debug("Optional operation failed in utils; using the existing fallback")
 
     try:
         while True:
@@ -47,23 +58,26 @@ def _flush_pending_tty_input() -> None:
 
 
 def _restore_terminal() -> None:
-    if _SAVED_TERM_ATTRS is None:
+    if _terminal_state.saved_attrs is None:
         return
     try:
-        import termios
+        import termios  # noqa: PLC0415 - defer runtime and platform initialization until command use
 
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, _SAVED_TERM_ATTRS)
+        termios.tcsetattr(
+            sys.stdin.fileno(), termios.TCSADRAIN, _terminal_state.saved_attrs
+        )
     except Exception:
-        pass
+        logger.debug("Optional operation failed in utils; using the existing fallback")
 
 
 def _init_prompt_session() -> None:
-    global _PROMPT_SESSION
-    from amberclaw.config.paths import get_cli_history_path
+    from amberclaw.config.paths import (  # noqa: PLC0415 - defer runtime and platform initialization until command use
+        get_cli_history_path,
+    )
 
     history_file = get_cli_history_path()
     history_file.parent.mkdir(parents=True, exist_ok=True)
-    _PROMPT_SESSION = PromptSession(
+    _terminal_state.prompt_session = PromptSession(
         history=FileHistory(str(history_file)),
         enable_open_in_editor=False,
         multiline=False,
@@ -71,13 +85,12 @@ def _init_prompt_session() -> None:
 
 
 def _setup_terminal() -> None:
-    global _SAVED_TERM_ATTRS
     try:
-        import termios
+        import termios  # noqa: PLC0415 - defer runtime and platform initialization until command use
 
-        _SAVED_TERM_ATTRS = termios.tcgetattr(sys.stdin.fileno())
+        _terminal_state.saved_attrs = termios.tcgetattr(sys.stdin.fileno())
     except Exception:
-        pass
+        logger.debug("Optional operation failed in utils; using the existing fallback")
 
 
 def _print_agent_response(response: str, render_markdown: bool) -> None:
@@ -94,14 +107,16 @@ class TokenStreamer:
         self.console = console
         self.render_markdown = render_markdown
         self.content = ""
-        self.live = None
+        self.live: Live | None = None
         self.header_printed = False
 
     async def on_token(self, token: str) -> None:
         if not self.header_printed:
             self.console.print()
             self.console.print(f"[cyan]{__logo__} AmberClaw[/cyan]")
-            from rich.live import Live
+            from rich.live import (  # noqa: PLC0415 - defer runtime and platform initialization until command use
+                Live,
+            )
 
             self.live = Live(
                 "", console=self.console, refresh_per_second=12, auto_refresh=True
@@ -112,7 +127,9 @@ class TokenStreamer:
         self.content += token
         if self.live:
             if self.render_markdown:
-                from rich.markdown import Markdown
+                from rich.markdown import (  # noqa: PLC0415 - defer runtime and platform initialization until command use
+                    Markdown,
+                )
 
                 self.live.update(Markdown(self.content))
             else:
@@ -130,13 +147,12 @@ def _is_exit_command(command: str) -> bool:
 
 
 async def _read_interactive_input_async() -> str:
-    if _PROMPT_SESSION is None:
+    if _terminal_state.prompt_session is None:
         raise RuntimeError("Call _init_prompt_session() first")
     try:
         with patch_stdout():
-            result = await _PROMPT_SESSION.prompt_async(
+            return await _terminal_state.prompt_session.prompt_async(
                 HTML("<b fg='ansiblue'>You:</b> "),
             )
-            return cast(str, result)
     except EOFError as exc:
         raise KeyboardInterrupt from exc

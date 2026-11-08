@@ -40,21 +40,23 @@ class GitOps:
         if not self.is_git_repo():
             return "Not a git repository"
         try:
-            res = subprocess.run(  # noqa: S603
+            res = subprocess.run(  # noqa: S603 - fixed Git executable, argument vector, no shell
                 [self._git_bin, "status", "--short"],
                 cwd=self.root_path,
                 capture_output=True,
                 text=True,
                 check=False,
             )
-            return res.stdout.strip() if res.returncode == 0 else "Error retrieving status"
+            return (
+                res.stdout.strip() if res.returncode == 0 else "Error retrieving status"
+            )
         except Exception as e:
             return f"Error: {e}"
 
     def init_repository(self) -> bool:
         """Initialize a new Git repository in the workspace root."""
         try:
-            res = subprocess.run(  # noqa: S603
+            res = subprocess.run(  # noqa: S603 - fixed Git executable, argument vector, no shell
                 [self._git_bin, "init"],
                 cwd=self.root_path,
                 capture_output=True,
@@ -65,14 +67,30 @@ class GitOps:
         except Exception:
             return False
 
-    def stage_and_commit(self, message: str, author_name: str = "AmberClaw Agent") -> bool:
+    def stage_and_commit(
+        self, message: str, author_name: str = "AmberClaw Agent"
+    ) -> bool:
         """Stage all workspace changes and create a Git commit."""
         if not self.is_git_repo():
             return False
         try:
-            subprocess.run([self._git_bin, "add", "."], cwd=self.root_path, capture_output=True, check=False)  # noqa: S603
-            res = subprocess.run(  # noqa: S603
-                [self._git_bin, "-c", f"user.name={author_name}", "-c", "user.email=agent@amberclaw.local", "commit", "-m", message],
+            subprocess.run(  # noqa: S603 - fixed executable and argument vector
+                [self._git_bin, "add", "."],
+                cwd=self.root_path,
+                capture_output=True,
+                check=False,
+            )
+            res = subprocess.run(  # noqa: S603 - fixed Git executable, argument vector, no shell
+                [
+                    self._git_bin,
+                    "-c",
+                    f"user.name={author_name}",
+                    "-c",
+                    "user.email=agent@amberclaw.local",
+                    "commit",
+                    "-m",
+                    message,
+                ],
                 cwd=self.root_path,
                 capture_output=True,
                 text=True,

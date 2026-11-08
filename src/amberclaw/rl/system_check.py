@@ -43,9 +43,16 @@ class RLSystemCheck:
                 if torch_mod.cuda.is_available():
                     has_cuda = True
                     gpu_name = torch_mod.cuda.get_device_name(0)
-                    vram_gb = round(torch_mod.cuda.get_device_properties(0).total_memory / (1024**3), 2)
+                    vram_gb = round(
+                        torch_mod.cuda.get_device_properties(0).total_memory
+                        / (1024**3),
+                        2,
+                    )
                     recommended_device = "cuda"
-                elif hasattr(torch_mod.backends, "mps") and torch_mod.backends.mps.is_available():
+                elif (
+                    hasattr(torch_mod.backends, "mps")
+                    and torch_mod.backends.mps.is_available()
+                ):
                     has_mps = True
                     recommended_device = "mps"
             except Exception as e:

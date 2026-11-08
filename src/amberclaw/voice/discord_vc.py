@@ -13,7 +13,7 @@ class DiscordVoiceChannelHandler:
         self,
         stt_engine: SpeechToTextEngine | None = None,
         tts_engine: Any = None,
-    ):
+    ) -> None:
         self.stt_engine = stt_engine or SpeechToTextEngine()
         self.tts_engine = tts_engine or NeuTTS()
         self._connected = False

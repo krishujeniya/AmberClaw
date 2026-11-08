@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-import contextlib
+from types import ModuleType
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-with contextlib.suppress(ImportError):
-    import litellm
+try:
+    import litellm as _litellm_module
+except ImportError:
+    litellm: ModuleType | None = None
+else:
+    litellm = _litellm_module
 
 # Cache detected capabilities to avoid repeated lookups
 _CAPABILITY_CACHE: dict[str, ProviderCapability] = {}
@@ -183,7 +187,7 @@ def detect_capabilities(
         if not llm:
             raise RuntimeError("LiteLLM not available")
         info = llm.get_model_info(lookup_model)
-        values = {
+        values: dict[str, Any] = {
             "vision": bool(info.get("supports_vision", False)),
             "tools": bool(info.get("supports_function_calling", True)),
             "json_mode": bool(info.get("supports_response_schema", False)),

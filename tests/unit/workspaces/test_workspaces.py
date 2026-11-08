@@ -60,7 +60,9 @@ def test_workspace_runtime_io_and_commands(tmp_path: Path):
     assert "config.json" in files
 
     # Run command
-    res = runtime.run_command([sys.executable, "-c", "import os; print(os.getenv('APP_ENV'))"])
+    res = runtime.run_command(
+        [sys.executable, "-c", "import os; print(os.getenv('APP_ENV'))"]
+    )
     assert res.exit_code == 0
     assert "testing" in res.stdout.strip()
 

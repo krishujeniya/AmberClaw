@@ -3,6 +3,11 @@ import struct
 
 from pydantic import BaseModel, Field
 
+STRONG_NEGATIVE_WORD_COUNT = 2
+URGENT_AROUSAL_THRESHOLD = 0.8
+NEGATIVE_SENTIMENT_THRESHOLD = -0.3
+POSITIVE_SENTIMENT_THRESHOLD = 0.3
+
 
 class EmotionState(BaseModel):
     """Unified emotional state inferred from text, voice, and visual inputs."""
@@ -48,7 +53,7 @@ class PersonalityAdaptation(BaseModel):
 class TextSentimentAnalyzer:
     """Rule-based and lexicon sentiment and emotion analyzer."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._positive_words = {
             "good",
             "great",
@@ -93,12 +98,9 @@ class TextSentimentAnalyzer:
         urgent_count = sum(1 for w in words if w in self._urgent_words)
 
         total = pos_count + neg_count
-        if total == 0:
-            score = 0.0
-        else:
-            score = (pos_count - neg_count) / total
+        score = 0.0 if total == 0 else (pos_count - neg_count) / total
 
-        if urgent_count > 0 or neg_count > 2:
+        if urgent_count > 0 or neg_count > STRONG_NEGATIVE_WORD_COUNT:
             emotion = "anger" if neg_count > pos_count else "fear"
         elif pos_count > neg_count:
             emotion = "joy"
@@ -115,6 +117,8 @@ class VoiceToneAnalyzer:
 
     def analyze_pcm(self, pcm_bytes: bytes, sample_rate: int = 16000) -> float:
         """Calculate energy/arousal score (0.0 to 1.0) from raw PCM audio."""
+        if sample_rate <= 0:
+            raise ValueError("PCM sample rate must be positive")
         count = len(pcm_bytes) // 2
         if count == 0:
             return 0.5
@@ -123,8 +127,7 @@ class VoiceToneAnalyzer:
             samples = struct.unpack(f"<{count}h", pcm_bytes)
             rms = math.sqrt(sum(float(s) * s for s in samples) / count)
             # Normalize RMS to 0.0 - 1.0 range (assuming max RMS ~ 10000)
-            arousal = min(1.0, max(0.0, rms / 8000.0))
-            return arousal
+            return min(1.0, max(0.0, rms / 8000.0))
         except Exception:
             return 0.5
 
@@ -132,7 +135,7 @@ class VoiceToneAnalyzer:
 class FacialExpressionAnalyzer:
     """Stub interface for camera-based facial emotion detection."""
 
-    def analyze_frame(self, frame_bytes: bytes) -> str:
+    def analyze_frame(self, frame_bytes: bytes) -> str:  # noqa: ARG002 - public camera adapter stub retains frame_bytes keyword
         """Stub method for frame emotion analysis."""
         return "neutral"
 
@@ -140,7 +143,7 @@ class FacialExpressionAnalyzer:
 class EmotionEngine:
     """Engine for fusing text, voice, and visual signals to adapt agent behavior."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.text_analyzer = TextSentimentAnalyzer()
         self.voice_analyzer = VoiceToneAnalyzer()
         self.face_analyzer = FacialExpressionAnalyzer()
@@ -185,17 +188,23 @@ class EmotionEngine:
             w in {"urgent", "emergency", "asap", "broken", "help"} for w in words
         )
 
-        if is_urgent or state.arousal > 0.8:
+        if is_urgent or state.arousal > URGENT_AROUSAL_THRESHOLD:
             urgency = "critical" if is_urgent else "high"
             tone = "direct"
             verbosity = "concise"
             nudge = "[EMOTION ADAPTATION: User is stressed/urgent. Respond concisely, directly, and offer immediate assistance without fluff.]"
-        elif state.dominant_emotion in ("sadness", "fear") or state.sentiment < -0.3:
+        elif (
+            state.dominant_emotion in ("sadness", "fear")
+            or state.sentiment < NEGATIVE_SENTIMENT_THRESHOLD
+        ):
             urgency = "normal"
             tone = "empathetic"
             verbosity = "standard"
             nudge = "[EMOTION ADAPTATION: User expresses negative emotion. Adopt an empathetic, supportive, and reassuring tone.]"
-        elif state.dominant_emotion == "joy" or state.sentiment > 0.3:
+        elif (
+            state.dominant_emotion == "joy"
+            or state.sentiment > POSITIVE_SENTIMENT_THRESHOLD
+        ):
             urgency = "normal"
             tone = "encouraging"
             verbosity = "standard"

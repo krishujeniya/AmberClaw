@@ -49,10 +49,10 @@ def cron_list(
             else j.schedule.kind
         )
         next_run_str = (
-            datetime.fromtimestamp(j.state.next_run_ms / 1000, tz=UTC).strftime(
+            datetime.fromtimestamp(j.state.next_run_at_ms / 1000, tz=UTC).strftime(
                 "%Y-%m-%d %H:%M:%S"
             )
-            if j.state.next_run_ms
+            if j.state.next_run_at_ms
             else "Never"
         )
         table.add_row(
@@ -97,7 +97,9 @@ def cron_enable(job_id: str = typer.Argument(..., help="Job ID to enable")) -> N
     service = _get_cron_service()
     job = service.enable_job(job_id, enabled=True)
     if job:
-        console.print(f"[bold green]✓ Job '{job.name}' ({job_id}) enabled.[/bold green]")
+        console.print(
+            f"[bold green]✓ Job '{job.name}' ({job_id}) enabled.[/bold green]"
+        )
     else:
         console.print(f"[bold red]Job not found: {job_id}[/bold red]")
         raise typer.Exit(code=1)
@@ -109,7 +111,9 @@ def cron_disable(job_id: str = typer.Argument(..., help="Job ID to disable")) ->
     service = _get_cron_service()
     job = service.enable_job(job_id, enabled=False)
     if job:
-        console.print(f"[bold yellow]Job '{job.name}' ({job_id}) disabled.[/bold yellow]")
+        console.print(
+            f"[bold yellow]Job '{job.name}' ({job_id}) disabled.[/bold yellow]"
+        )
     else:
         console.print(f"[bold red]Job not found: {job_id}[/bold red]")
         raise typer.Exit(code=1)

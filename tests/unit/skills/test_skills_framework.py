@@ -66,11 +66,19 @@ def test_skill_registry_and_search():
     registry = SkillRegistry()
 
     s1 = SkillDefinition(
-        metadata=SkillMetadata(name="sql-pro", description="SQL queries and schema optimization", tags=["database", "sql"]),
+        metadata=SkillMetadata(
+            name="sql-pro",
+            description="SQL queries and schema optimization",
+            tags=["database", "sql"],
+        ),
         instructions="Optimize queries",
     )
     s2 = SkillDefinition(
-        metadata=SkillMetadata(name="k8s-master", description="Kubernetes manifests", tags=["devops", "cloud"]),
+        metadata=SkillMetadata(
+            name="k8s-master",
+            description="Kubernetes manifests",
+            tags=["devops", "cloud"],
+        ),
         instructions="Build k8s configs",
     )
 

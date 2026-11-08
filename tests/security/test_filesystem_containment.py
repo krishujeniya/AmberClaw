@@ -1,7 +1,8 @@
-import os
 from pathlib import Path
+
 import pytest
-from amberclaw.agent.tools.filesystem import _resolve_path, ReadFileTool, ReadFileArgs
+
+from amberclaw.agent.tools.filesystem import ReadFileArgs, ReadFileTool, _resolve_path
 
 
 def test_path_traversal_blocked(tmp_path: Path):
@@ -33,7 +34,7 @@ def test_symlink_escape_blocked(tmp_path: Path):
 
     symlink_file = workspace / "escaped_link.txt"
     try:
-        os.symlink(target_file, symlink_file)
+        symlink_file.symlink_to(target_file)
     except OSError:
         pytest.skip("Symlinks not supported in environment")
 
@@ -50,7 +51,11 @@ async def test_read_file_tool_blocks_traversal(tmp_path: Path):
     tool = ReadFileTool(workspace=workspace)
     result = await tool.run(ReadFileArgs(path="../../etc/passwd"))
 
-    assert "PermissionError" in result or "outside allowed directory" in result or "Error" in result
+    assert (
+        "PermissionError" in result
+        or "outside allowed directory" in result
+        or "Error" in result
+    )
 
 
 def test_valid_workspace_file_allowed(tmp_path: Path):

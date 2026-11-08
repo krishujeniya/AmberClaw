@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
+from http import HTTPStatus
 from typing import Any
 from urllib.parse import urlparse
 
@@ -24,7 +25,7 @@ class VLLMLocalRunner:
         quantization: str | None = None,
         speculative_model: str | None = None,
         num_speculative_tokens: int | None = None,
-    ):
+    ) -> None:
         self.model = model
         self.api_base = api_base
         self.quantization = quantization
@@ -39,7 +40,7 @@ class VLLMLocalRunner:
 
     def is_local_base(self) -> bool:
         """Check if api_base points to a localhost or loopback interface."""
-        return self.host in ("localhost", "127.0.0.1", "0.0.0.0")
+        return self.host in ("localhost", "127.0.0.1", "0.0.0.0")  # noqa: S104 - classify an existing endpoint; no listener is bound here
 
     def build_command_args(self, use_binary: bool = False) -> list[str]:
         """Build command arguments for launching the vLLM server."""
@@ -114,7 +115,7 @@ class VLLMLocalRunner:
         try:
             async with httpx.AsyncClient(timeout=2.0) as client:
                 res = await client.get(health_url)
-                return res.status_code == 200
+                return res.status_code == HTTPStatus.OK
         except Exception:
             # Fallback to models list endpoint
             models_url = self.api_base
@@ -124,7 +125,7 @@ class VLLMLocalRunner:
             try:
                 async with httpx.AsyncClient(timeout=2.0) as client:
                     res = await client.get(models_url)
-                    return res.status_code == 200
+                    return res.status_code == HTTPStatus.OK
             except Exception:
                 return False
 
@@ -143,7 +144,7 @@ class VLLMLocalRunner:
 class VLLMProvider(LiteLLMProvider):
     """vLLM provider which inherits from LiteLLMProvider but manages a local runner."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - preserve the provider chat and constructor keyword contract
         self,
         api_key: str | None = None,
         api_base: str | None = None,
@@ -152,7 +153,7 @@ class VLLMProvider(LiteLLMProvider):
         speculative_model: str | None = None,
         num_speculative_tokens: int | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         base_url = api_base or "http://localhost:8000/v1"
         super().__init__(
             api_key=api_key or "no-key",
@@ -168,7 +169,7 @@ class VLLMProvider(LiteLLMProvider):
             num_speculative_tokens=num_speculative_tokens,
         )
 
-    async def chat(
+    async def chat(  # noqa: PLR0913 - preserve the provider chat and constructor keyword contract
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
@@ -180,16 +181,15 @@ class VLLMProvider(LiteLLMProvider):
         on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
         """Execute chat request, launching local runner if loopback base is not healthy."""
-        if self.runner.is_local_base():
-            if not await self.runner.check_health():
-                logger.info("Local vLLM server not running, launching process...")
-                await self.runner.start()
-                ready = await self.runner.wait_for_ready()
-                if not ready:
-                    return LLMResponse(
-                        content="Local vLLM runner failed to become ready.",
-                        finish_reason="error",
-                    )
+        if self.runner.is_local_base() and not await self.runner.check_health():
+            logger.info("Local vLLM server not running, launching process...")
+            await self.runner.start()
+            ready = await self.runner.wait_for_ready()
+            if not ready:
+                return LLMResponse(
+                    content="Local vLLM runner failed to become ready.",
+                    finish_reason="error",
+                )
 
         # Standard LiteLLM Provider execution
         return await super().chat(

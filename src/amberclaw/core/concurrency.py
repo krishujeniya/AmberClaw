@@ -10,9 +10,10 @@ Implements Section 13 Async Correctness:
 import asyncio
 import functools
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractAsyncContextManager
+from types import TracebackType
 from typing import Any, TypeVar
 
 from loguru import logger
@@ -20,7 +21,7 @@ from loguru import logger
 T = TypeVar("T")
 
 
-class StructuredTaskGroup(AbstractAsyncContextManager):
+class StructuredTaskGroup(AbstractAsyncContextManager["StructuredTaskGroup"]):
     """Structured concurrency context manager with eager sibling cancellation on failure."""
 
     def __init__(self, name: str = "task_group") -> None:
@@ -33,10 +34,15 @@ class StructuredTaskGroup(AbstractAsyncContextManager):
         await self._tg.__aenter__()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool | None:
-        if self._tg:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if self._tg is not None:
             try:
-                return await self._tg.__aexit__(exc_type, exc_val, exc_tb)
+                await self._tg.__aexit__(exc_type, exc_val, exc_tb)
             except* Exception as eg:
                 logger.error(
                     "StructuredTaskGroup '{}' captured task group exception: {}",
@@ -44,7 +50,8 @@ class StructuredTaskGroup(AbstractAsyncContextManager):
                     eg,
                 )
                 raise
-        return None
+            finally:
+                self._tg = None
 
     def create_task(
         self, coro: Awaitable[T], name: str | None = None
@@ -55,7 +62,17 @@ class StructuredTaskGroup(AbstractAsyncContextManager):
                 "StructuredTaskGroup is not active. Use within 'async with'."
             )
         task_name = f"{self.name}:{name or 'child'}"
-        task = self._tg.create_task(coro, name=task_name)
+
+        task: asyncio.Task[T]
+        if isinstance(coro, Coroutine):
+            # Preserve native coroutine cleanup if cancelled before its first step.
+            task = self._tg.create_task(coro, name=task_name)
+        else:
+            # TaskGroup requires a coroutine; bridge Futures and other Awaitables.
+            async def await_child() -> T:
+                return await coro
+
+            task = self._tg.create_task(await_child(), name=task_name)
         self._tasks.append(task)
         return task
 

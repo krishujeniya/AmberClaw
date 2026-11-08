@@ -1,3 +1,4 @@
+import re
 import shutil
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -14,7 +15,7 @@ from amberclaw.providers.registry import find_by_model
 runner = CliRunner()
 
 
-class _StopGateway(RuntimeError):
+class _StopGatewayError(RuntimeError):
     pass
 
 
@@ -37,7 +38,7 @@ def mock_paths():
 
         mock_cp.return_value = config_file
         mock_ws.return_value = workspace_dir
-        mock_sc.side_effect = lambda config: config_file.write_text("{}")
+        mock_sc.side_effect = lambda _config: config_file.write_text("{}")
 
         yield config_file, workspace_dir
 
@@ -175,7 +176,6 @@ def mock_agent_runtime(tmp_path):
 
 
 def test_agent_help_shows_workspace_and_config_options():
-    import re
 
     result = runner.invoke(app, ["agent", "--help"])
 
@@ -242,7 +242,7 @@ def test_agent_config_sets_active_path(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(
         "amberclaw.providers.factory.make_provider", lambda _config: object()
     )
-    monkeypatch.setattr("amberclaw.bus.queue.MessageBus", lambda: object())
+    monkeypatch.setattr("amberclaw.bus.queue.MessageBus", object)
     monkeypatch.setattr("amberclaw.cron.service.CronService", lambda _store: object())
 
     class _FakeAgentLoop:
@@ -251,6 +251,9 @@ def test_agent_config_sets_active_path(monkeypatch, tmp_path: Path) -> None:
 
         async def process_direct(self, *_args, **_kwargs) -> str:
             return "ok"
+
+        def stop(self) -> None:
+            return None
 
         async def close_mcp(self) -> None:
             return None
@@ -268,7 +271,7 @@ def test_agent_config_sets_active_path(monkeypatch, tmp_path: Path) -> None:
 
 
 def test_agent_overrides_workspace_path(mock_agent_runtime):
-    workspace_path = Path("/tmp/agent-workspace")
+    workspace_path = Path("/tmp/agent-workspace")  # noqa: S108 - synthetic path passed to an offline fixture
 
     result = runner.invoke(app, ["agent", "-m", "hello", "-w", str(workspace_path)])
 
@@ -286,7 +289,7 @@ def test_agent_workspace_override_wins_over_config_workspace(
 ):
     config_path = tmp_path / "agent-config.json"
     config_path.write_text("{}")
-    workspace_path = Path("/tmp/agent-workspace")
+    workspace_path = Path("/tmp/agent-workspace")  # noqa: S108 - synthetic path passed to an offline fixture
 
     result = runner.invoke(
         app,
@@ -327,12 +330,12 @@ def test_gateway_uses_workspace_from_config_by_default(
     )
     monkeypatch.setattr(
         "amberclaw.providers.factory.make_provider",
-        lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
+        lambda _config: (_ for _ in ()).throw(_StopGatewayError("stop")),
     )
 
     result = runner.invoke(app, ["gateway", "--config", str(config_file)])
 
-    assert isinstance(result.exception, _StopGateway)
+    assert isinstance(result.exception, _StopGatewayError)
     assert seen["config_path"] == config_file.resolve()
     assert seen["workspace"] == Path(config.agents.defaults.workspace)
 
@@ -357,7 +360,7 @@ def test_gateway_workspace_option_overrides_config(monkeypatch, tmp_path: Path) 
     )
     monkeypatch.setattr(
         "amberclaw.providers.factory.make_provider",
-        lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
+        lambda _config: (_ for _ in ()).throw(_StopGatewayError("stop")),
     )
 
     result = runner.invoke(
@@ -365,7 +368,7 @@ def test_gateway_workspace_option_overrides_config(monkeypatch, tmp_path: Path) 
         ["gateway", "--config", str(config_file), "--workspace", str(override)],
     )
 
-    assert isinstance(result.exception, _StopGateway)
+    assert isinstance(result.exception, _StopGatewayError)
     assert seen["workspace"] == override
     assert config.workspace_path == override
 
@@ -394,7 +397,7 @@ def test_gateway_uses_config_directory_for_cron_store(
     monkeypatch.setattr(
         "amberclaw.providers.factory.make_provider", lambda _config: object()
     )
-    monkeypatch.setattr("amberclaw.bus.queue.MessageBus", lambda: object())
+    monkeypatch.setattr("amberclaw.bus.queue.MessageBus", object)
     monkeypatch.setattr(
         "amberclaw.session.manager.SessionManager", lambda _workspace: object()
     )
@@ -402,13 +405,13 @@ def test_gateway_uses_config_directory_for_cron_store(
     class _StopCron:
         def __init__(self, store_path: Path) -> None:
             seen["cron_store"] = store_path
-            raise _StopGateway("stop")
+            raise _StopGatewayError("stop")
 
     monkeypatch.setattr("amberclaw.cron.service.CronService", _StopCron)
 
     result = runner.invoke(app, ["gateway", "--config", str(config_file)])
 
-    assert isinstance(result.exception, _StopGateway)
+    assert isinstance(result.exception, _StopGatewayError)
     assert seen["cron_store"] == config_file.parent / "cron" / "jobs.json"
 
 
@@ -431,12 +434,12 @@ def test_gateway_uses_configured_port_when_cli_flag_is_missing(
     )
     monkeypatch.setattr(
         "amberclaw.providers.factory.make_provider",
-        lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
+        lambda _config: (_ for _ in ()).throw(_StopGatewayError("stop")),
     )
 
     result = runner.invoke(app, ["gateway", "--config", str(config_file)])
 
-    assert isinstance(result.exception, _StopGateway)
+    assert isinstance(result.exception, _StopGatewayError)
     assert "port 18791" in result.stdout
 
 
@@ -459,14 +462,14 @@ def test_gateway_cli_port_overrides_configured_port(
     )
     monkeypatch.setattr(
         "amberclaw.providers.factory.make_provider",
-        lambda _config: (_ for _ in ()).throw(_StopGateway("stop")),
+        lambda _config: (_ for _ in ()).throw(_StopGatewayError("stop")),
     )
 
     result = runner.invoke(
         app, ["gateway", "--config", str(config_file), "--port", "18792"]
     )
 
-    assert isinstance(result.exception, _StopGateway)
+    assert isinstance(result.exception, _StopGatewayError)
     assert "port 18792" in result.stdout
 
 
@@ -579,6 +582,7 @@ def test_cli_update_commands():
 
 def test_cli_logs_commands(tmp_path: Path):
     from amberclaw.security.audit import SecurityAuditLogger  # noqa: PLC0415
+
     audit_logger = SecurityAuditLogger(log_dir=tmp_path)
     audit_logger.log_event(actor="cli_tester", action="test.run", outcome="success")
     log_file = tmp_path / "audit.jsonl"

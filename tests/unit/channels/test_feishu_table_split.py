@@ -64,7 +64,8 @@ def test_two_tables_split_into_two_groups() -> None:
     }
     els = [_md("before"), t1, _md("between"), t2, _md("after")]
     result = split(els)
-    assert len(result) == 2
+    expected_result_count = 2
+    assert len(result) == expected_result_count
     # First group: text before table-1 + table-1
     assert t1 in result[0]
     assert t2 not in result[0]
@@ -80,7 +81,8 @@ def test_three_tables_split_into_three_groups() -> None:
     ]
     els = tables[:]
     result = split(els)
-    assert len(result) == 3
+    expected_result_count_2 = 3
+    assert len(result) == expected_result_count_2
     for i, group in enumerate(result):
         assert tables[i] in group
 
@@ -97,7 +99,8 @@ def test_trailing_markdown_after_second_table() -> None:
     t1, t2 = _table(), _table()
     tail = _md("end")
     result = split([t1, t2, tail])
-    assert len(result) == 2
+    expected_result_count_3 = 2
+    assert len(result) == expected_result_count_3
     assert result[1] == [t2, tail]
 
 

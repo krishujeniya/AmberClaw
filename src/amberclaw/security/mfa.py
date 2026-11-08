@@ -1,10 +1,10 @@
+# ruff: noqa: PLR0913, PLR0912, PLR2004
 """Hardware-backed Multi-Factor Authentication (MFA) and FIDO2/WebAuthn Engine.
 
 Provides WebAuthn / FIDO2 hardware security key verification (YubiKey, SoloKey)
 and RFC 6238 TOTP fallback with replay protection and monotonic counter validation.
 """
 
-# ruff: noqa: PLR0913, PLR0912, PLR2004
 from __future__ import annotations
 
 import base64
@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import json
 import logging
+import secrets
 import struct
 import time
 from typing import Any
@@ -53,10 +54,7 @@ class HardwareMFAManager:
 
     def generate_challenge(self, ttl_seconds: float = 300.0) -> str:
         """Generates a cryptographic random WebAuthn challenge."""
-        raw = hashlib.sha256(
-            f"{time.time()}:{struct.pack('>Q', int(time.time() * 1000))}".encode()
-        ).digest()
-        challenge = base64.urlsafe_b64encode(raw).decode().rstrip("=")
+        challenge = secrets.token_urlsafe(32)
         self._active_challenges[challenge] = time.time() + ttl_seconds
         return challenge
 
@@ -139,7 +137,8 @@ class HardwareMFAManager:
                 f"Unexpected clientData type: {client_data.get('type')}"
             )
 
-        if client_data.get("challenge") != challenge:
+        given_challenge = str(client_data.get("challenge") or "")
+        if not hmac.compare_digest(given_challenge, challenge):
             raise MFASecurityError(
                 "ClientData challenge does not match expected challenge"
             )

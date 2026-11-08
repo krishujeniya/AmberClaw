@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Awaitable, Callable
+from http import HTTPStatus
 from typing import Any
 
 import httpx
@@ -30,7 +31,7 @@ class OllamaProvider(LLMProvider):
         api_key: str | None = None,
         api_base: str | None = None,
         default_model: str = "llama3",
-    ):
+    ) -> None:
         super().__init__(api_key, api_base)
         # Default Ollama address
         self.api_base = api_base or "http://localhost:11434"
@@ -79,14 +80,14 @@ class OllamaProvider(LLMProvider):
             processed.append(clean_msg)
         return processed
 
-    async def chat(
+    async def chat(  # noqa: PLR0913 - preserve the provider chat and constructor keyword contract
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
         model: str | None = None,
         max_tokens: int = 4096,
         temperature: float = 0.7,
-        reasoning_effort: str | None = None,
+        reasoning_effort: str | None = None,  # noqa: ARG002 - provider protocol includes options unsupported by this adapter
         response_format: dict[str, Any] | None = None,
         on_token: Callable[[str], Awaitable[None]] | None = None,
     ) -> LLMResponse:
@@ -119,7 +120,7 @@ class OllamaProvider(LLMProvider):
                 if on_token:
                     return await self._handle_streaming(client, url, payload, on_token)
                 response = await client.post(url, json=payload)
-                if response.status_code != 200:
+                if response.status_code != HTTPStatus.OK:
                     return LLMResponse(
                         content=f"Ollama Error {response.status_code}: {response.text}",
                         finish_reason="error",
@@ -149,7 +150,7 @@ class OllamaProvider(LLMProvider):
         usage = {}
 
         async with client.stream("POST", url, json=payload) as response:
-            if response.status_code != 200:
+            if response.status_code != HTTPStatus.OK:
                 body = await response.aread()
                 return LLMResponse(
                     content=f"Ollama Streaming Error {response.status_code}: {body.decode()}",
@@ -183,7 +184,7 @@ class OllamaProvider(LLMProvider):
                     continue
 
         # Parse tool calls if any
-        tool_calls = []
+        tool_calls: list[ToolCallRequest] = []
         for tc in tool_calls_raw:
             func = tc.get("function", {})
             args = func.get("arguments", {})
@@ -210,7 +211,7 @@ class OllamaProvider(LLMProvider):
         msg = data.get("message", {})
         content = msg.get("content")
 
-        tool_calls = []
+        tool_calls: list[ToolCallRequest] = []
         if msg.get("tool_calls"):
             for tc in msg["tool_calls"]:
                 func = tc.get("function", {})
@@ -247,7 +248,9 @@ class OllamaProvider(LLMProvider):
 
     def to_langchain_chat(self, model: str | None = None, **kwargs: Any) -> Any:
         """Convert this provider to a LangChain ChatOllama model."""
-        from langchain_ollama import ChatOllama
+        from langchain_ollama import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            ChatOllama,
+        )
 
         target_model = model or self.default_model
         if "/" in target_model and target_model.startswith("ollama/"):

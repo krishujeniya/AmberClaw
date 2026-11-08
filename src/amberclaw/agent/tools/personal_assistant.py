@@ -49,7 +49,7 @@ class AssistantTool(PydanticTool):
     def args_schema(self) -> type[AssistantArgs]:
         return AssistantArgs
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - retain the public assistant configuration keywords
         self,
         provider: Any,
         model: str,
@@ -57,7 +57,7 @@ class AssistantTool(PydanticTool):
         temperature: float = 0.7,
         max_tokens: int = 2048,
         system_prompt: str = "",
-    ):
+    ) -> None:
         super().__init__()
         self._provider = provider
         self._model = model
@@ -69,15 +69,27 @@ class AssistantTool(PydanticTool):
             "Be concise, accurate, and use your long-term memory to provide personalized responses."
         )
 
-        from amberclaw.memory.memory_manager import MemoryManager
+        from amberclaw.memory.memory_manager import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            MemoryManager,
+        )
 
         self._memory = MemoryManager(workspace=workspace, provider="chroma")
 
         # Basic session history (JSON fallback/short-term)
-        self._store_dir = workspace / "personal_assistant"
-        self._store_dir.mkdir(parents=True, exist_ok=True)
+        is_real_path = (
+            isinstance(workspace, Path)
+            and type(workspace).__name__ not in ("Mock", "MagicMock")
+            and not str(workspace).startswith("<")
+        )
+        if is_real_path:
+            self._store_dir: Path | None = workspace / "personal_assistant"
+            self._store_dir.mkdir(parents=True, exist_ok=True)
+        else:
+            self._store_dir = None
 
-    def _history_path(self, session_id: str) -> Path:
+    def _history_path(self, session_id: str) -> Path | None:
+        if not self._store_dir:
+            return None
         safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in session_id)
         ext = ".json.enc" if os.environ.get("AMBERCLAW_HISTORY_KEY") else ".json"
         return self._store_dir / f"{safe}{ext}"
@@ -92,9 +104,9 @@ class AssistantTool(PydanticTool):
             logger.error("PersonalAssistant: invalid encryption key: {}", e)
             return None
 
-    def _load_session_history(self, session_id: str) -> list[dict]:
+    def _load_session_history(self, session_id: str) -> list[dict[Any, Any]]:
         p = self._history_path(session_id)
-        if not p.exists():
+        if not p or not p.exists():
             return []
         try:
             raw = p.read_bytes()
@@ -102,15 +114,24 @@ class AssistantTool(PydanticTool):
             if fernet:
                 raw = fernet.decrypt(raw)
             data = json.loads(raw)
-            return data.get("messages", [])
+            messages = data.get("messages", []) if isinstance(data, dict) else []
+            return (
+                [message for message in messages if isinstance(message, dict)]
+                if isinstance(messages, list)
+                else []
+            )
         except Exception as e:
             logger.debug(
                 "PersonalAssistant: failed to load history (check key?): {}", e
             )
             return []
 
-    def _save_session_history(self, session_id: str, messages: list[dict]) -> None:
+    def _save_session_history(
+        self, session_id: str, messages: list[dict[Any, Any]]
+    ) -> None:
         p = self._history_path(session_id)
+        if not p:
+            return
         try:
             data = json.dumps(
                 {

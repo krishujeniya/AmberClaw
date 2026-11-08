@@ -11,7 +11,7 @@ from amberclaw.config.paths import (
     get_media_dir,
     get_runtime_subdir,
 )
-from amberclaw.config.schema import Config
+from amberclaw.config.schema import Config, WhatsAppConfig
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +100,7 @@ def build_bwrap_args(
 
 
 async def spawn_isolated_whatsapp_bridge(
-    config: Config,
+    config: Config | WhatsAppConfig,
     stdout: int = asyncio.subprocess.PIPE,
     stderr: int = asyncio.subprocess.PIPE,
 ) -> asyncio.subprocess.Process:
@@ -110,8 +110,9 @@ async def spawn_isolated_whatsapp_bridge(
     to an un-sandboxed subprocess with a security warning if bubblewrap is not installed.
     """
     bridge_dir, auth_dir, media_dir = get_whatsapp_bridge_paths()
-    bridge_port = config.channels.whatsapp.bridge_port
-    bridge_token = config.channels.whatsapp.bridge_token
+    bridge_config = config.channels.whatsapp if isinstance(config, Config) else config
+    bridge_port = bridge_config.bridge_port
+    bridge_token = bridge_config.bridge_token
 
     env = {
         **os.environ,

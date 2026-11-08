@@ -33,7 +33,7 @@ class HonchoProvider:
     Supports directional and unified mutual observation modes, and three reasoning passes.
     """
 
-    def __init__(self, api_key: str | None = None, base_url: str | None = None):
+    def __init__(self, api_key: str | None = None, base_url: str | None = None) -> None:
         self.api_key = api_key or os.environ.get("HONCHO_API_KEY")
         self.base_url = base_url or os.environ.get("HONCHO_BASE_URL")
         self.client = None

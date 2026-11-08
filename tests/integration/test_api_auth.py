@@ -1,8 +1,10 @@
+import os
+
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
+
 from amberclaw.api.main import app
-from amberclaw.api.auth import create_access_token, API_KEY
 
 
 @pytest.fixture
@@ -28,7 +30,10 @@ def test_auth_token_generation_and_access(client):
     # Request access token
     token_resp = client.post(
         "/api/v1/auth/token",
-        json={"client_id": "admin", "client_secret": "amberclaw-secret"},
+        json={
+            "client_id": os.environ["AUTH_CLIENT_ID"],
+            "client_secret": os.environ["AUTH_CLIENT_SECRET"],
+        },
     )
     assert token_resp.status_code == status.HTTP_200_OK
     data = token_resp.json()

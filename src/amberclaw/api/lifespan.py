@@ -1,4 +1,5 @@
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -15,7 +16,7 @@ governance_board = GovernanceBoard()
 
 
 @asynccontextmanager
-async def os_lifespan(app: FastAPI):
+async def os_lifespan(app: FastAPI) -> AsyncIterator[None]:
     """
     Manages the startup and shutdown lifecycle of the AmberClaw AI OS.
     This ensures background tasks (like the heartbeat) start correctly
@@ -23,19 +24,16 @@ async def os_lifespan(app: FastAPI):
     """
     logger.info("Starting AmberClaw OS Lifespan...")
 
-    # 1. Start the Heartbeat Engine
-    await heartbeat_engine.start()
-
-    # 2. Add other core OS initializations here (Memory, DB connections, etc.)
-    logger.info("AmberClaw OS fully initialized and ready.")
-
-    # Yield control back to FastAPI so it can start serving requests
-    yield
-
-    logger.info("Initiating AmberClaw OS Shutdown...")
-
-    # 1. Stop the Heartbeat Engine gracefully
-    await heartbeat_engine.stop()
-
-    # 2. Add other cleanup here
-    logger.info("AmberClaw OS Shutdown complete.")
+    app.state.heartbeat_engine = heartbeat_engine
+    app.state.governance_board = governance_board
+    app.state.os_started = False
+    try:
+        await heartbeat_engine.start()
+        app.state.os_started = True
+        logger.info("AmberClaw OS services initialized.")
+        yield
+    finally:
+        app.state.os_started = False
+        logger.info("Initiating AmberClaw OS Shutdown...")
+        await heartbeat_engine.stop()
+        logger.info("AmberClaw OS Shutdown complete.")

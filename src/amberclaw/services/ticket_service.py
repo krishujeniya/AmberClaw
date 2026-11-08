@@ -104,6 +104,9 @@ class TicketService:
             reviewer_id=reviewer_id,
         )
 
+        if resolved is None:
+            raise KeyError(f"Ticket '{ticket_id}' no longer exists.")
+
         # Notify ToolApprovalManager if this ticket corresponds to a paused tool call
         approval_mgr = ToolApprovalManager.get_instance()
         approved = status == TicketStatus.APPROVED

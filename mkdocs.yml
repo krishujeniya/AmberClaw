@@ -31,7 +31,16 @@ nav:
     - Local Deployment: LOCAL.md
   - Architecture & Security:
     - Zero-Trust Architecture: architecture.md
+    - Enterprise SSO: sso.md
+    - Architecture Decisions:
+      - Overview: adr/README.md
+      - ADR-0001 Bus Runtime Adapter: adr/0001-reuse-bus-runtime-for-orchestrator.md
+      - ADR-0002 Dashboard Service Bindings: adr/0002-private-dashboard-service-bindings.md
+      - ADR-0003 SSO Verification: adr/0003-verify-sso-before-issuing-access-tokens.md
+      - ADR-0004 Token Secrets & Credentials: adr/0004-require-explicit-token-secrets-and-admin-credentials.md
   - Guides:
+    - Stabilization Upgrade & Rollback: upgrade-stabilization.md
+    - Unreleased Stabilization Notes: release-notes-stabilization.md
     - Building Agent Skills: skills.md
     - Troubleshooting: troubleshooting.md
     - Ecosystem Comparisons: comparisons.md

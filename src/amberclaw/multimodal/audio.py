@@ -41,7 +41,7 @@ class AudioSummarizer:
 
     def __init__(
         self, stt_engine: SpeechToTextEngine | None = None, chunk_duration_sec: int = 30
-    ):
+    ) -> None:
         self.stt_engine = stt_engine or SpeechToTextEngine()
         self.chunk_duration_sec = chunk_duration_sec
 
@@ -81,7 +81,6 @@ class AudioSummarizer:
         duration_sec: float = 0.0,
     ) -> AudioSummaryResult:
         """Structure raw transcript text into executive summary, action items, and topic sections."""
-        lines = [line.strip() for line in transcript.split("\n") if line.strip()]
 
         exec_summary = f"The recording '{title}' covers key project updates, team deliverables, and strategic priorities."
 
@@ -118,7 +117,7 @@ class AudioSummarizer:
             return source
         path = Path(source)
         if path.exists() and path.is_file():
-            with open(path, "rb") as f:
+            with Path(path).open("rb") as f:
                 return f.read()
         return b"\x00" * 3200
 

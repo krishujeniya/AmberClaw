@@ -12,7 +12,7 @@ class DummyProvider(LLMProvider):
         self._responses = list(responses)
         self.calls = 0
 
-    async def chat(self, *args, **kwargs) -> LLMResponse:
+    async def chat(self, *_args, **_kwargs) -> LLMResponse:
         self.calls += 1
         if self._responses:
             return self._responses.pop(0)
@@ -164,5 +164,6 @@ async def test_decide_retries_transient_error_then_succeeds(
 
     assert action == "run"
     assert tasks == "check open tasks"
-    assert provider.calls == 2
+    expected_provider_calls = 2
+    assert provider.calls == expected_provider_calls
     assert delays == [1]

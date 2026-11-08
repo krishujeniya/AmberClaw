@@ -46,7 +46,7 @@ class EnclaveManager:
         self.config = config or EnclaveConfig()
         self.workspace_dir = Path(workspace_dir or Path.cwd()).resolve()
         self.enclave_id = f"enclave-{uuid.uuid4().hex[:12]}"
-        self.status = EnclaveStatus.PROVISIONING
+        self.status: EnclaveStatus = EnclaveStatus.PROVISIONING
         self.verifier = AttestationVerifier()
 
         # Crypto state
@@ -74,7 +74,11 @@ class EnclaveManager:
                 return self._attestation_doc
 
             self.status = EnclaveStatus.ATTESTING
-            logger.info("Initializing zero-trust enclave: %s (platform=%s)", self.enclave_id, self.config.platform.value)
+            logger.info(
+                "Initializing zero-trust enclave: %s (platform=%s)",
+                self.enclave_id,
+                self.config.platform.value,
+            )
 
             # 1. Generate challenge nonce
             self._active_challenge_nonce = generate_nonce(32)
@@ -86,9 +90,17 @@ class EnclaveManager:
             self._enclave_key_agreement = EnclaveKeyAgreement()
 
             # Compute simulated/hardware measurement
-            code_base_hash = compute_measurement_hash(f"amberclaw-kernel-{self.config.platform.value}-{self.enclave_id}", algorithm="sha384")
-            runtime_hash = compute_measurement_hash(f"amberclaw-runtime-mem={self.config.memory_mb}-vcpu={self.config.vcpu_count}", algorithm="sha384")
-            app_hash = compute_measurement_hash("amberclaw-execution-payload-v1", algorithm="sha384")
+            code_base_hash = compute_measurement_hash(
+                f"amberclaw-kernel-{self.config.platform.value}-{self.enclave_id}",
+                algorithm="sha384",
+            )
+            runtime_hash = compute_measurement_hash(
+                f"amberclaw-runtime-mem={self.config.memory_mb}-vcpu={self.config.vcpu_count}",
+                algorithm="sha384",
+            )
+            app_hash = compute_measurement_hash(
+                "amberclaw-execution-payload-v1", algorithm="sha384"
+            )
 
             self._measurements = EnclaveMeasurement(
                 pcr0=code_base_hash,
@@ -113,19 +125,28 @@ class EnclaveManager:
                 is_valid, reason = self.verifier.verify(
                     doc=self._attestation_doc,
                     expected_nonce=self._active_challenge_nonce,
-                    allowed_pcr0=self.config.allowed_pcr0_measurements if self.config.allowed_pcr0_measurements else None,
+                    allowed_pcr0=self.config.allowed_pcr0_measurements
+                    if self.config.allowed_pcr0_measurements
+                    else None,
                     platform_root_pubkey_pem=self._enclave_signer.public_key_pem,
                 )
                 if not is_valid:
                     self.status = EnclaveStatus.FAILED
-                    raise RuntimeError(f"Zero-Trust Enclave Attestation Failed: {reason}")
+                    raise RuntimeError(
+                        f"Zero-Trust Enclave Attestation Failed: {reason}"
+                    )
 
             # 6. Derive symmetric session key via ECDH (X25519) + HKDF
-            session_key = self._host_key_agreement.derive_shared_secret(self._enclave_key_agreement.public_key_pem)
+            session_key = self._host_key_agreement.derive_shared_secret(
+                self._enclave_key_agreement.public_key_pem
+            )
             self._channel = EnclaveSecureChannel(session_key)
 
             self.status = EnclaveStatus.READY
-            logger.info("Enclave %s successfully attested and secured via AES-256-GCM channel", self.enclave_id)
+            logger.info(
+                "Enclave %s successfully attested and secured via AES-256-GCM channel",
+                self.enclave_id,
+            )
             return self._attestation_doc
 
     async def execute(
@@ -177,10 +198,15 @@ class EnclaveManager:
             execution_time_ms=duration_ms,
             sealed_token=sealed_token,
             status="success",
-            extra={"platform": self.config.platform.value, "enclave_id": self.enclave_id},
+            extra={
+                "platform": self.config.platform.value,
+                "enclave_id": self.enclave_id,
+            },
         )
 
-    async def _dispatch_enclave_execution(self, encrypted_req_b64: str, timeout: int) -> str:
+    async def _dispatch_enclave_execution(
+        self, encrypted_req_b64: str, timeout: int
+    ) -> str:
         """Execute payload in enclave runtime and return encrypted response string."""
         if not self._channel:
             raise RuntimeError("Secure channel unavailable")

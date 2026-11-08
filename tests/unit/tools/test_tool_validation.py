@@ -39,7 +39,7 @@ class SampleTool(Tool):
             "required": ["query", "count"],
         }
 
-    async def execute(self, **kwargs: Any) -> str:
+    async def execute(self, **_kwargs: Any) -> str:
         return "ok"
 
 
@@ -107,8 +107,8 @@ def test_exec_extract_absolute_paths_ignores_relative_posix_segments() -> None:
 def test_exec_extract_absolute_paths_captures_posix_absolute_paths() -> None:
     cmd = "cat /tmp/data.txt > /tmp/out.txt"
     paths = ExecTool._extract_absolute_paths(cmd)
-    assert "/tmp/data.txt" in paths
-    assert "/tmp/out.txt" in paths
+    assert "/tmp/data.txt" in paths  # noqa: S108 - synthetic path passed to an offline fixture
+    assert "/tmp/out.txt" in paths  # noqa: S108 - synthetic path passed to an offline fixture
 
 
 # --- cast_params tests ---
@@ -132,7 +132,7 @@ class CastTestTool(Tool):
     def parameters(self) -> dict[str, Any]:
         return self._schema
 
-    async def execute(self, **kwargs: Any) -> str:
+    async def execute(self, **_kwargs: Any) -> str:
         return "ok"
 
 
@@ -144,7 +144,8 @@ def test_cast_params_string_to_int() -> None:
         },
     )
     result = tool.cast_params({"count": "42"})
-    assert result["count"] == 42
+    expected_result_count = 42
+    assert result["count"] == expected_result_count
     assert isinstance(result["count"], int)
 
 
@@ -156,7 +157,8 @@ def test_cast_params_string_to_number() -> None:
         },
     )
     result = tool.cast_params({"rate": "3.14"})
-    assert result["rate"] == 3.14
+    expected_result_rate = 3.14
+    assert result["rate"] == expected_result_rate
     assert isinstance(result["rate"], float)
 
 
@@ -201,7 +203,8 @@ def test_cast_params_nested_object() -> None:
         },
     )
     result = tool.cast_params({"config": {"port": "8080", "debug": "true"}})
-    assert result["config"]["port"] == 8080
+    expected_result_config_port = 8080
+    assert result["config"]["port"] == expected_result_config_port
     assert result["config"]["debug"] is True
 
 
@@ -337,6 +340,7 @@ def test_cast_params_single_value_not_auto_wrapped_to_array() -> None:
     )
     # Non-array values should be preserved (validation will catch them)
     result = tool.cast_params({"items": 5})
-    assert result["items"] == 5  # Not wrapped to [5]
+    expected_result_items = 5
+    assert result["items"] == expected_result_items  # Not wrapped to [5]
     result = tool.cast_params({"items": "text"})
     assert result["items"] == "text"  # Not wrapped to ["text"]

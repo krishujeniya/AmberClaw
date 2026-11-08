@@ -42,7 +42,9 @@ class BaseMemory(ABC):
     """Abstract base class for all memory providers."""
 
     @abstractmethod
-    async def store(self, key: str, data: Any, metadata: dict[str, Any] | None = None):
+    async def store(
+        self, key: str, data: Any, metadata: dict[str, Any] | None = None
+    ) -> None:
         """Store data in memory."""
         pass
 
@@ -60,17 +62,17 @@ class BaseMemory(ABC):
 class MemoryManager:
     """Orchestrates the 3-layer memory system."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.short_term: list[Message] = []  # In-memory context
         self.long_term: BaseMemory | None = None  # Vector/Database
         self.frozen: BaseMemory | None = None  # Read-only knowledge
 
-    async def add_to_context(self, message: Message):
+    async def add_to_context(self, message: Message) -> None:
         """Add a message to the short-term context."""
         self.short_term.append(message)
         # Handle context window compression if needed
 
-    async def commit_to_long_term(self, session_id: str):
+    async def commit_to_long_term(self, session_id: str) -> None:
         """Commit current context to long-term storage."""
         if self.long_term:
             await self.long_term.store(session_id, self.short_term)

@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Callable
+from http import HTTPStatus
 from typing import Any
 
 import httpx
@@ -41,12 +42,12 @@ class A2AResponse(BaseModel):
 class A2AManager:
     """Manages A2A communication and peer discovery."""
 
-    def __init__(self, card: AgentCard):
+    def __init__(self, card: AgentCard) -> None:
         self.card = card
         self.peers: dict[str, AgentCard] = {}
-        self._handlers: dict[str, Callable] = {}
+        self._handlers: dict[str, Callable[..., Any]] = {}
 
-    def register_handler(self, method: str, handler: Callable):
+    def register_handler(self, method: str, handler: Callable[..., Any]) -> None:
         """Register a handler for an incoming A2A method."""
         self._handlers[method] = handler
 
@@ -60,7 +61,7 @@ class A2AManager:
                 resp = await client.post(
                     target_url, json=msg.model_dump(), timeout=30.0
                 )
-                if resp.status_code == 200:
+                if resp.status_code == HTTPStatus.OK:
                     data = resp.json()
                     response = A2AResponse.model_validate(data)
                     if response.error:
@@ -91,7 +92,7 @@ class A2AManager:
                 id=message_dict.get("id"),
             ).model_dump()
 
-    def discover_peer(self, card: AgentCard):
+    def discover_peer(self, card: AgentCard) -> None:
         """Add a discovered peer."""
         self.peers[card.id] = card
         logger.info("A2A: Discovered peer {} ({})", card.name, card.id)

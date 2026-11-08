@@ -15,24 +15,25 @@ def mythos(
     query: str = typer.Argument(..., help="Query to explore the world mythos"),
 ) -> None:
     """Explore the collective knowledge and lore (Mythos)."""
-    from amberclaw.agent.tools import mythos as mythos_mod
+    from amberclaw.agent.tools import (  # noqa: PLC0415 - defer runtime and platform initialization until command use
+        mythos as mythos_mod,
+    )
 
     cfg = loader.load_runtime_config()
     provider = factory.make_provider(cfg)
 
     mythos_tool = mythos_mod.MythosTool(
-        provider=provider, workspace=cfg.workspace_path, model=cfg.agents.defaults.model
+        provider=provider, model=cfg.agents.defaults.model
     )
 
-    async def run_mythos():
-        streamer = utils.TokenStreamer(console)
+    async def run_mythos() -> None:
         console.print(
             f"{__logo__} [bold magenta]Consulting the Mythos...[/bold magenta]\n"
         )
 
         args = mythos_mod.MythosArgs(query=query)
-        response = await mythos_tool._run(args)
+        response = await mythos_tool.run(args)
 
-        utils._print_agent_response(response)
+        utils._print_agent_response(response, render_markdown=True)
 
     asyncio.run(run_mythos())

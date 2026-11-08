@@ -16,7 +16,10 @@ from amberclaw.tui.status import (
 from amberclaw.tui.themes import DefaultTheme, OceanTheme, get_theme
 
 
-def test_tui_themes():
+def test_tui_themes(monkeypatch):
+    # Named-color assertions require a controlled environment; NO_COLOR has
+    # its own explicit coverage below.
+    monkeypatch.delenv("NO_COLOR", raising=False)
     default_th = get_theme("default")
     assert default_th.name == "default"
     assert default_th.primary == DefaultTheme.primary
@@ -148,7 +151,8 @@ def test_input_handler_and_history():
     assert len(handler.history) <= 3
 
 
-def test_tui_app_layout_and_commands():
+def test_tui_app_layout_and_commands(monkeypatch):
+    monkeypatch.delenv("NO_COLOR", raising=False)
     app = AmberClawTUIApp(theme_name="default")
 
     # Add messages

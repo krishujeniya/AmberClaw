@@ -1,8 +1,9 @@
 import asyncio
-import os
+import math
 import tempfile
 import wave
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 from loguru import logger
@@ -28,7 +29,7 @@ class NeuTTSConfig(BaseModel):
 class NeuTTS:
     """Offline local Text-to-Speech synthesizer with multi-backend fallbacks."""
 
-    def __init__(self, config: NeuTTSConfig | None = None):
+    def __init__(self, config: NeuTTSConfig | None = None) -> None:
         self.config = config or NeuTTSConfig()
         self._backend = "simulated"
         self._engine: Any = None
@@ -83,14 +84,14 @@ class NeuTTS:
         try:
             self._engine.save_to_file(text, tmp_path)
             self._engine.runAndWait()
-            if os.path.exists(tmp_path):
-                with open(tmp_path, "rb") as f:
+            if Path(tmp_path).exists():
+                with Path(tmp_path).open("rb") as f:
                     return f.read()
         except Exception as ex:
             logger.error(f"pyttsx3 synthesis error: {ex}")
         finally:
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+            if Path(tmp_path).exists():
+                Path(tmp_path).unlink()
 
         return self._synthesize_simulated(text)
 
@@ -103,13 +104,13 @@ class NeuTTS:
         try:
             tts = gTTS(text=text, lang="en")
             tts.save(tmp_path)
-            with open(tmp_path, "rb") as f:
+            with Path(tmp_path).open("rb") as f:
                 return f.read()
         except Exception as ex:
             logger.error(f"gTTS synthesis error: {ex}")
         finally:
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+            if Path(tmp_path).exists():
+                Path(tmp_path).unlink()
 
         return self._synthesize_simulated(text)
 
@@ -129,7 +130,6 @@ class NeuTTS:
                 wav_file.setframerate(sample_rate)
 
                 pcm_data = bytearray()
-                import math
 
                 for i in range(num_samples):
                     sample = int(10000 * math.sin(2 * math.pi * 440 * i / sample_rate))
@@ -137,11 +137,11 @@ class NeuTTS:
 
                 wav_file.writeframes(bytes(pcm_data))
 
-            with open(tmp_path, "rb") as f:
+            with Path(tmp_path).open("rb") as f:
                 return f.read()
         finally:
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+            if Path(tmp_path).exists():
+                Path(tmp_path).unlink()
 
     async def stream_tts(
         self, text: str, chunk_size: int = 4096

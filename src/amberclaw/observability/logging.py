@@ -23,7 +23,7 @@ class RedactingJsonLogFormatter(logging.Formatter):
         self,
         service_name: str = "amberclaw-os",
         redact_entropy: bool = False,
-    ):
+    ) -> None:
         super().__init__()
         self.service_name = service_name
         self.redact_entropy = redact_entropy

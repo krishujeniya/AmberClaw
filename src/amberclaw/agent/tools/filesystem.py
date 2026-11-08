@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
 
+MIN_FUZZY_MATCH_RATIO = 0.5
+
 
 def _resolve_path(
     path: str,
@@ -15,18 +17,18 @@ def _resolve_path(
 ) -> Path:
     """Resolve path against workspace (if relative) and enforce directory restriction."""
     p = Path(path).expanduser()
-    if not p.is_absolute() and workspace:
+    if not p.is_absolute() and workspace and isinstance(workspace, Path):
         p = workspace / p
     resolved = p.resolve()
 
     enforced_dir = allowed_dir or workspace
-    if enforced_dir:
+    if enforced_dir and isinstance(enforced_dir, Path):
         try:
             resolved.relative_to(enforced_dir.resolve())
         except ValueError:
             raise PermissionError(
                 f"Path {path} is outside allowed directory {enforced_dir}"
-            )
+            ) from None
     return resolved
 
 
@@ -55,7 +57,9 @@ class ReadFileTool(PydanticTool):
     def args_schema(self) -> type[ReadFileArgs]:
         return ReadFileArgs
 
-    def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
+    def __init__(
+        self, workspace: Path | None = None, allowed_dir: Path | None = None
+    ) -> None:
         super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
@@ -68,24 +72,27 @@ class ReadFileTool(PydanticTool):
             if not file_path.is_file():
                 return f"Error: Not a file: {args.path}"
 
-            size = file_path.stat().st_size
-            if size > self._MAX_CHARS * 4:  # rough upper bound (UTF-8 chars ≤ 4 bytes)
-                return (
-                    f"Error: File too large ({size:,} bytes). "
-                    f"Use exec tool with head/tail/grep to read portions."
-                )
-
-            content = file_path.read_text(encoding="utf-8")
-            if len(content) > self._MAX_CHARS:
-                return (
-                    content[: self._MAX_CHARS]
-                    + f"\n\n... (truncated — file is {len(content):,} chars, limit {self._MAX_CHARS:,})"
-                )
-            return content
+            return self._read_content(file_path)
         except PermissionError as e:
             return f"Error: {e}"
         except Exception as e:
             return f"Error reading file: {e!s}"
+
+    def _read_content(self, file_path: Path) -> str:
+        size = file_path.stat().st_size
+        if size > self._MAX_CHARS * 4:  # rough upper bound (UTF-8 chars ≤ 4 bytes)
+            return (
+                f"Error: File too large ({size:,} bytes). "
+                f"Use exec tool with head/tail/grep to read portions."
+            )
+
+        content = file_path.read_text(encoding="utf-8")
+        if len(content) > self._MAX_CHARS:
+            return (
+                content[: self._MAX_CHARS]
+                + f"\n\n... (truncated — file is {len(content):,} chars, limit {self._MAX_CHARS:,})"
+            )
+        return content
 
 
 class WriteFileArgs(BaseModel):
@@ -110,7 +117,9 @@ class WriteFileTool(PydanticTool):
     def args_schema(self) -> type[WriteFileArgs]:
         return WriteFileArgs
 
-    def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
+    def __init__(
+        self, workspace: Path | None = None, allowed_dir: Path | None = None
+    ) -> None:
         super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
@@ -150,7 +159,9 @@ class EditFileTool(PydanticTool):
     def args_schema(self) -> type[EditFileArgs]:
         return EditFileArgs
 
-    def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
+    def __init__(
+        self, workspace: Path | None = None, allowed_dir: Path | None = None
+    ) -> None:
         super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
@@ -195,7 +206,7 @@ class EditFileTool(PydanticTool):
             if ratio > best_ratio:
                 best_ratio, best_start = ratio, i
 
-        if best_ratio > 0.5:
+        if best_ratio > MIN_FUZZY_MATCH_RATIO:
             diff = "\n".join(
                 difflib.unified_diff(
                     old_lines,
@@ -230,7 +241,9 @@ class ListDirTool(PydanticTool):
     def args_schema(self) -> type[ListDirArgs]:
         return ListDirArgs
 
-    def __init__(self, workspace: Path | None = None, allowed_dir: Path | None = None):
+    def __init__(
+        self, workspace: Path | None = None, allowed_dir: Path | None = None
+    ) -> None:
         super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
@@ -245,7 +258,7 @@ class ListDirTool(PydanticTool):
 
             items = []
             for item in sorted(dir_path.iterdir()):
-                prefix = "📁 " if item.is_dir() else "📄 "
+                prefix = "[dir] " if item.is_dir() else "[file] "
                 items.append(f"{prefix}{item.name}")
 
             if not items:

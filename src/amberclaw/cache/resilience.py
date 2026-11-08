@@ -7,6 +7,7 @@ by automatically falling back to an in-memory L1 cache with circuit-breaker sema
 from __future__ import annotations
 
 import asyncio
+import builtins
 import json
 import threading
 import time
@@ -34,7 +35,7 @@ class CacheEntry:
         ttl_seconds: float | None = None,
         tags: set[str] | None = None,
         version: int = 1,
-    ):
+    ) -> None:
         self.key = key
         self.value = value
         self.created_at = time.time()
@@ -58,7 +59,7 @@ class ResilientCacheManager:
         max_l1_items: int = 1000,
         failure_threshold: int = 3,
         recovery_probe_interval_seconds: float = 30.0,
-    ):
+    ) -> None:
         self.redis_client = redis_client
         self.max_l1_items = max_l1_items
         self.failure_threshold = failure_threshold
@@ -118,7 +119,7 @@ class ResilientCacheManager:
         key: str,
         value: Any,
         ttl_seconds: float | None = None,
-        tags: set[str] | list[str] | None = None,
+        tags: builtins.set[str] | list[str] | None = None,
     ) -> None:
         """Store item in L1 and L2 (Redis) with tag indexing."""
         tag_set = set(tags or [])
@@ -271,7 +272,7 @@ class ResilientCacheManager:
         key: str,
         compute_fn: Callable[[], Any],
         ttl_seconds: float | None = None,
-        tags: set[str] | list[str] | None = None,
+        tags: builtins.set[str] | list[str] | None = None,
     ) -> Any:
         """Retrieve cached value or compute and store it atomically."""
         cached = self.get(key)
@@ -290,7 +291,7 @@ class ResilientCacheManager:
         key: str,
         value: Any,
         ttl_seconds: float | None = None,
-        tags: set[str] | list[str] | None = None,
+        tags: builtins.set[str] | list[str] | None = None,
     ) -> None:
         await asyncio.to_thread(self.set, key, value, ttl_seconds, tags)
 

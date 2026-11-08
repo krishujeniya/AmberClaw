@@ -7,7 +7,7 @@ from amberclaw.terminal.base import BaseTerminalBackend
 class LocalTerminalBackend(BaseTerminalBackend):
     """Local execution backend that wraps CodeSandbox with local secure sandbox."""
 
-    def __init__(self, workspace_dir: str):
+    def __init__(self, workspace_dir: str) -> None:
         self.sandbox = CodeSandbox(use_docker=False, workspace=workspace_dir)
 
     async def execute_bash(self, command: str, timeout: int = 30) -> dict[str, Any]:

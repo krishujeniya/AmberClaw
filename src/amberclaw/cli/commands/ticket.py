@@ -22,14 +22,18 @@ def ticket_list(
     priority: str | None = typer.Option(
         None, "--priority", "-p", help="Filter by priority: low, medium, high, critical"
     ),
-    limit: int = typer.Option(20, "--limit", "-l", help="Maximum number of tickets to display"),
+    limit: int = typer.Option(
+        20, "--limit", "-l", help="Maximum number of tickets to display"
+    ),
 ) -> None:
     """List governance approval tickets."""
     system = TicketSystem()
     status_filter = TicketStatus(status.lower()) if status else None
     priority_filter = TicketPriority(priority.lower()) if priority else None
 
-    tickets = system.list_tickets(status=status_filter, priority=priority_filter)[:limit]
+    tickets = system.list_tickets(status=status_filter, priority=priority_filter)[
+        :limit
+    ]
 
     if not tickets:
         console.print("[yellow]No tickets found matching criteria.[/yellow]")
@@ -47,7 +51,8 @@ def ticket_list(
         table.add_row(
             t.id[:8] + "...",
             t.requester_id,
-            t.description[:DESC_TRUNCATE_LIMIT] + ("..." if len(t.description) > DESC_TRUNCATE_LIMIT else ""),
+            t.description[:DESC_TRUNCATE_LIMIT]
+            + ("..." if len(t.description) > DESC_TRUNCATE_LIMIT else ""),
             t.priority.value,
             t.status.value,
             t.created_at.strftime("%Y-%m-%d %H:%M"),
@@ -99,7 +104,9 @@ def ticket_approve(
         raise typer.Exit(code=1)
 
     system.resolve_ticket(ticket.id, TicketStatus.APPROVED, reviewer_id=reviewer)
-    console.print(f"[bold green]✓ Ticket {ticket.id} approved by {reviewer}.[/bold green]")
+    console.print(
+        f"[bold green]✓ Ticket {ticket.id} approved by {reviewer}.[/bold green]"
+    )
 
 
 @ticket_app.command("reject")

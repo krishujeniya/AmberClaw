@@ -1,6 +1,7 @@
 """Reinforcement learning tools for trajectory recording and environment diagnostics."""
 
 import json
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -31,7 +32,7 @@ class RecordStepArgs(BaseModel):
     notes: str | None = Field(default=None, description="Optional diagnostic context")
 
 
-class RecordTrajectoryStepTool(BaseTool):
+class RecordTrajectoryStepTool(BaseTool[[str, str, float, bool, str | None]]):
     """Tool allowing agents to submit experience replay transitions to the RL buffer."""
 
     name = "record_rl_step"
@@ -70,20 +71,20 @@ class RecordTrajectoryStepTool(BaseTool):
         )
 
 
-class RLDiagnosticsTool(BaseTool):
+class RLDiagnosticsTool(BaseTool[[]]):
     """Tool inspecting local hardware, vLLM acceleration, and RL training readiness."""
 
     name = "rl_system_diagnostics"
     description = "Run diagnostic checks on local GPU memory, Ray cluster, and vLLM inference readiness."
     args_schema = None
 
-    async def run(self, **_kwargs) -> str:
+    async def run(self, **_kwargs: Any) -> str:
         """Run system check and return JSON diagnostics."""
         diag = RLSystemCheck.run_check()
         return json.dumps(diag.model_dump(), indent=2)
 
 
-class RLBufferStatsTool(BaseTool):
+class RLBufferStatsTool(BaseTool[[]]):
     """Tool reporting trajectory replay buffer statistics."""
 
     name = "rl_buffer_stats"
@@ -94,7 +95,7 @@ class RLBufferStatsTool(BaseTool):
         super().__init__()
         self.buffer = buffer or get_default_trajectory_buffer()
 
-    async def run(self, **_kwargs) -> str:
+    async def run(self, **_kwargs: Any) -> str:
         """Compute summary statistics across buffered trajectories."""
         episodes = self.buffer._trajectories
         total_episodes = len(episodes)

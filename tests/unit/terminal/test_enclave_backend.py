@@ -55,7 +55,9 @@ async def test_enclave_backend_bash_execution() -> None:
         assert len(res["sealed_token"]) > 0
 
         # File creation and verification inside workspace
-        res_file = await backend.execute_bash("echo 'payload' > enclave_file.txt && cat enclave_file.txt")
+        res_file = await backend.execute_bash(
+            "echo 'payload' > enclave_file.txt && cat enclave_file.txt"
+        )
         assert res_file["exit_code"] == 0
         assert "payload" in res_file["stdout"]
         assert (Path(tmpdir) / "enclave_file.txt").exists()

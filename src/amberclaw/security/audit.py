@@ -6,6 +6,7 @@ for all agent execution, authorization, secret access, and governance operations
 """
 
 import hashlib
+import hmac
 import json
 import re
 from datetime import UTC, datetime
@@ -95,7 +96,7 @@ class SecurityAuditLogger:
 
     _default_instance: Optional["SecurityAuditLogger"] = None
 
-    def __init__(self, log_dir: str | Path = "logs"):
+    def __init__(self, log_dir: str | Path = "logs") -> None:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / "audit.jsonl"
@@ -242,7 +243,9 @@ class SecurityAuditLogger:
                         return False
 
                     prev_hash = data.get("previous_hash")
-                    if prev_hash != expected_prev_hash:
+                    if not hmac.compare_digest(
+                        str(prev_hash or ""), str(expected_prev_hash or "")
+                    ):
                         logger.error(
                             "Audit log verification failed line {}: expected prev_hash {}, got {}",
                             line_num,
@@ -273,7 +276,9 @@ class SecurityAuditLogger:
                         idx, timestamp, actor, action, details_str, prev_hash
                     )
 
-                    if current_hash != recalculated:
+                    if not hmac.compare_digest(
+                        str(current_hash or ""), str(recalculated or "")
+                    ):
                         logger.error(
                             "Audit log verification failed line {}: hash mismatch",
                             line_num,

@@ -16,11 +16,11 @@ def _make_config() -> EmailConfig:
         imap_host="imap.example.com",
         imap_port=993,
         imap_username="bot@example.com",
-        imap_password="secret",
+        imap_password="secret",  # noqa: S106 - synthetic credential or protocol expectation in an offline test
         smtp_host="smtp.example.com",
         smtp_port=587,
         smtp_username="bot@example.com",
-        smtp_password="secret",
+        smtp_password="secret",  # noqa: S106 - synthetic credential or protocol expectation in an offline test
         mark_seen=True,
     )
 
@@ -44,7 +44,7 @@ def test_fetch_new_messages_parses_unseen_and_marks_seen(monkeypatch) -> None:
 
     class FakeIMAP:
         def __init__(self) -> None:
-            self.store_calls: list[tuple[bytes, str, str]] = []
+            self.store_calls: list[tuple[str, str, str]] = []
 
         def login(self, _user: str, _pw: str):
             return "OK", [b"logged in"]
@@ -55,10 +55,10 @@ def test_fetch_new_messages_parses_unseen_and_marks_seen(monkeypatch) -> None:
         def search(self, *_args):
             return "OK", [b"1"]
 
-        def fetch(self, _imap_id: bytes, _parts: str):
+        def fetch(self, _imap_id: str, _parts: str):
             return "OK", [(b"1 (UID 123 BODY[] {200})", raw), b")"]
 
-        def store(self, imap_id: bytes, op: str, flags: str):
+        def store(self, imap_id: str, op: str, flags: str):
             self.store_calls.append((imap_id, op, flags))
             return "OK", [b""]
 
@@ -77,7 +77,7 @@ def test_fetch_new_messages_parses_unseen_and_marks_seen(monkeypatch) -> None:
     assert items[0]["sender"] == "alice@example.com"
     assert items[0]["subject"] == "Invoice"
     assert "Please pay" in items[0]["content"]
-    assert fake.store_calls == [(b"1", "+FLAGS", "\\Seen")]
+    assert fake.store_calls == [("1", "+FLAGS", "\\Seen")]
 
     # Same UID should be deduped in-process.
     items_again = channel._fetch_new_messages()
@@ -129,7 +129,7 @@ async def test_send_uses_smtp_and_reply_subject(monkeypatch) -> None:
         def __exit__(self, exc_type, exc, tb):
             return False
 
-        def starttls(self, context=None):
+        def starttls(self, context=None):  # noqa: ARG002 - preserve the fake SDK keyword contract
             self.started_tls = True
 
         def login(self, _user: str, _pw: str):
@@ -175,7 +175,7 @@ async def test_send_skips_reply_when_auto_reply_disabled(monkeypatch) -> None:
     """When auto_reply_enabled=False, replies should be skipped but proactive sends allowed."""
 
     class FakeSMTP:
-        def __init__(self, _host: str, _port: int, timeout: int = 30) -> None:
+        def __init__(self, _host: str, _port: int, timeout: int = 30) -> None:  # noqa: ARG002 - preserve the fake SDK keyword contract
             self.sent_messages: list[EmailMessage] = []
 
         def __enter__(self):
@@ -184,7 +184,7 @@ async def test_send_skips_reply_when_auto_reply_disabled(monkeypatch) -> None:
         def __exit__(self, exc_type, exc, tb):
             return False
 
-        def starttls(self, context=None):
+        def starttls(self, context=None):  # noqa: ARG002 - preserve the fake SDK keyword contract
             return None
 
         def login(self, _user: str, _pw: str):
@@ -237,7 +237,7 @@ async def test_send_proactive_email_when_auto_reply_disabled(monkeypatch) -> Non
     """Proactive emails (not replies) should be sent even when auto_reply_enabled=False."""
 
     class FakeSMTP:
-        def __init__(self, _host: str, _port: int, timeout: int = 30) -> None:
+        def __init__(self, _host: str, _port: int, timeout: int = 30) -> None:  # noqa: ARG002 - preserve the fake SDK keyword contract
             self.sent_messages: list[EmailMessage] = []
 
         def __enter__(self):
@@ -246,7 +246,7 @@ async def test_send_proactive_email_when_auto_reply_disabled(monkeypatch) -> Non
         def __exit__(self, exc_type, exc, tb):
             return False
 
-        def starttls(self, context=None):
+        def starttls(self, context=None):  # noqa: ARG002 - preserve the fake SDK keyword contract
             return None
 
         def login(self, _user: str, _pw: str):
@@ -286,7 +286,7 @@ async def test_send_proactive_email_when_auto_reply_disabled(monkeypatch) -> Non
 @pytest.mark.asyncio
 async def test_send_skips_when_consent_not_granted(monkeypatch) -> None:
     class FakeSMTP:
-        def __init__(self, _host: str, _port: int, timeout: int = 30) -> None:
+        def __init__(self, _host: str, _port: int, timeout: int = 30) -> None:  # noqa: ARG002 - preserve the fake SDK keyword contract
             self.sent_messages: list[EmailMessage] = []
 
         def __enter__(self):
@@ -295,7 +295,7 @@ async def test_send_skips_when_consent_not_granted(monkeypatch) -> None:
         def __exit__(self, exc_type, exc, tb):
             return False
 
-        def starttls(self, context=None):
+        def starttls(self, context=None):  # noqa: ARG002 - preserve the fake SDK keyword contract
             return None
 
         def login(self, _user: str, _pw: str):
@@ -334,7 +334,7 @@ def test_fetch_messages_between_dates_uses_imap_since_before_without_mark_seen(
     class FakeIMAP:
         def __init__(self) -> None:
             self.search_args = None
-            self.store_calls: list[tuple[bytes, str, str]] = []
+            self.store_calls: list[tuple[str, str, str]] = []
 
         def login(self, _user: str, _pw: str):
             return "OK", [b"logged in"]
@@ -346,10 +346,10 @@ def test_fetch_messages_between_dates_uses_imap_since_before_without_mark_seen(
             self.search_args = _args
             return "OK", [b"5"]
 
-        def fetch(self, _imap_id: bytes, _parts: str):
+        def fetch(self, _imap_id: str, _parts: str):
             return "OK", [(b"5 (UID 999 BODY[] {200})", raw), b")"]
 
-        def store(self, imap_id: bytes, op: str, flags: str):
+        def store(self, imap_id: str, op: str, flags: str):
             self.store_calls.append((imap_id, op, flags))
             return "OK", [b""]
 
@@ -370,7 +370,7 @@ def test_fetch_messages_between_dates_uses_imap_since_before_without_mark_seen(
 
     assert len(items) == 1
     assert items[0]["subject"] == "Status"
-    # search(None, "SINCE", "06-Feb-2026", "BEFORE", "07-Feb-2026")
+    # The date window must include both inclusive-since and exclusive-before bounds.
     assert fake.search_args is not None
     assert fake.search_args[1:] == ("SINCE", "06-Feb-2026", "BEFORE", "07-Feb-2026")
     assert fake.store_calls == []

@@ -1,6 +1,8 @@
 """DataAgent Data Visualization tool — AI-powered chart generation."""
 
+import asyncio
 import json
+from pathlib import Path
 from typing import Any
 
 from loguru import logger
@@ -22,7 +24,7 @@ class VizArgs(BaseModel):
 class DataVizTool(PydanticTool):
     """Generate Plotly visualizations using the DataAgent DataVisualizationAgent."""
 
-    def __init__(self, model: Any = None):
+    def __init__(self, model: Any = None) -> None:
         self._model = model
 
     @property
@@ -43,10 +45,12 @@ class DataVizTool(PydanticTool):
 
     async def run(self, args: VizArgs) -> str:
         try:
-            import asyncio
-
-            from amberclaw.data.agents import DataVisualizationAgent
-            from amberclaw.data.utils.loader import load_data
+            from amberclaw.data.agents import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                DataVisualizationAgent,
+            )
+            from amberclaw.data.utils.loader import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                load_data,
+            )
 
             file_path = args.file_path
             df = await asyncio.to_thread(load_data, file_path)
@@ -67,8 +71,8 @@ class DataVizTool(PydanticTool):
             if plot is not None:
                 out_path = file_path.rsplit(".", 1)[0] + "_viz.json"
 
-                def _save_json(path, data):
-                    with open(path, "w") as f:
+                def _save_json(path: str, data: Any) -> None:
+                    with Path(path).open("w") as f:
                         json.dump(
                             data.to_dict() if hasattr(data, "to_dict") else data, f
                         )

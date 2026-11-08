@@ -59,7 +59,9 @@ class CronDeliveryRouter:
                     delivered=True,
                 )
             except Exception as ex:
-                logger.error(f"Failed to deliver cron {job_id} result to {destination}: {ex}")
+                logger.error(
+                    f"Failed to deliver cron {job_id} result to {destination}: {ex}"
+                )
                 return CronDeliveryReceipt(
                     job_id=job_id,
                     destination=destination,
@@ -67,7 +69,9 @@ class CronDeliveryRouter:
                     error=str(ex),
                 )
 
-        logger.debug(f"Simulated cron result delivery to {destination}: {result_text[:60]}")
+        logger.debug(
+            f"Simulated cron result delivery to {destination}: {result_text[:60]}"
+        )
         return CronDeliveryReceipt(
             job_id=job_id,
             destination=destination,

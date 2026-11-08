@@ -81,22 +81,35 @@ class SecretVault:
                 return {}
             fernet = self._get_fernet()
             decrypted_data = fernet.decrypt(encrypted_data)
-            return json.loads(decrypted_data.decode("utf-8"))
+            data: object = json.loads(decrypted_data.decode("utf-8"))
+            if not isinstance(data, dict):
+                raise ValueError("Vault payload must map secret names to strings")
+            secrets: dict[str, str] = {}
+            for key, value in data.items():
+                if not isinstance(key, str) or not isinstance(value, str):
+                    raise ValueError("Vault secret names and values must be strings")
+                secrets[key] = value
+            return secrets
         except Exception as e:
             logger.error("Failed to load/decrypt vault: {}", e)
             return {}
 
     def _save_vault_data(self, data: dict[str, str]) -> None:
-        """Encrypt and save the vault database."""
+        """Encrypt and atomically save the vault database."""
         try:
             self.base_dir.mkdir(parents=True, exist_ok=True)
             serialized = json.dumps(data).encode("utf-8")
             fernet = self._get_fernet()
             encrypted_data = fernet.encrypt(serialized)
-            self.vault_file.write_bytes(encrypted_data)
-            self.vault_file.chmod(0o600)
+            tmp_file = self.vault_file.with_name(
+                f"{self.vault_file.name}.tmp.{os.getpid()}"
+            )
+            tmp_file.write_bytes(encrypted_data)
+            tmp_file.chmod(0o600)
+            tmp_file.replace(self.vault_file)
         except Exception as e:
             logger.error("Failed to save/encrypt vault: {}", e)
+            raise
 
     def register_rotation_hook(self, name: str, hook: Any) -> None:
         """Register a callback invoked when a secret is rotated in-memory."""
@@ -148,8 +161,14 @@ class SecretVault:
 
     def get_secret(self, name: str, actor: str = "system") -> str | None:
         """Retrieve and decrypt a secret from the vault."""
-        data = self._load_vault_data()
-        secret = data.get(name)
+        try:
+            data = self._load_vault_data()
+            secret = data.get(name)
+            outcome = "success" if secret is not None else "not_found"
+        except Exception as e:
+            logger.error("Error reading secret '{}' from vault: {}", name, e)
+            secret = None
+            outcome = "error"
 
         from amberclaw.security.audit import AuditEvent, SecurityAuditLogger
 
@@ -159,7 +178,7 @@ class SecretVault:
                 action="vault.secret_accessed",
                 resource_type="secret",
                 resource_id=name,
-                outcome="success" if secret is not None else "not_found",
+                outcome=outcome,
             )
         )
         return secret

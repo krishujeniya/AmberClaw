@@ -64,7 +64,10 @@ def test_authenticated_chat_streaming(auth_client):
         for token in ["Hello", " ", "from", " ", "AmberClaw", "!"]:
             yield token
 
-    with patch("amberclaw.api.v1.chat.llm_router.generate_stream", side_effect=mock_generate_stream):
+    with patch(
+        "amberclaw.api.v1.chat.llm_router.generate_stream",
+        side_effect=mock_generate_stream,
+    ):
         response = auth_client.post(
             "/api/v1/chat/stream",
             json={"message": "Stream hello"},

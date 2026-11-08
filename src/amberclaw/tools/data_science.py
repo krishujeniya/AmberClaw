@@ -8,6 +8,7 @@ from typing import Any
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from amberclaw.providers.base import LLMProvider
 from amberclaw.tools.registry import BaseTool
 
 
@@ -19,32 +20,37 @@ class DataCleanArgs(BaseModel):
 
 
 def _load_data(path: str) -> Any:
-    import pandas as pd
+    import pandas as pd  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
     if path.endswith((".xlsx", ".xls")):
         return pd.read_excel(path)
     return pd.read_csv(path)
 
 
-class DataCleanTool(BaseTool):
+class DataCleanTool(BaseTool[[DataCleanArgs]]):
     name: str = "data_clean"
     description: str = "Clean a dataset automatically using AI. Handles missing values, duplicates, and outliers."
     args_schema: type[BaseModel] = DataCleanArgs
 
+    def __init__(self, provider: LLMProvider | None = None) -> None:
+        super().__init__()
+        self._provider = provider
+
     async def run(self, args: DataCleanArgs) -> str:
         try:
-            from amberclaw.data.agents import DataCleaningAgent
-            from amberclaw.providers.registry import registry
+            from amberclaw.data.agents import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                DataCleaningAgent,
+            )
 
             # Use default provider for the agent
-            provider = registry.get_default()
+            provider = self._provider
             if not provider:
                 return "Error: No LLM provider configured."
 
             # Load data using sandbox or thread
             df = await asyncio.to_thread(_load_data, args.file_path)
 
-            agent = DataCleaningAgent(model=provider)
+            agent = DataCleaningAgent(model=provider.to_langchain_chat())
 
             # Run the agent (offload to thread as it's synchronous logic)
             await asyncio.to_thread(

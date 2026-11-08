@@ -42,9 +42,9 @@ class ClawOSSupervisor:
         self.event_bus = DomainEventBus()
         self._services: dict[str, dict[str, Any]] = {}
         self._running = False
-        self._supervisor_task: asyncio.Task | None = None
-        self._event_listener_task: asyncio.Task | None = None
-        self._health_monitor_task: asyncio.Task | None = None
+        self._supervisor_task: asyncio.Task[Any] | None = None
+        self._event_listener_task: asyncio.Task[Any] | None = None
+        self._health_monitor_task: asyncio.Task[Any] | None = None
         self._lock = asyncio.Lock()
 
     def register_service(
@@ -96,14 +96,23 @@ class ClawOSSupervisor:
             self._running = False
             logger.info("Supervisor: Stopping ClawOS Supervisor...")
 
-            # Cancel background loops
-            for task in [
-                self._supervisor_task,
-                self._event_listener_task,
-                self._health_monitor_task,
-            ]:
-                if task:
-                    task.cancel()
+            # Cancel and await background loops
+            supervisor_tasks = [
+                task
+                for task in [
+                    self._supervisor_task,
+                    self._event_listener_task,
+                    self._health_monitor_task,
+                ]
+                if task and not task.done()
+            ]
+            for task in supervisor_tasks:
+                task.cancel()
+            if supervisor_tasks:
+                await asyncio.gather(*supervisor_tasks, return_exceptions=True)
+            self._supervisor_task = None
+            self._event_listener_task = None
+            self._health_monitor_task = None
 
             # Stop all services
             tasks_to_wait = []
@@ -153,7 +162,7 @@ class ClawOSSupervisor:
         svc["status"] = "running"
         set_service_state(name, is_running=True)
 
-        async def _run_wrapper():
+        async def _run_wrapper() -> None:
             try:
                 await svc["start_fn"]()
             except asyncio.CancelledError:
@@ -181,7 +190,7 @@ class ClawOSSupervisor:
         task = svc["task"]
         if task and not task.done():
             task.cancel()
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(asyncio.CancelledError, Exception):
                 await task
         svc["status"] = "stopped"
         svc["task"] = None

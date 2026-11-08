@@ -56,7 +56,7 @@ class PromptInjectionDetector:
     """Heuristic detector and sanitizer for prompt injection and role manipulation."""
 
     # Patterns indicating direct instruction overrides
-    INSTRUCTION_OVERRIDE_PATTERNS: list[tuple[str, re.Pattern]] = [
+    INSTRUCTION_OVERRIDE_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
         (
             "instruction_override",
             re.compile(

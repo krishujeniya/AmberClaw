@@ -4,6 +4,10 @@ import asyncio
 import json
 import mimetypes
 from collections import OrderedDict
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from websockets.asyncio.client import ClientConnection
 
 from loguru import logger
 
@@ -11,6 +15,8 @@ from amberclaw.bus.events import OutboundMessage
 from amberclaw.bus.queue import MessageBus
 from amberclaw.channels.base import BaseChannel
 from amberclaw.config.schema import WhatsAppConfig
+
+MAX_RECENT_MESSAGE_IDS = 1000
 
 
 class WhatsAppChannel(BaseChannel):
@@ -23,28 +29,29 @@ class WhatsAppChannel(BaseChannel):
 
     name = "whatsapp"
 
-    def __init__(self, config: WhatsAppConfig, bus: MessageBus):
+    def __init__(self, config: WhatsAppConfig, bus: MessageBus) -> None:
         super().__init__(config, bus)
         self.config: WhatsAppConfig = config
-        self._ws = None
+        self._ws: ClientConnection | None = None
         self._connected = False
         self._processed_message_ids: OrderedDict[str, None] = OrderedDict()
-        self._bridge_process = None
-        self._monitor_task = None
+        self._bridge_process: asyncio.subprocess.Process | None = None
+        self._monitor_task: asyncio.Task[None] | None = None
 
     async def start(self) -> None:
         """Start the WhatsApp channel by connecting to the bridge."""
-        import websockets
+        import websockets  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
-        from amberclaw.config.schema import settings
-        from amberclaw.security.whatsapp_sandbox import spawn_isolated_whatsapp_bridge
+        from amberclaw.security.whatsapp_sandbox import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            spawn_isolated_whatsapp_bridge,
+        )
 
         self._running = True
 
         if self.config.spawn_bridge:
             logger.info("Spawning sandboxed WhatsApp bridge...")
             try:
-                self._bridge_process = await spawn_isolated_whatsapp_bridge(settings)
+                self._bridge_process = await spawn_isolated_whatsapp_bridge(self.config)
                 self._monitor_task = asyncio.create_task(self._monitor_bridge_process())
             except Exception as e:
                 logger.error("Failed to spawn WhatsApp bridge: {}", e)
@@ -55,7 +62,17 @@ class WhatsAppChannel(BaseChannel):
 
         while self._running:
             try:
-                async with websockets.connect(bridge_url) as ws:
+                try:
+                    connect_ctx = websockets.connect(
+                        bridge_url,
+                        open_timeout=10.0,
+                        ping_interval=20.0,
+                        ping_timeout=10.0,
+                    )
+                except TypeError:
+                    connect_ctx = websockets.connect(bridge_url)
+
+                async with connect_ctx as ws:
                     self._ws = ws
                     # Send auth token if configured
                     if self.config.bridge_token:
@@ -90,7 +107,9 @@ class WhatsAppChannel(BaseChannel):
         if not self._bridge_process:
             return
 
-        async def read_stream(stream, name):
+        async def read_stream(stream: asyncio.StreamReader | None, name: str) -> None:
+            if stream is None:
+                return
             while self._running:
                 try:
                     line = await stream.readline()
@@ -138,7 +157,9 @@ class WhatsAppChannel(BaseChannel):
                     self._bridge_process.kill()
                     await self._bridge_process.wait()
                 except Exception:
-                    pass
+                    logger.debug(
+                        "Optional operation failed in whatsapp; using the existing fallback"
+                    )
             except Exception as e:
                 logger.error("Error stopping WhatsApp bridge process: {}", e)
             self._bridge_process = None
@@ -155,7 +176,7 @@ class WhatsAppChannel(BaseChannel):
         except Exception as e:
             logger.error("Error sending WhatsApp message: {}", e)
 
-    async def _handle_bridge_message(self, raw: str) -> None:
+    async def _handle_bridge_message(self, raw: str | bytes) -> None:
         """Handle a message from the bridge."""
         try:
             data = json.loads(raw)
@@ -166,60 +187,7 @@ class WhatsAppChannel(BaseChannel):
         msg_type = data.get("type")
 
         if msg_type == "message":
-            # Incoming message from WhatsApp
-            # Deprecated by whatsapp: old phone number style typically: <phone>@s.whatspp.net
-            pn = data.get("pn", "")
-            # New LID sytle typically:
-            sender = data.get("sender", "")
-            content = data.get("content", "")
-            message_id = data.get("id", "")
-
-            if message_id:
-                if message_id in self._processed_message_ids:
-                    return
-                self._processed_message_ids[message_id] = None
-                while len(self._processed_message_ids) > 1000:
-                    self._processed_message_ids.popitem(last=False)
-
-            # Extract just the phone number or lid as chat_id
-            user_id = pn if pn else sender
-            sender_id = user_id.split("@")[0] if "@" in user_id else user_id
-            logger.info("Sender {}", sender)
-
-            # Handle voice transcription if it's a voice message
-            if content == "[Voice Message]":
-                logger.info(
-                    "Voice message received from {}, but direct download from bridge is not yet supported.",
-                    sender_id,
-                )
-                content = (
-                    "[Voice Message: Transcription not available for WhatsApp yet]"
-                )
-
-            # Extract media paths (images/documents/videos downloaded by the bridge)
-            media_paths = data.get("media") or []
-
-            # Build content tags matching Telegram's pattern: [image: /path] or [file: /path]
-            if media_paths:
-                for p in media_paths:
-                    mime, _ = mimetypes.guess_type(p)
-                    media_type = (
-                        "image" if mime and mime.startswith("image/") else "file"
-                    )
-                    media_tag = f"[{media_type}: {p}]"
-                    content = f"{content}\n{media_tag}" if content else media_tag
-
-            await self._handle_message(
-                sender_id=sender_id,
-                chat_id=sender,  # Use full LID for replies
-                content=content,
-                media=media_paths,
-                metadata={
-                    "message_id": message_id,
-                    "timestamp": data.get("timestamp"),
-                    "is_group": data.get("isGroup", False),
-                },
-            )
+            await self._handle_incoming_message(data)
 
         elif msg_type == "status":
             # Connection status update
@@ -237,3 +205,55 @@ class WhatsAppChannel(BaseChannel):
 
         elif msg_type == "error":
             logger.error("WhatsApp bridge error: {}", data.get("error"))
+
+    async def _handle_incoming_message(self, data: dict[str, Any]) -> None:
+        # Incoming message from WhatsApp
+        # Deprecated by whatsapp: old phone number style typically: <phone>@s.whatspp.net
+        pn = data.get("pn", "")
+        # New LID sytle typically:
+        sender = data.get("sender", "")
+        content = data.get("content", "")
+        message_id = data.get("id", "")
+
+        if message_id:
+            if message_id in self._processed_message_ids:
+                return
+            self._processed_message_ids[message_id] = None
+            while len(self._processed_message_ids) > MAX_RECENT_MESSAGE_IDS:
+                self._processed_message_ids.popitem(last=False)
+
+        # Extract just the phone number or lid as chat_id
+        user_id = pn if pn else sender
+        sender_id = user_id.split("@")[0] if "@" in user_id else user_id
+        logger.info("Sender {}", sender)
+
+        # Handle voice transcription if it's a voice message
+        if content == "[Voice Message]":
+            logger.info(
+                "Voice message received from {}, but direct download from bridge is not yet supported.",
+                sender_id,
+            )
+            content = "[Voice Message: Transcription not available for WhatsApp yet]"
+
+        # Extract media paths (images/documents/videos downloaded by the bridge)
+        media_paths = data.get("media") or []
+
+        # Build content tags matching Telegram's pattern: [image: /path] or [file: /path]
+        if media_paths:
+            for p in media_paths:
+                mime, _ = mimetypes.guess_type(p)
+                media_type = "image" if mime and mime.startswith("image/") else "file"
+                media_tag = f"[{media_type}: {p}]"
+                content = f"{content}\n{media_tag}" if content else media_tag
+
+        await self._handle_message(
+            sender_id=sender_id,
+            chat_id=sender,  # Use full LID for replies
+            content=content,
+            media=media_paths,
+            metadata={
+                "message_id": message_id,
+                "timestamp": data.get("timestamp"),
+                "is_group": data.get("isGroup", False),
+            },
+        )

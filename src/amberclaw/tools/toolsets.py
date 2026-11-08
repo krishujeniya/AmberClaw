@@ -2,9 +2,19 @@
 AmberClaw Toolsets Configuration
 """
 
-from amberclaw.security.sandbox import LocalSandbox
+from typing import TYPE_CHECKING
+
+from amberclaw.providers.base import LLMProvider
+
+if TYPE_CHECKING:
+    from amberclaw.agent.subagent import SubagentManager
 from amberclaw.tools.data_science import DataCleanTool
-from amberclaw.tools.filesystem import ListDirTool, ReadFileTool, WriteFileTool
+from amberclaw.tools.filesystem import (
+    FilesystemSandbox,
+    ListDirTool,
+    ReadFileTool,
+    WriteFileTool,
+)
 from amberclaw.tools.hardware import (
     GPIOTool,
     HardwareControlTool,
@@ -24,9 +34,12 @@ from amberclaw.tools.subagent_tools import SpawnTool
 from amberclaw.tools.web_tools import WebFetchTool, WebSearchTool
 
 
-def get_default_toolset() -> list[BaseTool]:
+def get_default_toolset(
+    sandbox: FilesystemSandbox | None = None,
+    provider: LLMProvider | None = None,
+    subagent_manager: "SubagentManager | None" = None,
+) -> list[BaseTool[...]]:
     """Returns the default set of tools for a production agent."""
-    sandbox = LocalSandbox()  # In production, this would be configured per-session
 
     return [
         # Filesystem
@@ -34,20 +47,20 @@ def get_default_toolset() -> list[BaseTool]:
         WriteFileTool(sandbox=sandbox),
         ListDirTool(sandbox=sandbox),
         # Reasoning
-        CouncilTool(),
-        MythosTool(),
+        CouncilTool(provider=provider),
+        MythosTool(provider=provider),
         # Web
         WebSearchTool(),
         WebFetchTool(),
         # Data
-        DataCleanTool(),
+        DataCleanTool(provider=provider),
         # Hardware & Edge
         HardwareControlTool(),
         HardwareReadTool(),
         HardwareScanTool(),
         GPIOTool(),
         # Agents
-        SpawnTool(),
+        SpawnTool(manager=subagent_manager),
         # Memory
         RememberTool(),
         RecallTool(),
@@ -57,7 +70,7 @@ def get_default_toolset() -> list[BaseTool]:
     ]
 
 
-def register_default_tools():
+def register_default_tools() -> None:
     """Register all default tools in the global registry."""
     for tool in get_default_toolset():
         registry.register(tool)

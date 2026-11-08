@@ -7,12 +7,15 @@ Uses the agent's own provider/model. No external deps.
 from __future__ import annotations
 
 import re
-from typing import Any
+from collections.abc import Awaitable, Callable
 
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
+from amberclaw.providers.base import LLMProvider
+
+TokenCallback = Callable[[str], Awaitable[None]]
 
 
 class MythosArgs(BaseModel):
@@ -51,18 +54,18 @@ class MythosTool(PydanticTool):
 
     def __init__(
         self,
-        provider: Any,
+        provider: LLMProvider,
         model: str,
         temperature: float = 0.1,
         max_tokens: int = 2048,
-    ):
+    ) -> None:
         super().__init__()
         self._provider = provider
         self._model = model
         self._temperature = temperature
         self._max_tokens = max_tokens
 
-    async def _ask(self, prompt: str, on_token: Any | None = None) -> str:
+    async def _ask(self, prompt: str, on_token: TokenCallback | None = None) -> str:
         try:
             resp = await self._provider.chat_with_retry(
                 messages=[{"role": "user", "content": prompt}],
@@ -72,7 +75,7 @@ class MythosTool(PydanticTool):
                 max_tokens=self._max_tokens,
                 on_token=on_token,
             )
-            return (resp.content or "").strip()
+            return "" if resp.finish_reason == "error" else (resp.content or "").strip()
         except Exception as exc:
             logger.warning("Mythos: LLM call failed: {}", exc)
             return ""
@@ -83,7 +86,7 @@ class MythosTool(PydanticTool):
         m = re.search(r"<thought>(.*?)</thought>", text, re.DOTALL)
         return m.group(1).strip() if m else text.strip()
 
-    async def run(self, args: MythosArgs, on_token: Any | None = None) -> str:
+    async def run(self, args: MythosArgs, on_token: TokenCallback | None = None) -> str:
         context = f"Initial Query: {args.query}\n"
         logger.info("Mythos: depth={} on query: {}", args.depth, args.query[:80])
 

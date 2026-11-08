@@ -1,6 +1,7 @@
 """Web tools: web_search and web_fetch."""
 
 import html
+import ipaddress
 import json
 import os
 import re
@@ -9,7 +10,7 @@ from urllib.parse import urlparse
 
 import httpx
 from loguru import logger
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from amberclaw.agent.tools.base import PydanticTool
 
@@ -34,7 +35,6 @@ def _normalize(text: str) -> str:
 
 def _validate_url(url: str) -> tuple[bool, str]:
     """Validate URL: must be http(s) with valid domain and no local IPs (SSRF protection)."""
-    import ipaddress
 
     try:
         p = urlparse(url)
@@ -53,7 +53,7 @@ def _validate_url(url: str) -> tuple[bool, str]:
             # Not an IP address, could be a domain.
             # In a real production system, you'd resolve it and check the IP.
             # But for this fix, we block known local strings.
-            if hostname.lower() in ("localhost", "127.0.0.1", "0.0.0.0"):
+            if hostname.lower() == "localhost":
                 return False, f"Access to {hostname} is blocked"
 
         return True, ""
@@ -89,7 +89,7 @@ class WebSearchTool(PydanticTool):
 
     def __init__(
         self, api_key: str | None = None, max_results: int = 5, proxy: str | None = None
-    ):
+    ) -> None:
         super().__init__()
         self._init_api_key = api_key
         self.max_results = max_results
@@ -191,6 +191,8 @@ class WebSearchTool(PydanticTool):
 class WebFetchArgs(BaseModel):
     """Arguments for the web_fetch tool."""
 
+    model_config = ConfigDict(validate_by_name=True)
+
     url: str = Field(..., description="URL to fetch")
     extract_mode: Literal["markdown", "text"] = Field(
         "markdown",
@@ -220,13 +222,15 @@ class WebFetchTool(PydanticTool):
     def args_schema(self) -> type[WebFetchArgs]:
         return WebFetchArgs
 
-    def __init__(self, max_chars: int = 50000, proxy: str | None = None):
+    def __init__(self, max_chars: int = 50000, proxy: str | None = None) -> None:
         super().__init__()
         self.max_chars = max_chars
         self.proxy = proxy
 
     async def run(self, args: WebFetchArgs) -> str:
-        from readability import Document
+        from readability import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            Document,
+        )
 
         max_chars = args.max_chars or self.max_chars
         is_valid, error_msg = _validate_url(args.url)
@@ -240,7 +244,6 @@ class WebFetchTool(PydanticTool):
             logger.debug(
                 "WebFetch: {}", "proxy enabled" if self.proxy else "direct connection"
             )
-            from typing import cast
 
             async with httpx.AsyncClient(
                 follow_redirects=True,

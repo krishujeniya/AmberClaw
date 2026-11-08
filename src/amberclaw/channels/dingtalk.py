@@ -3,10 +3,10 @@
 import asyncio
 import json
 import mimetypes
-import os
 import time
+from http import HTTPStatus
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 from urllib.parse import unquote, urlparse
 
 import httpx
@@ -31,23 +31,23 @@ try:
 except ImportError:
     DINGTALK_AVAILABLE = False
     # Fallback so class definitions don't crash at module level
-    CallbackHandler = object  # type: ignore[assignment,misc]
-    CallbackMessage = None  # type: ignore[assignment,misc]
-    AckMessage = None  # type: ignore[assignment,misc]
-    ChatbotMessage = None  # type: ignore[assignment,misc]
+    CallbackHandler = object
+    CallbackMessage = None
+    AckMessage = None
+    ChatbotMessage = None
 
 
-class AmberClawDingTalkHandler(CallbackHandler):
+class AmberClawDingTalkHandler(CallbackHandler):  # type: ignore[misc]  # optional SDK base has no typing metadata
     """
     Standard DingTalk Stream SDK Callback Handler.
     Parses incoming messages and forwards them to the AmberClaw channel.
     """
 
-    def __init__(self, channel: "DingTalkChannel"):
+    def __init__(self, channel: "DingTalkChannel") -> None:
         super().__init__()
         self.channel = channel
 
-    async def process(self, message: CallbackMessage):
+    async def process(self, message: CallbackMessage) -> tuple[int, str]:
         """Process incoming stream message."""
         try:
             # Parse using SDK's ChatbotMessage for robust handling
@@ -116,11 +116,11 @@ class DingTalkChannel(BaseChannel):
     """
 
     name = "dingtalk"
-    _IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
-    _AUDIO_EXTS = {".amr", ".mp3", ".wav", ".ogg", ".m4a", ".aac"}
-    _VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
+    _IMAGE_EXTS: ClassVar[set[str]] = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"}
+    _AUDIO_EXTS: ClassVar[set[str]] = {".amr", ".mp3", ".wav", ".ogg", ".m4a", ".aac"}
+    _VIDEO_EXTS: ClassVar[set[str]] = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
-    def __init__(self, config: DingTalkConfig, bus: MessageBus):
+    def __init__(self, config: DingTalkConfig, bus: MessageBus) -> None:
         super().__init__(config, bus)
         self.config: DingTalkConfig = config
         self._client: Any = None
@@ -131,7 +131,7 @@ class DingTalkChannel(BaseChannel):
         self._token_expiry: float = 0
 
         # Hold references to background tasks to prevent GC
-        self._background_tasks: set[asyncio.Task] = set()
+        self._background_tasks: set[asyncio.Task[Any]] = set()
 
     async def start(self) -> None:
         """Start the DingTalk bot with Stream Mode."""
@@ -229,7 +229,7 @@ class DingTalkChannel(BaseChannel):
         return "file"
 
     def _guess_filename(self, media_ref: str, upload_type: str) -> str:
-        name = os.path.basename(urlparse(media_ref).path)
+        name = Path(urlparse(media_ref).path).name
         return name or {
             "image": "image.jpg",
             "voice": "audio.amr",
@@ -247,36 +247,14 @@ class DingTalkChannel(BaseChannel):
             return None, None, None
 
         if self._is_http_url(media_ref):
-            if not self._http:
-                return None, None, None
-            try:
-                resp = await self._http.get(media_ref, follow_redirects=True)
-                if resp.status_code >= 400:
-                    logger.warning(
-                        "DingTalk media download failed status={} ref={}",
-                        resp.status_code,
-                        media_ref,
-                    )
-                    return None, None, None
-                content_type = (
-                    (resp.headers.get("content-type") or "").split(";")[0].strip()
-                )
-                filename = self._guess_filename(
-                    media_ref, self._guess_upload_type(media_ref)
-                )
-                return resp.content, filename, content_type or None
-            except Exception as e:
-                logger.error(
-                    "DingTalk media download error ref={} err={}", media_ref, e
-                )
-                return None, None, None
+            return await self._read_remote_media_bytes(media_ref)
 
         try:
             if media_ref.startswith("file://"):
                 parsed = urlparse(media_ref)
                 local_path = Path(unquote(parsed.path))
             else:
-                local_path = Path(os.path.expanduser(media_ref))
+                local_path = await asyncio.to_thread(Path(media_ref).expanduser)
             if not local_path.is_file():
                 logger.warning("DingTalk media file not found: {}", local_path)
                 return None, None, None
@@ -285,6 +263,31 @@ class DingTalkChannel(BaseChannel):
             return data, local_path.name, content_type
         except Exception as e:
             logger.error("DingTalk media read error ref={} err={}", media_ref, e)
+            return None, None, None
+
+    async def _read_remote_media_bytes(
+        self, media_ref: str
+    ) -> tuple[bytes | None, str | None, str | None]:
+        if not self._http:
+            return None, None, None
+        try:
+            resp = await self._http.get(media_ref, follow_redirects=True)
+            if resp.status_code >= HTTPStatus.BAD_REQUEST:
+                logger.warning(
+                    "DingTalk media download failed status={} ref={}",
+                    resp.status_code,
+                    media_ref,
+                )
+                return None, None, None
+            content_type = (
+                (resp.headers.get("content-type") or "").split(";")[0].strip()
+            )
+            filename = self._guess_filename(
+                media_ref, self._guess_upload_type(media_ref)
+            )
+            return resp.content, filename, content_type or None
+        except Exception as e:
+            logger.error("DingTalk media download error ref={} err={}", media_ref, e)
             return None, None, None
 
     async def _upload_media(
@@ -313,7 +316,7 @@ class DingTalkChannel(BaseChannel):
                 if resp.headers.get("content-type", "").startswith("application/json")
                 else {}
             )
-            if resp.status_code >= 400:
+            if resp.status_code >= HTTPStatus.BAD_REQUEST:
                 logger.error(
                     "DingTalk media upload failed status={} type={} body={}",
                     resp.status_code,
@@ -359,6 +362,7 @@ class DingTalkChannel(BaseChannel):
             return False
 
         headers = {"x-acs-dingtalk-access-token": token}
+        payload: dict[str, Any]
         if chat_id.startswith("group:"):
             # Group chat
             url = "https://api.dingtalk.com/v1.0/robot/groupMessages/send"
@@ -381,7 +385,7 @@ class DingTalkChannel(BaseChannel):
         try:
             resp = await self._http.post(url, json=payload, headers=headers)
             body = resp.text
-            if resp.status_code != 200:
+            if resp.status_code != HTTPStatus.OK:
                 logger.error(
                     "DingTalk send failed msgKey={} status={} body={}",
                     msg_key,

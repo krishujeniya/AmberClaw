@@ -1,11 +1,12 @@
 """GUI and Browser automation tools (AC-057)."""
 
+import importlib.util
 import os
 from typing import Any, ClassVar
 
 from loguru import logger
 
-from amberclaw.agent.tools.registry import Tool
+from amberclaw.agent.tools.base import Tool
 
 
 class BrowserActionTool(Tool):
@@ -96,8 +97,14 @@ class BrowserActionTool(Tool):
             finally:
                 await browser.close()
 
-    async def execute(self, arguments: dict[str, Any]) -> str:
-        action = arguments.get("action")
+    async def execute(
+        self, arguments: dict[str, Any] | None = None, **kwargs: Any
+    ) -> str:
+        arguments = {**(arguments or {}), **kwargs}
+        errors = self.validate_params(arguments)
+        if errors:
+            return "Error: " + "; ".join(errors)
+        action = str(arguments.get("action", ""))
         url = arguments.get("url")
         selector = arguments.get("selector")
         text = arguments.get("text")
@@ -211,17 +218,21 @@ class DesktopAutomationTool(Tool):
             return handler()
         return f"Unsupported desktop action: {action}"
 
-    async def execute(self, arguments: dict[str, Any]) -> str:
-        action = arguments.get("action")
+    async def execute(
+        self, arguments: dict[str, Any] | None = None, **kwargs: Any
+    ) -> str:
+        arguments = {**(arguments or {}), **kwargs}
+        errors = self.validate_params(arguments)
+        if errors:
+            return "Error: " + "; ".join(errors)
+        action = str(arguments.get("action", ""))
         x = arguments.get("x")
         y = arguments.get("y")
         text = arguments.get("text")
 
         try:
-            import pyautogui  # noqa: PLC0415, F401
-
             has_display = bool(os.environ.get("DISPLAY"))
-            if has_display:
+            if has_display and importlib.util.find_spec("pyautogui") is not None:
                 return self._execute_pyautogui(action, x, y, text)
         except (ImportError, Exception) as e:
             logger.warning(

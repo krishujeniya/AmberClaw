@@ -38,7 +38,7 @@ class SLOMonitor:
         window_size: int = 500,
         availability_target: float = 0.99,  # 99.0% availability
         p95_latency_target_ms: float = 1000.0,
-    ):
+    ) -> None:
         self.window_size = window_size
         self.availability_target = availability_target
         self.p95_latency_target_ms = p95_latency_target_ms

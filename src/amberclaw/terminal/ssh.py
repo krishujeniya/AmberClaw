@@ -26,7 +26,7 @@ class SSHTerminalBackend(BaseTerminalBackend):
         password: str | None = None,
         key_filename: str | None = None,
         agent_forwarding: bool = True,
-    ):
+    ) -> None:
         self.workspace_dir = workspace_dir
         self.host = host
         self.port = port
@@ -47,9 +47,10 @@ class SSHTerminalBackend(BaseTerminalBackend):
 
         logger.info("Connecting to remote host %s:%d via SSH...", self.host, self.port)
         client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # noqa: S507
 
         try:
+            client.load_system_host_keys()
+            client.set_missing_host_key_policy(paramiko.RejectPolicy())
             client.connect(
                 hostname=self.host,
                 port=self.port,
@@ -63,6 +64,7 @@ class SSHTerminalBackend(BaseTerminalBackend):
                 "SSH connection established successfully to %s:%d", self.host, self.port
             )
         except Exception as e:
+            client.close()
             logger.error(
                 "Failed to connect to %s:%d via SSH: %s", self.host, self.port, e
             )

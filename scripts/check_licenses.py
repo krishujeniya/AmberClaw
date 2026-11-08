@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """License policy compliance verification script for AmberClaw.
 
-Scans all direct and transitive third-party dependencies and enforces
-that dependencies conform to organizational open source license policies.
+Scans the installed environment, including development tools and extras.
+Strict mode requires an explicit allowlisted declaration for every package.
+This metadata check is not a legal review or a production-image inventory.
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import logging
+import re
 import sys
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -41,12 +43,12 @@ DEFAULT_PERMITTED_LICENSES = {
 
 # Strong copyleft licenses requiring review / exemption
 DISALLOWED_PATTERNS = [
-    "agpl",
-    "affero general public license",
-    "gpl-3.0",
-    "gnu general public license v3",
-    "server side public license",
-    "sspl",
+    r"agpl",
+    r"affero general public license",
+    r"(?<!l)gpl-3\.0",
+    r"(?<!lesser )gnu general public license v3",
+    r"server side public license",
+    r"sspl",
 ]
 
 
@@ -64,17 +66,15 @@ def check_licenses(strict: bool = False) -> tuple[int, list[tuple[str, str, str]
             continue
         seen.add(cleaned_name)
 
-        raw_lic = dist.metadata.get("License", "UNKNOWN")
+        raw_lic = dist.metadata.get("License-Expression") or dist.metadata.get(
+            "License", "UNKNOWN"
+        )
         lic_clean = raw_lic.split("\n")[0].strip().lower() if raw_lic else "unknown"
 
         # Check for disallowed copyleft
-        if any(bad in lic_clean for bad in DISALLOWED_PATTERNS):
+        if any(re.search(bad, lic_clean) for bad in DISALLOWED_PATTERNS):
             violations.append((name, dist.version, raw_lic))
-        elif (
-            strict
-            and lic_clean not in DEFAULT_PERMITTED_LICENSES
-            and "unknown" not in lic_clean
-        ):
+        elif strict and lic_clean not in DEFAULT_PERMITTED_LICENSES:
             # Under strict mode, every license must be explicitly allowlisted
             violations.append((name, dist.version, raw_lic))
 
@@ -98,10 +98,20 @@ def main() -> int:
     if violations:
         logger.error("Found %d license compliance issues:", len(violations))
         for pkg, ver, lic in violations:
-            logger.error("  - %s (%s): %s", pkg, ver, lic)
+            logger.error(
+                "  - %s (%s): %s",
+                pkg,
+                ver,
+                lic.splitlines()[0][:200] if lic else "UNKNOWN",
+            )
         return 1
 
-    logger.info("All scanned packages satisfy open-source license policy.")
+    logger.info(
+        "No prohibited declarations found%s.",
+        "; unknown declarations were not approved"
+        if not args.strict
+        else " under the strict allowlist",
+    )
     return 0
 
 

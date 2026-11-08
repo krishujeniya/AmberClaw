@@ -1,5 +1,6 @@
 """Multimodal tools for vision, audio, and documents (AC-073, AC-075, AC-076, AC-077, AC-078)."""
 
+import asyncio
 import base64
 import mimetypes
 from pathlib import Path
@@ -8,11 +9,17 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from amberclaw.agent.tools.base import PydanticTool
+from amberclaw.providers.base import LLMProvider
 from amberclaw.providers.transcription import (
     GroqTranscriptionProvider,
     OpenAITranscriptionProvider,
+    TranscriptionProvider,
 )
-from amberclaw.providers.tts import ElevenLabsTTSProvider, OpenAIttsProvider
+from amberclaw.providers.tts import (
+    ElevenLabsTTSProvider,
+    OpenAIttsProvider,
+    TTSProvider,
+)
 
 
 class DescribeImageArgs(BaseModel):
@@ -44,7 +51,7 @@ class VisionTool(PydanticTool):
     def args_schema(self) -> type[DescribeImageArgs]:
         return DescribeImageArgs
 
-    def __init__(self, provider: Any = None):
+    def __init__(self, provider: LLMProvider | None = None) -> None:
         super().__init__()
         self._provider = provider  # AgentLoop should inject the current provider
 
@@ -53,17 +60,17 @@ class VisionTool(PydanticTool):
             return "Error: No multimodal provider configured."
 
         p = Path(args.path)
-        if not p.is_file():
+        if not (await asyncio.to_thread(p.is_file)):
             return f"Error: Image file not found: {args.path}"
 
         try:
             # We use the current provider's chat method to analyze the image
             # Construct a single-turn multimodal message
-            raw = p.read_bytes()
+            raw = await asyncio.to_thread(p.read_bytes)
             mime = mimetypes.guess_type(args.path)[0] or "image/jpeg"
             b64 = base64.b64encode(raw).decode()
 
-            messages = [
+            messages: list[dict[str, Any]] = [
                 {
                     "role": "user",
                     "content": [
@@ -80,7 +87,7 @@ class VisionTool(PydanticTool):
             if response.finish_reason == "error":
                 return f"Error analyzing image: {response.content}"
 
-            return response.content
+            return response.content or ""
         except Exception as e:
             return f"Error: {e!s}"
 
@@ -89,7 +96,9 @@ class AnalyzeVideoArgs(BaseModel):
     """Arguments for the analyze_video tool."""
 
     path: str = Field(..., description="Path to the video file.")
-    num_frames: int = Field(5, description="Number of frames to extract and analyze.")
+    num_frames: int = Field(
+        5, ge=1, description="Number of frames to extract and analyze."
+    )
     prompt: str = Field(
         "Describe what happens in this video.",
         description="Question or prompt about the video.",
@@ -111,63 +120,69 @@ class VideoAnalysisTool(PydanticTool):
     def args_schema(self) -> type[AnalyzeVideoArgs]:
         return AnalyzeVideoArgs
 
-    def __init__(self, provider: Any = None):
+    def __init__(self, provider: LLMProvider | None = None) -> None:
         super().__init__()
         self._provider = provider
 
     async def run(self, args: AnalyzeVideoArgs) -> str:
         if not self._provider:
             return "Error: No multimodal provider configured."
-
-        try:
-            import cv2
-        except ImportError:
-            return "Error: 'opencv-python' (cv2) not installed."
-
-        p = Path(args.path)
-        if not p.is_file():
+        path = Path(args.path)
+        if not await asyncio.to_thread(path.is_file):
             return f"Error: Video file not found: {args.path}"
-
         try:
-            cap = cv2.VideoCapture(str(p))
-            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            if total_frames <= 0:
-                return "Error: Could not read video frames."
-
-            interval = max(1, total_frames // args.num_frames)
-            frames = []
-
-            for i in range(args.num_frames):
-                cap.set(cv2.CAP_PROP_POS_FRAMES, i * interval)
-                ret, frame = cap.read()
-                if not ret:
-                    break
-                # Convert to JPEG base64
-                _, buffer = cv2.imencode(".jpg", frame)
-                b64 = base64.b64encode(buffer).decode()
-                frames.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
-                    },
-                )
-
-            cap.release()
-
-            if not frames:
-                return "Error: Failed to extract frames."
-
-            messages = [
+            frames = await asyncio.to_thread(
+                self._extract_frames, str(path), args.num_frames
+            )
+            messages: list[dict[str, Any]] = [
                 {
                     "role": "user",
-                    "content": [{"type": "text", "text": args.prompt}] + frames,
-                },
+                    "content": [{"type": "text", "text": args.prompt}, *frames],
+                }
             ]
-
             response = await self._provider.chat(messages=messages, max_tokens=1024)
-            return response.content
-        except Exception as e:
-            return f"Error analyzing video: {e!s}"
+            return (
+                f"Error analyzing video: {response.content}"
+                if response.finish_reason == "error"
+                else response.content or ""
+            )
+        except ImportError:
+            return "Error: 'opencv-python' (cv2) not installed."
+        except ValueError as exc:
+            return f"Error: {exc}"
+        except Exception as exc:
+            return f"Error analyzing video: {exc!s}"
+
+    @staticmethod
+    def _extract_frames(path: str, num_frames: int) -> list[dict[str, Any]]:
+        import cv2  # noqa: PLC0415 - optional video backend
+
+        capture = cv2.VideoCapture(path)
+        try:
+            total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+            if total_frames <= 0:
+                raise ValueError("Could not read video frames.")
+            interval = max(1, total_frames // num_frames)
+            frames = []
+            for index in range(min(num_frames, total_frames)):
+                capture.set(cv2.CAP_PROP_POS_FRAMES, index * interval)
+                success, frame = capture.read()
+                if not success:
+                    break
+                encoded, buffer = cv2.imencode(".jpg", frame)
+                if encoded:
+                    data = base64.b64encode(buffer).decode()
+                    frames.append(
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/jpeg;base64,{data}"},
+                        }
+                    )
+            if not frames:
+                raise ValueError("Failed to extract frames.")
+            return frames
+        finally:
+            capture.release()
 
 
 class CaptureSensorArgs(BaseModel):
@@ -198,7 +213,7 @@ class SensorInputTool(PydanticTool):
     async def run(self, args: CaptureSensorArgs) -> str:
         if args.sensor_type == "webcam":
             try:
-                import cv2
+                import cv2  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
                 cap = cv2.VideoCapture(0)
                 ret, frame = cap.read()
@@ -212,8 +227,10 @@ class SensorInputTool(PydanticTool):
                 return f"Error capturing webcam: {e!s}"
         elif args.sensor_type == "microphone":
             try:
-                import sounddevice as sd
-                from scipy.io.wavfile import write
+                import sounddevice as sd  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                from scipy.io.wavfile import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                    write,
+                )
 
                 fs = 44100
                 recording = sd.rec(int(args.duration * fs), samplerate=fs, channels=1)
@@ -251,9 +268,10 @@ class TranscriptionTool(PydanticTool):
 
     async def run(self, args: TranscribeAudioArgs) -> str:
         p = Path(args.path)
-        if not p.is_file():
+        if not (await asyncio.to_thread(p.is_file)):
             return f"Error: Audio file not found: {args.path}"
 
+        transcriber: TranscriptionProvider
         if args.provider == "groq":
             transcriber = GroqTranscriptionProvider()
         else:
@@ -292,6 +310,7 @@ class TTSTool(PydanticTool):
         return TextToSpeechArgs
 
     async def run(self, args: TextToSpeechArgs) -> str:
+        provider: TTSProvider
         if args.provider == "openai":
             provider = OpenAIttsProvider()
         else:
@@ -329,10 +348,12 @@ class DocumentIngestionTool(PydanticTool):
 
     async def run(self, args: IngestDocumentArgs) -> str:
         try:
-            from unstructured.partition.auto import partition
+            from unstructured.partition.auto import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                partition,
+            )
 
             p = Path(args.path)
-            if not p.is_file():
+            if not (await asyncio.to_thread(p.is_file)):
                 return f"Error: File not found: {args.path}"
 
             elements = partition(filename=str(p), strategy=args.strategy)

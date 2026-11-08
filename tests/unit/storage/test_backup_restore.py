@@ -1,6 +1,7 @@
 # ruff: noqa: PLR2004
 """Unit tests for AmberClaw Disaster Recovery, Backup, and Restoration Engine."""
 
+import hashlib
 import io
 import json
 import sqlite3
@@ -177,3 +178,59 @@ def test_automated_disaster_recovery_drill(populated_env):
     assert drill_res.records_checked >= 3
     assert drill_res.duration_seconds > 0.0
     assert drill_res.error is None
+
+
+@pytest.mark.parametrize(
+    "attack",
+    ["prefix", "symlink", "hardlink", "device", "manifest", "checksum", "duplicate"],
+)
+def test_untrusted_archive_rejected_before_overwrite(tmp_path, attack):
+    target = tmp_path / "restore"
+    target.mkdir()
+    preserved = target / "state.txt"
+    preserved.write_bytes(b"original")
+    payload = b"replacement"
+    name = "../restore-sibling/escape" if attack == "prefix" else "state.txt"
+    relative = "../outside" if attack == "manifest" else name
+    manifest = {
+        "backup_id": "untrusted",
+        "created_at": "2026-11-07",
+        "amberclaw_version": "2026.0.1",
+        "total_files": 1,
+        "total_size_bytes": len(payload),
+        "files": [
+            {
+                "relative_path": relative,
+                "size_bytes": len(payload),
+                "sha256": "0" * 64
+                if attack == "checksum"
+                else hashlib.sha256(payload).hexdigest(),
+            }
+        ],
+    }
+    archive = tmp_path / "untrusted.tar.gz"
+    with tarfile.open(archive, "w:gz") as tar:
+        encoded = json.dumps(manifest).encode()
+        info = tarfile.TarInfo("manifest.json")
+        info.size = len(encoded)
+        tar.addfile(info, io.BytesIO(encoded))
+        info = tarfile.TarInfo(name)
+        if attack in {"symlink", "hardlink", "device"}:
+            info.type = {
+                "symlink": tarfile.SYMTYPE,
+                "hardlink": tarfile.LNKTYPE,
+                "device": tarfile.CHRTYPE,
+            }[attack]
+            info.linkname = "../outside"
+            tar.addfile(info)
+        else:
+            info.size = len(payload)
+            tar.addfile(info, io.BytesIO(payload))
+            if attack == "duplicate":
+                tar.addfile(info, io.BytesIO(payload))
+    manager = DisasterRecoveryManager(backup_dir=tmp_path / "backups")
+    with pytest.raises((BackupSecurityError, ValueError)):
+        manager.restore_backup(archive, target, force=True)
+    assert preserved.read_bytes() == b"original"
+    assert not (tmp_path / "restore-sibling").exists()
+    assert not (tmp_path / "outside").exists()

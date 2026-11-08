@@ -2,12 +2,14 @@
 
 import asyncio
 import json
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 
 import httpx
 import websockets
 from loguru import logger
+from websockets.asyncio.client import ClientConnection
 
 from amberclaw.bus.events import OutboundMessage
 from amberclaw.bus.queue import MessageBus
@@ -15,6 +17,12 @@ from amberclaw.channels.base import BaseChannel
 from amberclaw.config.paths import get_media_dir
 from amberclaw.config.schema import DiscordConfig
 from amberclaw.utils.helpers import split_message
+
+LAST_DELIVERY_ATTEMPT = 2
+GATEWAY_HELLO = 10
+GATEWAY_RECONNECT = 7
+GATEWAY_INVALID_SESSION = 9
+
 
 DISCORD_API_BASE = "https://discord.com/api/v10"
 MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024  # 20MB
@@ -26,13 +34,13 @@ class DiscordChannel(BaseChannel):
 
     name = "discord"
 
-    def __init__(self, config: DiscordConfig, bus: MessageBus):
+    def __init__(self, config: DiscordConfig, bus: MessageBus) -> None:
         super().__init__(config, bus)
         self.config: DiscordConfig = config
-        self._ws: websockets.WebSocketClientProtocol | None = None
+        self._ws: ClientConnection | None = None
         self._seq: int | None = None
-        self._heartbeat_task: asyncio.Task | None = None
-        self._typing_tasks: dict[str, asyncio.Task] = {}
+        self._heartbeat_task: asyncio.Task[Any] | None = None
+        self._typing_tasks: dict[str, asyncio.Task[Any]] = {}
         self._http: httpx.AsyncClient | None = None
         self._bot_user_id: str | None = None
 
@@ -129,10 +137,12 @@ class DiscordChannel(BaseChannel):
         payload: dict[str, Any],
     ) -> bool:
         """Send a single Discord API payload with retry on rate-limit. Returns True on success."""
+        if self._http is None:
+            return False
         for attempt in range(3):
             try:
                 response = await self._http.post(url, headers=headers, json=payload)
-                if response.status_code == 429:
+                if response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
                     data = response.json()
                     retry_after = float(data.get("retry_after", 1.0))
                     logger.warning("Discord rate limited, retrying in {}s", retry_after)
@@ -141,7 +151,7 @@ class DiscordChannel(BaseChannel):
                 response.raise_for_status()
                 return True
             except Exception as e:
-                if attempt == 2:
+                if attempt == LAST_DELIVERY_ATTEMPT:
                     logger.error("Error sending Discord message: {}", e)
                 else:
                     await asyncio.sleep(1)
@@ -156,11 +166,11 @@ class DiscordChannel(BaseChannel):
     ) -> bool:
         """Send a file attachment via Discord REST API using multipart/form-data."""
         path = Path(file_path)
-        if not path.is_file():
+        if not (await asyncio.to_thread(path.is_file)):
             logger.warning("Discord file not found, skipping: {}", file_path)
             return False
 
-        if path.stat().st_size > MAX_ATTACHMENT_BYTES:
+        if (await asyncio.to_thread(path.stat)).st_size > MAX_ATTACHMENT_BYTES:
             logger.warning("Discord file too large (>20MB), skipping: {}", path.name)
             return False
 
@@ -169,9 +179,11 @@ class DiscordChannel(BaseChannel):
             payload_json["message_reference"] = {"message_id": reply_to}
             payload_json["allowed_mentions"] = {"replied_user": False}
 
+        if self._http is None:
+            return False
         for attempt in range(3):
             try:
-                with open(path, "rb") as f:
+                with await asyncio.to_thread(Path(path).open, "rb") as f:
                     files = {"files[0]": (path.name, f, "application/octet-stream")}
                     data: dict[str, Any] = {}
                     if payload_json:
@@ -179,7 +191,7 @@ class DiscordChannel(BaseChannel):
                     response = await self._http.post(
                         url, headers=headers, files=files, data=data
                     )
-                if response.status_code == 429:
+                if response.status_code == HTTPStatus.TOO_MANY_REQUESTS:
                     resp_data = response.json()
                     retry_after = float(resp_data.get("retry_after", 1.0))
                     logger.warning("Discord rate limited, retrying in {}s", retry_after)
@@ -189,7 +201,7 @@ class DiscordChannel(BaseChannel):
                 logger.info("Discord file sent: {}", path.name)
                 return True
             except Exception as e:
-                if attempt == 2:
+                if attempt == LAST_DELIVERY_ATTEMPT:
                     logger.error("Error sending Discord file {}: {}", path.name, e)
                 else:
                     await asyncio.sleep(1)
@@ -215,7 +227,7 @@ class DiscordChannel(BaseChannel):
             if seq is not None:
                 self._seq = seq
 
-            if op == 10:
+            if op == GATEWAY_HELLO:
                 # HELLO: start heartbeat and identify
                 interval_ms = payload.get("heartbeat_interval", 45000)
                 await self._start_heartbeat(interval_ms / 1000)
@@ -228,12 +240,12 @@ class DiscordChannel(BaseChannel):
                 logger.info("Discord bot connected as user {}", self._bot_user_id)
             elif op == 0 and event_type == "MESSAGE_CREATE":
                 await self._handle_message_create(payload)
-            elif op == 7:
+            elif op == GATEWAY_RECONNECT:
                 # RECONNECT: exit loop to reconnect
                 logger.info("Discord gateway requested reconnect")
                 break
-            elif op == 9:
-                # INVALID_SESSION: reconnect
+            elif op == GATEWAY_INVALID_SESSION:
+                # An invalid session requires reconnection.
                 logger.warning("Discord gateway invalid session")
                 break
 
@@ -291,9 +303,8 @@ class DiscordChannel(BaseChannel):
             return
 
         # Check group channel policy (DMs always respond if is_allowed passes)
-        if guild_id is not None:
-            if not self._should_respond_in_group(payload, content):
-                return
+        if guild_id is not None and not self._should_respond_in_group(payload, content):
+            return
 
         content_parts = [content] if content else []
         media_paths: list[str] = []
@@ -375,6 +386,8 @@ class DiscordChannel(BaseChannel):
             headers = {"Authorization": f"Bot {self.config.token}"}
             while self._running:
                 try:
+                    if self._http is None:
+                        return
                     await self._http.post(url, headers=headers)
                 except asyncio.CancelledError:
                     return

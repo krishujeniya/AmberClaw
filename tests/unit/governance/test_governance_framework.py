@@ -24,19 +24,25 @@ def test_policy_engine_evaluation():
     engine = PolicyEngine()
 
     # 1. Standard safe action -> ALLOW
-    res_safe = engine.evaluate(action_name="read_file", content="cat document.txt", cost_estimate=0.01)
+    res_safe = engine.evaluate(
+        action_name="read_file", content="cat document.txt", cost_estimate=0.01
+    )
     assert res_safe.is_allowed is True
     assert res_safe.requires_approval is False
     assert res_safe.enforcement == EnforcementAction.ALLOW
 
     # 2. Root execution command -> DENY (POL-001)
-    res_root = engine.evaluate(action_name="bash", content="sudo rm -rf /var/log", cost_estimate=0.01)
+    res_root = engine.evaluate(
+        action_name="bash", content="sudo rm -rf /var/log", cost_estimate=0.01
+    )
     assert res_root.is_allowed is False
     assert res_root.enforcement == EnforcementAction.DENY
     assert "POL-001-ROOT-EXEC" in res_root.triggered_policies
 
     # 3. High cost turn -> REQUIRE_APPROVAL (POL-002)
-    res_cost = engine.evaluate(action_name="llm_query", content="Summarize big dataset", cost_estimate=12.50)
+    res_cost = engine.evaluate(
+        action_name="llm_query", content="Summarize big dataset", cost_estimate=12.50
+    )
     assert res_cost.is_allowed is True
     assert res_cost.requires_approval is True
     assert res_cost.enforcement == EnforcementAction.REQUIRE_APPROVAL
@@ -50,7 +56,9 @@ def test_policy_engine_evaluation():
             enforcement=EnforcementAction.REQUIRE_APPROVAL,
         )
     )
-    res_custom = engine.evaluate(action_name="webhook", content="https://api.stripe.com/v1/refunds")
+    res_custom = engine.evaluate(
+        action_name="webhook", content="https://api.stripe.com/v1/refunds"
+    )
     assert res_custom.requires_approval is True
 
 
@@ -90,7 +98,9 @@ def test_approval_workflow_engine():
 
     # Attempting to vote on finalized request raises ValueError
     with pytest.raises(ValueError):
-        wf.cast_vote(request_id=req.request_id, reviewer_id="extra_reviewer", approved=True)
+        wf.cast_vote(
+            request_id=req.request_id, reviewer_id="extra_reviewer", approved=True
+        )
 
 
 def test_approval_workflow_rejection():

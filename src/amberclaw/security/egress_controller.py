@@ -7,10 +7,12 @@ egress policy limits.
 import contextvars
 import ipaddress
 import socket
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
+from typing import TypeAlias
 
 from loguru import logger
+from typing_extensions import Buffer
 
 from amberclaw.security.network_policy import NetworkPolicy
 
@@ -83,140 +85,160 @@ def auto_detect_binary_context() -> str | None:
     return None
 
 
-def patched_getaddrinfo(
-    host: str,
-    port: str | int | None,
-    *args,
-    **kwargs,
-) -> list[tuple]:
-    """Intercept and filter name resolution requests."""
-    if _egress_active.get():
-        policy = _egress_policy.get()
-        if policy:
-            p = 80
-            if port is not None:
-                try:
-                    p = int(port)
-                except ValueError:
-                    if port == "https":
-                        p = HTTPS_PORT
-                    elif port == "http":
-                        p = 80
+# Match the stdlib address shapes, then validate the IP-specific subset at runtime.
+_SocketAddress: TypeAlias = tuple[object, ...] | str | Buffer
+_AddrInfo: TypeAlias = tuple[
+    socket.AddressFamily,
+    socket.SocketKind,
+    int,
+    str,
+    tuple[str, int] | tuple[str, int, int, int] | tuple[int, bytes],
+]
 
-            # Enforce TLS-only endpoints
-            if policy.enforce_tls_only and p != HTTPS_PORT:
-                logger.warning(
-                    "🚫 [Egress Blocked]: Connection port '{}' rejected "
-                    "(TLS-only is enforced).",
-                    p,
-                )
+
+def _policy_host(host: bytes | str | None) -> str:
+    if isinstance(host, bytes):
+        try:
+            host = host.decode("ascii")
+        except UnicodeDecodeError as exc:
+            raise NetworkAccessDenied(
+                "Egress block: Invalid hostname encoding"
+            ) from exc
+    if not host:
+        raise NetworkAccessDenied("Egress block: A destination hostname is required")
+    return host
+
+
+def _policy_port(port: bytes | str | int | None) -> int:
+    if port is None:
+        return 80
+    try:
+        return int(port)
+    except ValueError:
+        if port in ("https", b"https"):
+            return HTTPS_PORT
+        if port in ("http", b"http"):
+            return 80
+        raise NetworkAccessDenied(
+            "Egress block: Unsupported destination service"
+        ) from None
+
+
+def _check_policy(host: str, port: int, policy: NetworkPolicy) -> None:
+    if policy.enforce_tls_only and port != HTTPS_PORT:
+        raise NetworkAccessDenied(
+            f"Egress block: TLS-only is enforced. Port {port} is denied."
+        )
+    if not policy.is_allowed(host, port, auto_detect_binary_context()):
+        raise NetworkAccessDenied(
+            f"Egress block: Access to {host}:{port} is denied by policy."
+        )
+
+
+def patched_getaddrinfo(  # noqa: PLR0913 - exact stdlib public callback signature
+    host: bytes | str | None,
+    port: bytes | str | int | None,
+    family: int = 0,
+    type: int = 0,  # noqa: A002 - stdlib accepts this keyword
+    proto: int = 0,
+    flags: int = 0,
+) -> list[_AddrInfo]:
+    """Intercept resolution using the complete stdlib signature."""
+    policy = _egress_policy.get() if _egress_active.get() else None
+    if policy is not None:
+        _check_policy(_policy_host(host), _policy_port(port), policy)
+    results = _original_getaddrinfo(host, port, family, type, proto, flags)
+    if policy is not None:
+        for resolved_family, _, _, _, sockaddr in results:
+            ip_candidate = sockaddr[0]
+            if resolved_family not in (
+                socket.AF_INET,
+                socket.AF_INET6,
+            ) or not isinstance(ip_candidate, str):
+                raise NetworkAccessDenied("Egress block: Unsupported resolved address")
+            try:
+                ipaddress.ip_address(ip_candidate)
+            except ValueError as exc:
+                raise NetworkAccessDenied("Egress block: Invalid resolved IP") from exc
+            if is_private_ip(ip_candidate):
                 raise NetworkAccessDenied(
-                    f"Egress block: TLS-only is enforced. Port {p} is denied.",
+                    f"Egress block: SSRF threat detected. Connection to private IP {ip_candidate} is denied."
                 )
-
-            binary = auto_detect_binary_context()
-
-            if not policy.is_allowed(host, p, binary):
-                logger.warning(
-                    "🚫 [Egress Blocked]: DNS resolution for '{}:{}' "
-                    "denied by network policy (context: {}).",
-                    host,
-                    port,
-                    binary,
-                )
-                raise NetworkAccessDenied(
-                    f"Egress block: Access to {host}:{p} is denied by policy.",
-                )
-
-            # SSRF validation: Resolve host first and verify if any IP is private
-            results = _original_getaddrinfo(host, port, *args, **kwargs)
-            for res in results:
-                sockaddr = res[4]
-                if sockaddr and len(sockaddr) >= 1:
-                    ip_candidate = sockaddr[0]
-                    if is_private_ip(ip_candidate):
-                        logger.warning(
-                            "🚫 [SSRF Guard Blocked]: Host '{}' resolved to private IP '{}'.",
-                            host,
-                            ip_candidate,
-                        )
-                        raise NetworkAccessDenied(
-                            f"Egress block: SSRF threat detected. Connection to private IP {ip_candidate} is denied.",
-                        )
-            return results
-
-    return _original_getaddrinfo(host, port, *args, **kwargs)
+    return results
 
 
 _MIN_ADDR_LEN = 2
 
 
-def patched_connect(self: socket.socket, address: tuple) -> None:
-    """Intercept and filter direct connection attempts."""
-    if _egress_active.get():
-        policy = _egress_policy.get()
-        if policy and len(address) >= _MIN_ADDR_LEN:
-            host, port = address[0], address[1]
-
-            # Direct IP SSRF check
-            if is_private_ip(host):
-                logger.warning(
-                    "🚫 [SSRF Guard Blocked]: Direct connection to private range '{}' denied.",
-                    host,
-                )
-                raise NetworkAccessDenied(
-                    f"Egress block: SSRF threat detected. Direct connection to private IP {host} is denied.",
-                )
-
-            # TLS-only check
-            if policy.enforce_tls_only and port != HTTPS_PORT:
-                logger.warning(
-                    "🚫 [Egress Blocked]: Direct connection to port '{}' rejected "
-                    "(TLS-only is enforced).",
-                    port,
-                )
-                raise NetworkAccessDenied(
-                    f"Egress block: TLS-only is enforced. Port {port} is denied.",
-                )
-
-            binary = auto_detect_binary_context()
-
-            if not policy.is_allowed(host, port, binary):
-                logger.warning(
-                    "🚫 [Egress Blocked]: Connection to '{}:{}' "
-                    "denied by network policy (context: {}).",
-                    host,
-                    port,
-                    binary,
-                )
-                raise NetworkAccessDenied(
-                    f"Egress block: Connection to {host}:{port} is denied.",
-                )
-
-    return _original_connect(self, address)
+def _check_connection(sock: socket.socket, address: _SocketAddress) -> _SocketAddress:
+    policy = _egress_policy.get() if _egress_active.get() else None
+    if policy is None:
+        return address
+    # Egress policy describes internet hosts/ports; local and other address
+    # families have no matching policy and must fail closed inside the sandbox.
+    if (
+        sock.family not in (socket.AF_INET, socket.AF_INET6)
+        or not isinstance(address, tuple)
+        or len(address) < _MIN_ADDR_LEN
+    ):
+        raise NetworkAccessDenied("Egress block: Unsupported socket address")
+    host, port = address[0], address[1]
+    if not isinstance(host, (str, bytes)) or not isinstance(port, int):
+        raise NetworkAccessDenied("Egress block: Invalid destination address")
+    normalized_host = _policy_host(host)
+    if is_private_ip(normalized_host):
+        raise NetworkAccessDenied(
+            f"Egress block: SSRF threat detected. Direct connection to private IP {normalized_host} is denied."
+        )
+    _check_policy(normalized_host, port, policy)
+    try:
+        ipaddress.ip_address(normalized_host)
+    except ValueError:
+        # C socket.connect resolves names internally, bypassing Python's patched
+        # resolver. Resolve and pin the verified address to prevent that bypass
+        # and a second DNS lookup changing the destination after inspection.
+        resolved = patched_getaddrinfo(
+            normalized_host, port, sock.family, sock.type, sock.proto
+        )
+        if not resolved:
+            raise NetworkAccessDenied(
+                "Egress block: No resolved destination address"
+            ) from None
+        return resolved[0][4]
+    return address
 
 
-def patched_connect_ex(self: socket.socket, address: tuple) -> int:
-    """Intercept and filter connect_ex connections."""
-    if _egress_active.get():
-        try:
-            patched_connect(self, address)
-            return 0
-        except NetworkAccessDenied as e:
-            raise e
-    return _original_connect_ex(self, address)
+def patched_connect(self: socket.socket, address: _SocketAddress) -> None:
+    """Filter destinations without altering socket.connect behavior."""
+    destination = _check_connection(self, address)
+    _original_connect(self, destination)
+
+
+def patched_connect_ex(self: socket.socket, address: _SocketAddress) -> int:
+    """Filter destinations and preserve connect_ex's errno return contract."""
+    destination = _check_connection(self, address)
+    return _original_connect_ex(self, destination)
 
 
 class _PatchState:
     is_patched = False
 
 
+def _patch_socket_method(
+    name: str, replacement: Callable[[socket.socket, _SocketAddress], int | None]
+) -> None:
+    """Replace a built-in descriptor at the typed monkeypatch boundary."""
+    setattr(socket.socket, name, replacement)
+
+
 def apply_egress_patches() -> None:
     """Apply global monkeypatches once safely."""
     if not _PatchState.is_patched:
         socket.getaddrinfo = patched_getaddrinfo
-        socket.socket.connect = patched_connect
-        socket.socket.connect_ex = patched_connect_ex
+        # Runtime replacement of built-in method descriptors is intentional;
+        # setattr is the monkeypatch boundary, while wrappers retain stdlib inputs.
+        _patch_socket_method("connect", patched_connect)
+        _patch_socket_method("connect_ex", patched_connect_ex)
         _PatchState.is_patched = True
 
 

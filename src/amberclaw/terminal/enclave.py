@@ -26,7 +26,9 @@ class EnclaveTerminalBackend(BaseTerminalBackend):
         command_timeout_sec: int = 30,
     ) -> None:
         self.workspace_dir = str(Path(workspace_dir).resolve())
-        plat_enum = EnclavePlatform(platform.lower()) if isinstance(platform, str) else platform
+        plat_enum = (
+            EnclavePlatform(platform.lower()) if isinstance(platform, str) else platform
+        )
         self.config = EnclaveConfig(
             platform=plat_enum,
             memory_mb=memory_mb,
@@ -36,7 +38,9 @@ class EnclaveTerminalBackend(BaseTerminalBackend):
             zero_egress=zero_egress,
             command_timeout_sec=command_timeout_sec,
         )
-        self.manager = EnclaveManager(config=self.config, workspace_dir=self.workspace_dir)
+        self.manager = EnclaveManager(
+            config=self.config, workspace_dir=self.workspace_dir
+        )
 
     async def start(self) -> None:
         """Start and attest the enclave."""

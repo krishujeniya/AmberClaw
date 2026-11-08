@@ -1,9 +1,11 @@
 """Heartbeat service for signaling agent health and periodic tasks."""
 
 import asyncio
+import contextlib
 import time
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -13,7 +15,7 @@ from amberclaw.providers.base import LLMProvider
 class HeartbeatService:
     """Service that periodically updates a heartbeat file and executes optional tasks."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913 - public heartbeat callback and scheduling options
         self,
         workspace: Path,
         provider: LLMProvider,
@@ -22,7 +24,7 @@ class HeartbeatService:
         on_notify: Callable[[str], Awaitable[None]],
         interval_s: int = 3600,
         enabled: bool = True,
-    ):
+    ) -> None:
         self.workspace = workspace
         self.provider = provider
         self.model = model
@@ -32,7 +34,7 @@ class HeartbeatService:
         self.enabled = enabled
 
         self.heartbeat_file = workspace / "heartbeat.txt"
-        self._task: asyncio.Task | None = None
+        self._task: asyncio.Task[Any] | None = None
         self._running = False
 
     async def start(self) -> None:
@@ -71,9 +73,7 @@ class HeartbeatService:
         self._running = False
         if self._task:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
             self._task = None
         logger.info("Heartbeat service stopped")

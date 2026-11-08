@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from loguru import logger
-from sqlalchemy import JSON, Column, DateTime, Integer, String
+from sqlalchemy import JSON, DateTime, Integer, String
 from sqlalchemy.future import select
+from sqlalchemy.orm import Mapped, mapped_column
 
 from amberclaw.config.paths import get_legacy_sessions_dir
 from amberclaw.database.postgres import Base, create_tables, init_postgres
@@ -28,14 +29,14 @@ def run_async_as_sync(coro: Coroutine[Any, Any, T]) -> T:
     Safe to call even if an event loop is currently running on the active thread
     since it delegates execution to a new loop within a background thread.
     """
-    result: list[Any] = [None]
+    result: list[T] = []
     exception: list[Exception | None] = [None]
 
     def target() -> None:
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            result[0] = loop.run_until_complete(coro)
+            result.append(loop.run_until_complete(coro))
         except Exception as e:
             exception[0] = e
         finally:
@@ -55,12 +56,20 @@ class DBSessionModel(Base):
 
     __tablename__ = "amberclaw_sessions"
 
-    key = Column(String(255), primary_key=True)
-    messages = Column(JSON, default=list)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    metadata_json = Column(JSON, default=dict)
-    last_consolidated = Column(Integer, default=0)
+    key: Mapped[str] = mapped_column(String(255), primary_key=True)
+    messages: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, default=list, nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=True
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True
+    )
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
+        JSON, default=dict, nullable=True
+    )
+    last_consolidated: Mapped[int] = mapped_column(Integer, default=0, nullable=True)
 
 
 @dataclass
@@ -86,11 +95,11 @@ class Session:
         msg = {
             "role": role,
             "content": content,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now().astimezone().replace(tzinfo=None).isoformat(),
             **kwargs,
         }
         self.messages.append(msg)
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now().astimezone().replace(tzinfo=None)
 
     def get_history(self, max_messages: int = 500) -> list[dict[str, Any]]:
         """Return unconsolidated messages for LLM input, aligned to a user turn."""
@@ -119,7 +128,7 @@ class Session:
         """Clear all messages and reset session to initial state."""
         self.messages = []
         self.last_consolidated = 0
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now().astimezone().replace(tzinfo=None)
 
 
 class SessionManager:
@@ -129,7 +138,7 @@ class SessionManager:
     with local JSONL fallback.
     """
 
-    def __init__(self, workspace: Path):
+    def __init__(self, workspace: Path) -> None:
         self.workspace = workspace
         self.sessions_dir = ensure_dir(self.workspace / "sessions")
         self.legacy_sessions_dir = get_legacy_sessions_dir()
@@ -193,7 +202,7 @@ class SessionManager:
         if not client:
             return
 
-        async def _save():
+        async def _save() -> None:
             data = {
                 "key": session.key,
                 "messages": session.messages,
@@ -219,7 +228,7 @@ class SessionManager:
         if not client:
             return None
 
-        async def _load():
+        async def _load() -> Session | None:
             val = await client.get(f"session_cache:{key}")
             if val:
                 data = json.loads(val)
@@ -242,9 +251,11 @@ class SessionManager:
     def _load(self, key: str) -> Session | None:
         """Load a session from database or disk."""
         if self.db_active:
-            from amberclaw.database.postgres import get_db_session
+            from amberclaw.database.postgres import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                get_db_session,
+            )
 
-            async def _load_db():
+            async def _load_db() -> Session | None:
                 async for db_sess in get_db_session():
                     stmt = select(DBSessionModel).where(DBSessionModel.key == key)
                     res = await db_sess.execute(stmt)
@@ -287,9 +298,9 @@ class SessionManager:
             created_at = None
             last_consolidated = 0
 
-            with open(path, encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
+            with Path(path).open(encoding="utf-8") as f:
+                for raw_line in f:
+                    line = raw_line.strip()
                     if not line:
                         continue
 
@@ -309,7 +320,8 @@ class SessionManager:
             return Session(
                 key=key,
                 messages=messages,
-                created_at=created_at or datetime.now(),
+                created_at=created_at
+                or datetime.now().astimezone().replace(tzinfo=None),
                 metadata=metadata,
                 last_consolidated=last_consolidated,
             )
@@ -328,9 +340,11 @@ class SessionManager:
 
         # 3. Save to database or JSONL
         if self.db_active:
-            from amberclaw.database.postgres import get_db_session
+            from amberclaw.database.postgres import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                get_db_session,
+            )
 
-            async def _save_db():
+            async def _save_db() -> None:
                 async for db_sess in get_db_session():
                     stmt = select(DBSessionModel).where(
                         DBSessionModel.key == session.key
@@ -365,7 +379,7 @@ class SessionManager:
 
         # Fallback to local files
         path = self._get_session_path(session.key)
-        with open(path, "w", encoding="utf-8") as f:
+        with Path(path).open("w", encoding="utf-8") as f:
             metadata_line = {
                 "_type": "metadata",
                 "key": session.key,
@@ -385,7 +399,7 @@ class SessionManager:
             client = get_redis()
             if client:
 
-                async def _delete():
+                async def _delete() -> None:
                     await client.delete(f"session_cache:{key}")
 
                 try:
@@ -400,9 +414,11 @@ class SessionManager:
             List of session info dicts.
         """
         if self.db_active:
-            from amberclaw.database.postgres import get_db_session
+            from amberclaw.database.postgres import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                get_db_session,
+            )
 
-            async def _list_db():
+            async def _list_db() -> list[dict[str, Any]]:
                 async for db_sess in get_db_session():
                     stmt = select(DBSessionModel).order_by(
                         DBSessionModel.updated_at.desc()
@@ -430,7 +446,7 @@ class SessionManager:
         for path in self.sessions_dir.glob("*.jsonl"):
             try:
                 # Read just the metadata line
-                with open(path, encoding="utf-8") as f:
+                with Path(path).open(encoding="utf-8") as f:
                     first_line = f.readline().strip()
                     if first_line:
                         data = json.loads(first_line)
@@ -445,6 +461,9 @@ class SessionManager:
                                 },
                             )
             except Exception:
+                logger.debug(
+                    "Optional operation failed in manager; using the existing fallback"
+                )
                 continue
 
         return sorted(sessions, key=lambda x: x.get("updated_at", ""), reverse=True)

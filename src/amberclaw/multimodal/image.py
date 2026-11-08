@@ -6,6 +6,8 @@ from typing import Any
 from loguru import logger
 from pydantic import BaseModel, Field
 
+WEBP_SIGNATURE_END = 12
+
 
 class ImageMetadata(BaseModel):
     """Metadata for an image file."""
@@ -22,7 +24,7 @@ class ImageMetadata(BaseModel):
 class ImageProcessor:
     """Processor for loading, resizing, compressing, and encoding images for vision LLMs."""
 
-    def __init__(self, max_dimension: int = 1568, quality: int = 85):
+    def __init__(self, max_dimension: int = 1568, quality: int = 85) -> None:
         self.max_dimension = max_dimension
         self.quality = quality
         self._has_pil = False
@@ -44,7 +46,7 @@ class ImageProcessor:
 
         path = Path(source)
         if path.exists() and path.is_file():
-            with open(path, "rb") as f:
+            with Path(path).open("rb") as f:
                 content = f.read()
             mime = self._guess_mime_by_ext(path.suffix)
             return content, mime
@@ -66,7 +68,7 @@ class ImageProcessor:
             return "image/png"
         if data.startswith(b"GIF87a") or data.startswith(b"GIF89a"):
             return "image/gif"
-        if len(data) > 12 and data[8:12] == b"WEBP":
+        if len(data) > WEBP_SIGNATURE_END and data[8:12] == b"WEBP":
             return "image/webp"
         return "image/jpeg"
 
@@ -100,7 +102,9 @@ class ImageProcessor:
             return data
 
         try:
-            from PIL import Image  # noqa: PLC0415
+            from PIL import (  # noqa: PLC0415 - optional image codec used only when enabled
+                Image,
+            )
 
             with Image.open(io.BytesIO(data)) as img:
                 # Maintain aspect ratio
@@ -113,8 +117,10 @@ class ImageProcessor:
                 out_io = io.BytesIO()
                 fmt = img.format if img.format in ("PNG", "WEBP") else "JPEG"
                 if fmt == "JPEG":
-                    img = img.convert("RGB")
-                    img.save(out_io, format=fmt, quality=self.quality, optimize=True)
+                    converted = img.convert("RGB")
+                    converted.save(
+                        out_io, format=fmt, quality=self.quality, optimize=True
+                    )
                 else:
                     img.save(out_io, format=fmt, optimize=True)
 

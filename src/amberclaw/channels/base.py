@@ -1,5 +1,6 @@
 """Base channel interface for chat platforms."""
 
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -19,7 +20,7 @@ class BaseChannel(ABC):
 
     name: str = "base"
 
-    def __init__(self, config: Any, bus: MessageBus):
+    def __init__(self, config: Any, bus: MessageBus) -> None:
         """
         Initialize the channel.
 
@@ -29,7 +30,20 @@ class BaseChannel(ABC):
         """
         self.config = config
         self.bus = bus
+        self._stop_event = asyncio.Event()
         self._running = False
+
+    @property
+    def _running(self) -> bool:
+        return not self._stop_event.is_set()
+
+    @_running.setter
+    def _running(self, running: bool) -> None:
+        # Keep callback-based shutdown hooks and restart behavior in sync.
+        if running:
+            self._stop_event.clear()
+        else:
+            self._stop_event.set()
 
     @abstractmethod
     async def start(self) -> None:
@@ -68,7 +82,7 @@ class BaseChannel(ABC):
             return True
         return str(sender_id) in allow_list
 
-    async def _handle_message(
+    async def _handle_message(  # noqa: PLR0913 - public channel ingress accepts independent platform metadata
         self,
         sender_id: str,
         chat_id: str,

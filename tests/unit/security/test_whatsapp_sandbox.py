@@ -75,9 +75,9 @@ def test_build_bwrap_args_success() -> None:
 
 
 def test_build_bwrap_args_not_available() -> None:
-    bridge_dir = Path("/tmp/amberclaw/bridge")  # noqa: S108
-    auth_dir = Path("/tmp/amberclaw/auth")  # noqa: S108
-    media_dir = Path("/tmp/amberclaw/media")  # noqa: S108
+    bridge_dir = Path("/tmp/amberclaw/bridge")  # noqa: S108 - synthetic path passed to an offline fixture
+    auth_dir = Path("/tmp/amberclaw/auth")  # noqa: S108 - synthetic path passed to an offline fixture
+    media_dir = Path("/tmp/amberclaw/media")  # noqa: S108 - synthetic path passed to an offline fixture
 
     with patch(
         "amberclaw.security.whatsapp_sandbox.is_bwrap_available", return_value=False

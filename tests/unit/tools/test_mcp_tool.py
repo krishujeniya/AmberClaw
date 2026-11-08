@@ -45,7 +45,7 @@ async def test_execute_returns_text_blocks() -> None:
 
 @pytest.mark.asyncio
 async def test_execute_returns_timeout_message() -> None:
-    async def call_tool(_name: str, arguments: dict) -> object:
+    async def call_tool(_name: str, arguments: dict) -> object:  # noqa: ARG001 - preserve the fake SDK keyword contract
         await asyncio.sleep(1)
         return SimpleNamespace(content=[])
 
@@ -58,7 +58,7 @@ async def test_execute_returns_timeout_message() -> None:
 
 @pytest.mark.asyncio
 async def test_execute_handles_server_cancelled_error() -> None:
-    async def call_tool(_name: str, arguments: dict) -> object:
+    async def call_tool(_name: str, arguments: dict) -> object:  # noqa: ARG001 - preserve the fake SDK keyword contract
         raise asyncio.CancelledError()
 
     wrapper = _make_wrapper(SimpleNamespace(call_tool=call_tool))
@@ -72,7 +72,7 @@ async def test_execute_handles_server_cancelled_error() -> None:
 async def test_execute_re_raises_external_cancellation() -> None:
     started = asyncio.Event()
 
-    async def call_tool(_name: str, arguments: dict) -> object:
+    async def call_tool(_name: str, arguments: dict) -> object:  # noqa: ARG001 - preserve the fake SDK keyword contract
         started.set()
         await asyncio.sleep(60)
         return SimpleNamespace(content=[])
@@ -89,7 +89,7 @@ async def test_execute_re_raises_external_cancellation() -> None:
 
 @pytest.mark.asyncio
 async def test_execute_handles_generic_exception() -> None:
-    async def call_tool(_name: str, arguments: dict) -> object:
+    async def call_tool(_name: str, arguments: dict) -> object:  # noqa: ARG001 - preserve the fake SDK keyword contract
         raise RuntimeError("boom")
 
     wrapper = _make_wrapper(SimpleNamespace(call_tool=call_tool))

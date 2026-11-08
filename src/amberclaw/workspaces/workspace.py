@@ -12,9 +12,16 @@ class WorkspaceContext(BaseModel):
 
     workspace_id: str = Field(..., description="Unique workspace identifier.")
     name: str = Field(..., description="Workspace human-readable name.")
-    root_path: Path = Field(..., description="Absolute root directory on host filesystem.")
-    is_isolated: bool = Field(default=True, description="Whether strict filesystem isolation is enforced.")
-    env_vars: dict[str, str] = Field(default_factory=dict, description="Environment variables injected into commands.")
+    root_path: Path = Field(
+        ..., description="Absolute root directory on host filesystem."
+    )
+    is_isolated: bool = Field(
+        default=True, description="Whether strict filesystem isolation is enforced."
+    )
+    env_vars: dict[str, str] = Field(
+        default_factory=dict,
+        description="Environment variables injected into commands.",
+    )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     metadata: dict[str, Any] = Field(default_factory=dict)
 

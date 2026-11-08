@@ -1,5 +1,7 @@
 """Cohere Command LLM provider implementation."""
 
+from typing import Any
+
 from amberclaw.providers.litellm_provider import LiteLLMProvider
 
 
@@ -11,7 +13,7 @@ class CohereProvider(LiteLLMProvider):
         api_key: str | None = None,
         api_base: str | None = None,
         default_model: str = "cohere/command-r-plus",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             api_key=api_key,

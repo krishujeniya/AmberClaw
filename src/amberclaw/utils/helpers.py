@@ -2,6 +2,8 @@
 
 import re
 from datetime import datetime
+from importlib.resources import files as pkg_files
+from importlib.resources.abc import Traversable
 from pathlib import Path
 
 
@@ -26,7 +28,7 @@ def ensure_dir(path: Path) -> Path:
 
 def timestamp() -> str:
     """Current ISO timestamp."""
-    return datetime.now().isoformat()
+    return datetime.now().astimezone().isoformat()
 
 
 _UNSAFE_CHARS = re.compile(r'[<>:"/\\|?*]')
@@ -71,7 +73,6 @@ def split_message(content: str, max_len: int = 2000) -> list[str]:
 
 def sync_workspace_templates(workspace: Path, silent: bool = False) -> list[str]:
     """Sync bundled templates to workspace. Only creates missing files."""
-    from importlib.resources import files as pkg_files
 
     try:
         tpl = pkg_files("amberclaw") / "templates"
@@ -82,7 +83,7 @@ def sync_workspace_templates(workspace: Path, silent: bool = False) -> list[str]
 
     added: list[str] = []
 
-    def _write(src, dest: Path):
+    def _write(src: Traversable | None, dest: Path) -> None:
         if dest.exists():
             return
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -99,7 +100,9 @@ def sync_workspace_templates(workspace: Path, silent: bool = False) -> list[str]
     (workspace / "skills").mkdir(exist_ok=True)
 
     if added and not silent:
-        from rich.console import Console
+        from rich.console import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            Console,
+        )
 
         for name in added:
             Console().print(f"  [dim]Created {name}[/dim]")

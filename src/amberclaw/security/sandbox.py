@@ -18,7 +18,9 @@ import tempfile
 import urllib.parse
 import uuid
 import zipfile
+from collections.abc import Iterator
 from pathlib import Path
+from types import TracebackType
 
 from pydantic import BaseModel
 
@@ -65,10 +67,12 @@ def apply_seccomp_filters() -> bool:
     arch = platform.machine()
     if arch == "x86_64":
         sys_execve = 59
+        sys_execveat = 322
         sys_ptrace = 101
         audit_arch = 0xC000003E
     elif arch in ("aarch64", "arm64"):
         sys_execve = 221
+        sys_execveat = 281
         sys_ptrace = 117
         audit_arch = 0xC00000B7
     else:
@@ -99,6 +103,8 @@ def apply_seccomp_filters() -> bool:
         SockFilter(BPF_RET, 0, 0, SECCOMP_RET_ERRNO | EACCES),
         SockFilter(BPF_LD | BPF_W | BPF_ABS, 0, 0, 0),
         SockFilter(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, sys_execve),
+        SockFilter(BPF_RET, 0, 0, SECCOMP_RET_ERRNO | EACCES),
+        SockFilter(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, sys_execveat),
         SockFilter(BPF_RET, 0, 0, SECCOMP_RET_ERRNO | EACCES),
         SockFilter(BPF_JMP | BPF_JEQ | BPF_K, 0, 1, sys_ptrace),
         SockFilter(BPF_RET, 0, 0, SECCOMP_RET_ERRNO | EACCES),
@@ -173,12 +179,12 @@ class CodeSandbox:
         use_docker: bool = True,
         default_timeout_sec: int = 30,
         workspace: str | Path | None = None,
-    ):
+    ) -> None:
         self.use_docker = use_docker
         self.default_timeout_sec = default_timeout_sec
         self.workspace = Path(workspace or Path.cwd()).resolve()
         self._docker_backend = None
-        self._cleanup_task = None
+        self._cleanup_task: asyncio.Task[None] | None = None
         if self.use_docker:
             from amberclaw.terminal.docker import (  # noqa: PLC0415
                 DockerTerminalBackend,
@@ -198,11 +204,16 @@ class CodeSandbox:
         if self.use_docker and self._docker_backend:
             await self._docker_backend.stop()
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> CodeSandbox:
         await self.start()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         await self.stop()
 
     async def execute_python(
@@ -266,7 +277,21 @@ exec(user_code, globals_dict)
 """
             bootstrap_file.write_text(bootstrap_code, encoding="utf-8")
 
-            env = dict(env_vars or os.environ)
+            safe_env_keys = {
+                "PATH",
+                "LANG",
+                "LC_ALL",
+                "LC_CTYPE",
+                "PYTHONHOME",
+                "TERM",
+                "VIRTUAL_ENV",
+                "TMPDIR",
+                "TEMP",
+                "TMP",
+            }
+            env = {k: os.environ[k] for k in safe_env_keys if k in os.environ}
+            if env_vars:
+                env.update(env_vars)
             env["PYTHONPATH"] = str(parent_dir) + (
                 os.pathsep + env.get("PYTHONPATH", "") if env.get("PYTHONPATH") else ""
             )
@@ -335,7 +360,7 @@ exec(user_code, globals_dict)
                 )
 
         # Local Sandboxing Fallback (preexec_fn sandboxing)
-        def _preexec():
+        def _preexec() -> None:
             apply_sandbox_to_current_process(self.workspace, block_execve=False)
 
         start_time = asyncio.get_event_loop().time()
@@ -478,7 +503,9 @@ class DecompressionGuard:
 
     @classmethod
     @contextlib.contextmanager
-    def _open_tar(cls, source: str | Path | bytes | io.BytesIO):
+    def _open_tar(
+        cls, source: str | Path | bytes | io.BytesIO
+    ) -> Iterator[tarfile.TarFile]:
         if isinstance(source, (str, Path)):
             with tarfile.open(str(source), "r:*") as tf:
                 yield tf
@@ -604,7 +631,7 @@ class HostSocketAndMetadataFilter:
             for entry in addr_info:
                 sockaddr = entry[4]
                 ip_cand = sockaddr[0]
-                if cls.is_forbidden_ip(ip_cand):
+                if not isinstance(ip_cand, str) or cls.is_forbidden_ip(ip_cand):
                     logger.warning(
                         "Blocked host [%s] resolved to forbidden address [%s]",
                         cleaned,
@@ -656,7 +683,12 @@ class EphemeralFilesystemSandbox:
             self.path.chmod(0o700)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         if self._temp_dir is not None:
             with contextlib.suppress(Exception):
                 self._temp_dir.cleanup()

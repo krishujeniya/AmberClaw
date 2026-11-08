@@ -1,5 +1,6 @@
 """Hardware Remote Attestation verification and generation."""
 
+import hmac
 import json
 import logging
 from datetime import UTC, datetime
@@ -65,7 +66,9 @@ class AttestationVerifier:
             (is_valid, error_reason)
         """
         # 1. Check Nonce (Anti-replay defense)
-        if expected_nonce and doc.nonce != expected_nonce:
+        if expected_nonce and not hmac.compare_digest(
+            str(doc.nonce), str(expected_nonce)
+        ):
             return False, f"Nonce mismatch. Expected {expected_nonce}, got {doc.nonce}"
 
         # 2. Check Timestamp freshness
@@ -74,9 +77,15 @@ class AttestationVerifier:
             now_time = datetime.now(UTC)
             age = (now_time - doc_time).total_seconds()
             if age > max_age_seconds:
-                return False, f"Attestation document expired. Age: {age:.1f}s > {max_age_seconds}s"
+                return (
+                    False,
+                    f"Attestation document expired. Age: {age:.1f}s > {max_age_seconds}s",
+                )
             if age < MAX_CLOCK_SKEW_FUTURE_SEC:
-                return False, f"Attestation document timestamp in future: {doc.timestamp_utc}"
+                return (
+                    False,
+                    f"Attestation document timestamp in future: {doc.timestamp_utc}",
+                )
         except Exception as e:
             return False, f"Invalid timestamp format: {e}"
 
@@ -88,7 +97,9 @@ class AttestationVerifier:
             )
 
         # 4. Verify Digital Signature
-        pubkey = platform_root_pubkey_pem or self.trusted_root_keys.get(doc.platform.value)
+        pubkey = platform_root_pubkey_pem or self.trusted_root_keys.get(
+            doc.platform.value
+        )
         if pubkey:
             canonical_payload = build_canonical_attestation_payload(
                 platform=doc.platform.value,
@@ -101,9 +112,14 @@ class AttestationVerifier:
                 timestamp_utc=doc.timestamp_utc,
                 user_data=doc.user_data,
             )
-            sig_valid = EnclaveSigner.verify_signature(pubkey, canonical_payload, doc.signature)
+            sig_valid = EnclaveSigner.verify_signature(
+                pubkey, canonical_payload, doc.signature
+            )
             if not sig_valid:
-                return False, "Attestation signature verification failed against platform root key"
+                return (
+                    False,
+                    "Attestation signature verification failed against platform root key",
+                )
 
         return True, "Attestation verified successfully"
 

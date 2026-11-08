@@ -1,5 +1,6 @@
 """DataAgent Data Cleaning tool — AI-powered dataset cleaning."""
 
+import asyncio
 from typing import Any
 
 # pandas imported lazily in _load_data and run
@@ -18,7 +19,7 @@ class CleanArgs(BaseModel):
 
 def _load_data(path: str) -> Any:
     """Load CSV or Excel into DataFrame."""
-    import pandas as pd
+    import pandas as pd  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
     if path.endswith((".xlsx", ".xls")):
         return pd.read_excel(path)
@@ -44,16 +45,16 @@ class DataCleanTool(PydanticTool):
     def args_schema(self) -> type[CleanArgs]:
         return CleanArgs
 
-    def __init__(self, output_dir: str | None = None, model: Any = None):
+    def __init__(self, output_dir: str | None = None, model: Any = None) -> None:
         super().__init__()
         self._output_dir = output_dir
         self._model = model
 
     async def run(self, args: CleanArgs) -> str:
         try:
-            import asyncio
-
-            from amberclaw.data.agents import DataCleaningAgent
+            from amberclaw.data.agents import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                DataCleaningAgent,
+            )
 
             df = await asyncio.to_thread(_load_data, args.file_path)
 

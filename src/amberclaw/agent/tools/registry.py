@@ -1,5 +1,6 @@
 """Tool registry for dynamic tool management."""
 
+from collections.abc import ValuesView
 from typing import Any, TypeVar
 
 from amberclaw.agent.tools.base import PydanticTool, Tool
@@ -14,7 +15,7 @@ class ToolRegistry:
     Allows dynamic registration and execution of tools.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._tools: dict[str, Tool] = {}
 
     def register(self, tool: Tool) -> None:
@@ -29,7 +30,7 @@ class ToolRegistry:
         """Get a tool by name."""
         return self._tools.get(name)
 
-    def values(self):
+    def values(self) -> ValuesView[Tool]:
         """Get all registered tools."""
         return self._tools.values()
 
@@ -43,18 +44,20 @@ class ToolRegistry:
 
     async def execute(self, name: str, params: dict[str, Any]) -> str:
         """Execute a tool by name with given parameters."""
-        _HINT = "\n\n[Analyze the error above and try a different approach.]"
+        error_hint = "\n\n[Analyze the error above and try a different approach.]"
 
         tool = self._tools.get(name)
         if not tool:
             return f"Error: Tool '{name}' not found. Available: {', '.join(self.tool_names)}"
 
-        from amberclaw.security.auth import check_tool_permission
+        from amberclaw.security.auth import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            check_tool_permission,
+        )
 
         try:
             check_tool_permission(name)
         except Exception as e:
-            return f"Error: {e}" + _HINT
+            return f"Error: {e}" + error_hint
 
         try:
             # Pydantic tools handle their own internal validation and execution
@@ -68,15 +71,15 @@ class ToolRegistry:
                     return (
                         f"Error: Invalid parameters for tool '{name}': "
                         + "; ".join(errors)
-                        + _HINT
+                        + error_hint
                     )
                 result = await tool.execute(**params)
 
             if isinstance(result, str) and result.startswith("Error"):
-                return result + _HINT
+                return result + error_hint
             return result
         except Exception as e:
-            return f"Error executing {name}: {e!s}" + _HINT
+            return f"Error executing {name}: {e!s}" + error_hint
 
     @property
     def tool_names(self) -> list[str]:

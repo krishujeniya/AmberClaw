@@ -157,7 +157,7 @@ class DataLossPreventionEngine:
         for rule in cls.DLP_PATTERNS:
             p_type = rule["type"]
             severity = rule["severity"]
-            pattern: re.Pattern = rule["pattern"]
+            pattern: re.Pattern[str] = rule["pattern"]
 
             for match in pattern.finditer(text):
                 val = match.group(0)
@@ -306,7 +306,7 @@ class ExternalTransmissionGuard:
         confirmation_token: str | None = None,
     ) -> str:
         """Verifies outbound content and requires explicit confirmation if sensitive data is detected."""
-        import time  # noqa: PLC0415
+        import time  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
         scan_res = DataLossPreventionEngine.scan(content)
         if not scan_res.has_violations:

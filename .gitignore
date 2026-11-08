@@ -74,8 +74,9 @@ coverage.xml
 *.log
 logs/
 *.sqlite3
-data/
-!data/.keep
+# Datasets and runtime artifacts (repo-root data/ only, not package modules)
+/data/*
+!/data/.keep
 
 # Deployment
 deploy/docker/data/

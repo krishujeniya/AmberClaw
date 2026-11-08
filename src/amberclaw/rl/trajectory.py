@@ -10,19 +10,33 @@ class TrajectoryStep(BaseModel):
     """A single decision step within an RL rollout."""
 
     step_idx: int = Field(default=0, description="Step index within the trajectory.")
-    state: dict[str, Any] = Field(default_factory=dict, description="State / observation at step.")
-    action: str = Field(..., description="Action or generated completion token sequence.")
-    reward: float = Field(default=0.0, description="Scalar reward received for this action.")
-    done: bool = Field(default=False, description="Whether this step terminated the episode.")
-    logprob: float | None = Field(default=None, description="Log probability of generated action.")
-    info: dict[str, Any] = Field(default_factory=dict, description="Diagnostic metadata.")
+    state: dict[str, Any] = Field(
+        default_factory=dict, description="State / observation at step."
+    )
+    action: str = Field(
+        ..., description="Action or generated completion token sequence."
+    )
+    reward: float = Field(
+        default=0.0, description="Scalar reward received for this action."
+    )
+    done: bool = Field(
+        default=False, description="Whether this step terminated the episode."
+    )
+    logprob: float | None = Field(
+        default=None, description="Log probability of generated action."
+    )
+    info: dict[str, Any] = Field(
+        default_factory=dict, description="Diagnostic metadata."
+    )
 
 
 class Trajectory(BaseModel):
     """A full episode rollout containing sequential state-action-reward steps."""
 
     episode_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    prompt: str = Field(default="", description="Initial system prompt or user task query.")
+    prompt: str = Field(
+        default="", description="Initial system prompt or user task query."
+    )
     steps: list[TrajectoryStep] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 

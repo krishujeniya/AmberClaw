@@ -2,7 +2,7 @@
 
 import asyncio
 from collections import deque
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -30,21 +30,21 @@ def _make_bot_class(channel: "QQChannel") -> "type[botpy.Client]":
     """Create a botpy Client subclass bound to the given channel."""
     intents = botpy.Intents(public_messages=True, direct_message=True)
 
-    class _Bot(botpy.Client):
-        def __init__(self):
+    class _Bot(botpy.Client):  # type: ignore[misc]  # optional botpy base has no typing metadata
+        def __init__(self) -> None:
             # Disable botpy's file log — amberclaw uses loguru; default "botpy.log" fails on read-only fs
             super().__init__(intents=intents, ext_handlers=False)
 
-        async def on_ready(self):
+        async def on_ready(self) -> None:
             logger.info("QQ bot ready: {}", self.robot.name)
 
-        async def on_c2c_message_create(self, message: "C2CMessage"):
+        async def on_c2c_message_create(self, message: "C2CMessage") -> None:
             await channel._on_message(message, is_group=False)
 
-        async def on_group_at_message_create(self, message: "GroupMessage"):
+        async def on_group_at_message_create(self, message: "GroupMessage") -> None:
             await channel._on_message(message, is_group=True)
 
-        async def on_direct_message_create(self, message):
+        async def on_direct_message_create(self, message: "C2CMessage") -> None:
             await channel._on_message(message, is_group=False)
 
     return _Bot
@@ -55,12 +55,12 @@ class QQChannel(BaseChannel):
 
     name = "qq"
 
-    def __init__(self, config: QQConfig, bus: MessageBus):
+    def __init__(self, config: QQConfig, bus: MessageBus) -> None:
         super().__init__(config, bus)
         self.config: QQConfig = config
         self._client: botpy.Client | None = None
-        self._processed_ids: deque = deque(maxlen=1000)
-        self._msg_seq: int = 1  # 消息序列号，避免被 QQ API 去重
+        self._processed_ids: deque[Any] = deque(maxlen=1000)
+        self._msg_seq: int = 1  # 消息序列号,避免被 QQ API 去重
         self._chat_type_cache: dict[str, str] = {}
 
     async def start(self) -> None:
@@ -74,18 +74,19 @@ class QQChannel(BaseChannel):
             return
 
         self._running = True
-        BotClass = _make_bot_class(self)
-        self._client = BotClass()
+        bot_class = _make_bot_class(self)
+        self._client = bot_class()
         logger.info("QQ bot started (C2C & Group supported)")
         await self._run_bot()
 
     async def _run_bot(self) -> None:
         """Run the bot connection with auto-reconnect."""
+        client = self._client
+        if client is None:
+            return
         while self._running:
             try:
-                await self._client.start(
-                    appid=self.config.app_id, secret=self.config.secret
-                )
+                await client.start(appid=self.config.app_id, secret=self.config.secret)
             except Exception as e:
                 logger.warning("QQ bot error: {}", e)
             if self._running:
@@ -99,7 +100,9 @@ class QQChannel(BaseChannel):
             try:
                 await self._client.close()
             except Exception:
-                pass
+                logger.debug(
+                    "Optional operation failed in qq; using the existing fallback"
+                )
         logger.info("QQ bot stopped")
 
     async def send(self, msg: OutboundMessage) -> None:

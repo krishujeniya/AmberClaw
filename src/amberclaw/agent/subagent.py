@@ -3,6 +3,7 @@
 import asyncio
 import uuid
 from pathlib import Path
+from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from loguru import logger
@@ -39,9 +40,7 @@ class SubagentManager:
         web_proxy: str | None = None,
         exec_config: "ExecToolConfig | None" = None,
         restrict_to_workspace: bool = False,
-    ):
-        from amberclaw.config.schema import ExecToolConfig  # noqa: PLC0415
-
+    ) -> None:
         self.provider = provider
         self.workspace = workspace
         self.bus = bus
@@ -87,7 +86,7 @@ class SubagentManager:
         if session_key:
             self._session_tasks.setdefault(session_key, set()).add(task_id)
 
-        def _cleanup(_: asyncio.Task) -> None:
+        def _cleanup(_: asyncio.Task[Any]) -> None:
             self._running_tasks.pop(task_id, None)
             if session_key and (ids := self._session_tasks.get(session_key)):
                 ids.discard(task_id)
@@ -295,6 +294,28 @@ Stay focused on the assigned task. Your final response will be reported back to 
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         return len(tasks)
+
+    def owns_task(self, task: asyncio.Task[Any]) -> bool:
+        """Whether a task belongs to this manager's active work."""
+        return task in self._running_tasks.values()
+
+    async def cancel_all(self) -> int:
+        """Cancel and drain owned tasks before the parent closes tool transports."""
+        current = asyncio.current_task()
+        tasks = [task for task in self._running_tasks.values() if task is not current]
+        cancelled = sum(1 for task in tasks if not task.done() and task.cancel())
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self._running_tasks = {
+            key: task for key, task in self._running_tasks.items() if not task.done()
+        }
+        remaining = set(self._running_tasks)
+        self._session_tasks = {
+            key: ids & remaining
+            for key, ids in self._session_tasks.items()
+            if ids & remaining
+        }
+        return cancelled
 
     def get_running_count(self) -> int:
         """Return the number of currently running subagents."""

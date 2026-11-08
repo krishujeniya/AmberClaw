@@ -23,7 +23,7 @@ class E2BTerminalBackend(BaseTerminalBackend):
         workspace_dir: str,
         api_key: str | None = None,
         template: str | None = None,
-    ):
+    ) -> None:
         self.workspace_dir = str(Path(workspace_dir).resolve())
         self.api_key = api_key or os.getenv("E2B_API_KEY")
         self.template = template

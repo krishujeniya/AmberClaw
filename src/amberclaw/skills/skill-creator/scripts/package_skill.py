@@ -16,6 +16,8 @@ from pathlib import Path
 
 from quick_validate import validate_skill
 
+REQUIRED_PACKAGE_ARGV_LENGTH = 2
+
 
 def _is_within(path: Path, root: Path) -> bool:
     try:
@@ -33,7 +35,49 @@ def _cleanup_partial_archive(skill_filename: Path) -> None:
         pass
 
 
-def package_skill(skill_path, output_dir=None):
+def _collect_package_files(skill_path: Path, skill_filename: Path) -> list[Path]:
+    excluded_dirs = {".git", ".svn", ".hg", "__pycache__", "node_modules"}
+
+    files_to_package = []
+    resolved_archive = skill_filename.resolve()
+
+    for file_path in skill_path.rglob("*"):
+        # Fail closed on symlinks so the packaged contents are explicit and predictable.
+        if file_path.is_symlink():
+            print(f"[ERROR] Symlink not allowed in packaged skill: {file_path}")  # noqa: T201 - standalone CLI output is the public interface
+            raise ValueError("Symlink in skill package")
+
+        rel_parts = file_path.relative_to(skill_path).parts
+        if any(part in excluded_dirs for part in rel_parts):
+            continue
+
+        if file_path.is_file():
+            resolved_file = file_path.resolve()
+            if not _is_within(resolved_file, skill_path):
+                print(f"[ERROR] File escapes skill root: {file_path}")  # noqa: T201 - standalone CLI output is the public interface
+                raise ValueError("File escapes skill root")
+            # If output lives under skill_path, avoid writing archive into itself.
+            if resolved_file == resolved_archive:
+                print(f"[WARN] Skipping output archive: {file_path}")  # noqa: T201 - standalone CLI output is the public interface
+                continue
+            files_to_package.append(file_path)
+
+    return files_to_package
+
+
+def _package_directory_error(skill_path: Path) -> str | None:
+    if not skill_path.exists():
+        return f"[ERROR] Skill folder not found: {skill_path}"
+    if not skill_path.is_dir():
+        return f"[ERROR] Path is not a directory: {skill_path}"
+    if not (skill_path / "SKILL.md").exists():
+        return f"[ERROR] SKILL.md not found in {skill_path}"
+    return None
+
+
+def package_skill(
+    skill_path: str | Path, output_dir: str | Path | None = None
+) -> Path | None:
     """
     Package a skill folder into a .skill file.
 
@@ -46,29 +90,19 @@ def package_skill(skill_path, output_dir=None):
     """
     skill_path = Path(skill_path).resolve()
 
-    # Validate skill folder exists
-    if not skill_path.exists():
-        print(f"[ERROR] Skill folder not found: {skill_path}")
-        return None
-
-    if not skill_path.is_dir():
-        print(f"[ERROR] Path is not a directory: {skill_path}")
-        return None
-
-    # Validate SKILL.md exists
-    skill_md = skill_path / "SKILL.md"
-    if not skill_md.exists():
-        print(f"[ERROR] SKILL.md not found in {skill_path}")
+    error = _package_directory_error(skill_path)
+    if error:
+        print(error)  # noqa: T201 - standalone CLI diagnostics
         return None
 
     # Run validation before packaging
-    print("Validating skill...")
+    print("Validating skill...")  # noqa: T201 - standalone CLI output is the public interface
     valid, message = validate_skill(skill_path)
     if not valid:
-        print(f"[ERROR] Validation failed: {message}")
-        print("   Please fix the validation errors before packaging.")
+        print(f"[ERROR] Validation failed: {message}")  # noqa: T201 - standalone CLI output is the public interface
+        print("   Please fix the validation errors before packaging.")  # noqa: T201 - standalone CLI output is the public interface
         return None
-    print(f"[OK] {message}\n")
+    print(f"[OK] {message}\n")  # noqa: T201 - standalone CLI output is the public interface
 
     # Determine output location
     skill_name = skill_path.name
@@ -80,33 +114,11 @@ def package_skill(skill_path, output_dir=None):
 
     skill_filename = output_path / f"{skill_name}.skill"
 
-    EXCLUDED_DIRS = {".git", ".svn", ".hg", "__pycache__", "node_modules"}
-
-    files_to_package = []
-    resolved_archive = skill_filename.resolve()
-
-    for file_path in skill_path.rglob("*"):
-        # Fail closed on symlinks so the packaged contents are explicit and predictable.
-        if file_path.is_symlink():
-            print(f"[ERROR] Symlink not allowed in packaged skill: {file_path}")
-            _cleanup_partial_archive(skill_filename)
-            return None
-
-        rel_parts = file_path.relative_to(skill_path).parts
-        if any(part in EXCLUDED_DIRS for part in rel_parts):
-            continue
-
-        if file_path.is_file():
-            resolved_file = file_path.resolve()
-            if not _is_within(resolved_file, skill_path):
-                print(f"[ERROR] File escapes skill root: {file_path}")
-                _cleanup_partial_archive(skill_filename)
-                return None
-            # If output lives under skill_path, avoid writing archive into itself.
-            if resolved_file == resolved_archive:
-                print(f"[WARN] Skipping output archive: {file_path}")
-                continue
-            files_to_package.append(file_path)
+    try:
+        files_to_package = _collect_package_files(skill_path, skill_filename)
+    except ValueError:
+        _cleanup_partial_archive(skill_filename)
+        return None
 
     # Create the .skill file (zip format)
     try:
@@ -115,34 +127,34 @@ def package_skill(skill_path, output_dir=None):
                 # Calculate the relative path within the zip.
                 arcname = Path(skill_name) / file_path.relative_to(skill_path)
                 zipf.write(file_path, arcname)
-                print(f"  Added: {arcname}")
+                print(f"  Added: {arcname}")  # noqa: T201 - standalone CLI output is the public interface
 
-        print(f"\n[OK] Successfully packaged skill to: {skill_filename}")
+        print(f"\n[OK] Successfully packaged skill to: {skill_filename}")  # noqa: T201 - standalone CLI output is the public interface
         return skill_filename
 
     except Exception as e:
         _cleanup_partial_archive(skill_filename)
-        print(f"[ERROR] Error creating .skill file: {e}")
+        print(f"[ERROR] Error creating .skill file: {e}")  # noqa: T201 - standalone CLI output is the public interface
         return None
 
 
-def main():
-    if len(sys.argv) < 2:
-        print(
+def main() -> None:
+    if len(sys.argv) < REQUIRED_PACKAGE_ARGV_LENGTH:
+        print(  # noqa: T201 - standalone CLI output is the public interface
             "Usage: python package_skill.py <path/to/skill-folder> [output-directory]"
         )
-        print("\nExample:")
-        print("  python package_skill.py skills/public/my-skill")
-        print("  python package_skill.py skills/public/my-skill ./dist")
+        print("\nExample:")  # noqa: T201 - standalone CLI output is the public interface
+        print("  python package_skill.py skills/public/my-skill")  # noqa: T201 - standalone CLI output is the public interface
+        print("  python package_skill.py skills/public/my-skill ./dist")  # noqa: T201 - standalone CLI output is the public interface
         sys.exit(1)
 
     skill_path = sys.argv[1]
-    output_dir = sys.argv[2] if len(sys.argv) > 2 else None
+    output_dir = sys.argv[2] if len(sys.argv) > REQUIRED_PACKAGE_ARGV_LENGTH else None
 
-    print(f"Packaging skill: {skill_path}")
+    print(f"Packaging skill: {skill_path}")  # noqa: T201 - standalone CLI output is the public interface
     if output_dir:
-        print(f"   Output directory: {output_dir}")
-    print()
+        print(f"   Output directory: {output_dir}")  # noqa: T201 - standalone CLI output is the public interface
+    print()  # noqa: T201 - standalone CLI output is the public interface
 
     result = package_skill(skill_path, output_dir)
 

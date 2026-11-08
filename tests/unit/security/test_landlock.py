@@ -61,7 +61,7 @@ except Exception:
 sys.exit(0)
 """
             # Run python process
-            res = subprocess.run(
+            res = subprocess.run(  # noqa: S603 - fixed Python interpreter and locally constructed test code
                 [sys.executable, "-c", code],
                 capture_output=True,
                 text=True,

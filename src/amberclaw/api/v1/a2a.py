@@ -49,8 +49,8 @@ async def handle_a2a_request(request: Request) -> JsonRpcResponse:
     params = rpc_req.params or {}
     rpc_id = rpc_req.id
 
-    result = None
-    error = None
+    result: dict[str, object] | None = None
+    error: dict[str, object] | None = None
 
     if method == "execute_task":
         if not isinstance(params, dict) or "task" not in params:

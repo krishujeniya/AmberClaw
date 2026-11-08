@@ -47,12 +47,16 @@ class EnclaveKeyAgreement:
     @classmethod
     def load_public_key(cls, pem_str: str) -> x25519.X25519PublicKey:
         """Load an X25519 public key from PEM string."""
-        key = serialization.load_pem_public_key(pem_str.encode("utf-8"), backend=default_backend())
+        key = serialization.load_pem_public_key(
+            pem_str.encode("utf-8"), backend=default_backend()
+        )
         if not isinstance(key, x25519.X25519PublicKey):
             raise ValueError("Provided PEM is not an X25519 public key")
         return key
 
-    def derive_shared_secret(self, peer_public_key: x25519.X25519PublicKey | str) -> bytes:
+    def derive_shared_secret(
+        self, peer_public_key: x25519.X25519PublicKey | str
+    ) -> bytes:
         """Perform ECDH exchange and derive a 256-bit AES-GCM symmetric session key."""
         if isinstance(peer_public_key, str):
             peer_pub = self.load_public_key(peer_public_key)
@@ -115,7 +119,9 @@ class EnclaveSigner:
     """ECDSA P-256 signer for attestation reports and tamper-proof tokens."""
 
     def __init__(self, private_key: ec.EllipticCurvePrivateKey | None = None) -> None:
-        self._private_key = private_key or ec.generate_private_key(ec.SECP256R1(), default_backend())
+        self._private_key = private_key or ec.generate_private_key(
+            ec.SECP256R1(), default_backend()
+        )
         self._public_key = self._private_key.public_key()
 
     @property
@@ -132,12 +138,16 @@ class EnclaveSigner:
         return base64.b64encode(signature).decode("utf-8")
 
     @classmethod
-    def verify_signature(cls, public_key_pem: str, message: bytes | str, signature_b64: str) -> bool:
+    def verify_signature(
+        cls, public_key_pem: str, message: bytes | str, signature_b64: str
+    ) -> bool:
         """Verify ECDSA P-256 signature using public key PEM."""
         msg_bytes = message.encode("utf-8") if isinstance(message, str) else message
         sig_bytes = base64.b64decode(signature_b64)
         try:
-            pub_key = serialization.load_pem_public_key(public_key_pem.encode("utf-8"), backend=default_backend())
+            pub_key = serialization.load_pem_public_key(
+                public_key_pem.encode("utf-8"), backend=default_backend()
+            )
             if not isinstance(pub_key, ec.EllipticCurvePublicKey):
                 return False
             pub_key.verify(sig_bytes, msg_bytes, ec.ECDSA(hashes.SHA256()))

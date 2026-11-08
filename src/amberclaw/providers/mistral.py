@@ -1,5 +1,7 @@
 """Mistral AI LLM provider implementation."""
 
+from typing import Any
+
 from amberclaw.providers.litellm_provider import LiteLLMProvider
 
 
@@ -11,7 +13,7 @@ class MistralProvider(LiteLLMProvider):
         api_key: str | None = None,
         api_base: str | None = None,
         default_model: str = "mistral/mistral-large-latest",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             api_key=api_key,

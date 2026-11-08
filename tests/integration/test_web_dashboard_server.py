@@ -7,9 +7,16 @@ from amberclaw.web.server import create_web_app
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
+    monkeypatch.setenv("WEB_ADMIN_USER", "admin")
+    monkeypatch.setenv("WEB_ADMIN_PASS", "amberclaw")
     app = create_web_app()
-    return TestClient(app)
+    client = TestClient(app)
+    response = client.post(
+        "/api/web/login", json={"username": "admin", "password": "amberclaw"}
+    )
+    assert response.status_code == status.HTTP_200_OK
+    return client
 
 
 def test_dashboard_html_rendering(client):
@@ -24,7 +31,9 @@ def test_dashboard_summary_api(client):
     response = client.get("/api/dashboard/summary")
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
-    assert data["status"] == "healthy"
+    assert data["status"] == "unavailable"
+    assert data["active_agents"] is None
+    assert data["pending_tickets"] is None
     assert "active_agents" in data
     assert "pending_tickets" in data
 
@@ -32,13 +41,13 @@ def test_dashboard_summary_api(client):
 def test_dashboard_extended_apis(client):
     # Chat streaming endpoint
     stream_resp = client.post("/api/chat/stream", json={"message": "hello"})
-    assert stream_resp.status_code == status.HTTP_200_OK
-    assert "Received instruction" in stream_resp.text
+    assert stream_resp.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+    assert stream_resp.json()["detail"] == "Chat runtime is not configured"
 
     # Sessions endpoint
     sess_resp = client.get("/api/sessions")
     assert sess_resp.status_code == status.HTTP_200_OK
-    assert isinstance(sess_resp.json(), list)
+    assert sess_resp.json() == []
 
     # Governance tickets endpoint
     gov_resp = client.get("/api/governance/tickets")
@@ -48,12 +57,12 @@ def test_dashboard_extended_apis(client):
     # Metrics endpoint
     met_resp = client.get("/api/metrics/usage")
     assert met_resp.status_code == status.HTTP_200_OK
-    assert "total_tokens" in met_resp.json()
+    assert met_resp.json()["total_tokens"] is None
 
     # Audit logs endpoint
     aud_resp = client.get("/api/audit/logs")
     assert aud_resp.status_code == status.HTTP_200_OK
-    assert isinstance(aud_resp.json(), list)
+    assert aud_resp.json() == []
 
 
 def test_web_auth_login_flow(client):
@@ -79,7 +88,9 @@ def test_web_auth_login_flow(client):
     assert logout_resp.status_code == status.HTTP_200_OK
 
 
-def test_web_auth_manager_direct():
+def test_web_auth_manager_direct(monkeypatch):
+    monkeypatch.setenv("WEB_ADMIN_USER", "admin")
+    monkeypatch.setenv("WEB_ADMIN_PASS", "amberclaw")
     mgr = WebAuthManager()
     assert mgr.authenticate_credentials("admin", "amberclaw")
     assert not mgr.authenticate_credentials("admin", "invalid")

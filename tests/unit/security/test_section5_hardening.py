@@ -1,9 +1,9 @@
+# ruff: noqa: S105, PLR2004, ARG005
 """Comprehensive unit tests for Section 5 security upgrades:
 mTLS, Hardware MFA, Memory Zeroing, Sandbox Hardening, Policy Lock,
 External Transmission Confirmation, and Data Retention / Legal Hold.
 """
 
-# ruff: noqa: S105, PLR2004, ARG005
 from __future__ import annotations
 
 import base64

@@ -49,7 +49,7 @@ class SimulatedAudioSource(AudioSource):
         frequency: float = 440.0,
         volume: float = 0.5,
         simulate_speech: bool = False,
-    ):
+    ) -> None:
         self.config = config
         self.frequency = frequency
         self.volume = volume
@@ -104,7 +104,7 @@ class SimulatedAudioSource(AudioSource):
 class MicrophoneSource(AudioSource):
     """Microphone audio source that dynamically binds to PyAudio or Sounddevice."""
 
-    def __init__(self, config: AudioConfig):
+    def __init__(self, config: AudioConfig) -> None:
         self.config = config
         self._running = False
         self._queue: asyncio.Queue[bytes] = asyncio.Queue()
@@ -150,7 +150,7 @@ class MicrophoneSource(AudioSource):
         if self._backend == "simulated" and self._simulated:
             await self._simulated.start()
         elif self._backend == "pyaudio":
-            import pyaudio  # noqa: PLC0415
+            import pyaudio  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
             # Run blocking pyaudio stream creation in executor
             loop = asyncio.get_running_loop()
@@ -193,7 +193,7 @@ class MicrophoneSource(AudioSource):
     ) -> Any:
         loop = asyncio.get_event_loop()
         loop.call_soon_threadsafe(self._queue.put_nowait, in_data)
-        import pyaudio  # noqa: PLC0415
+        import pyaudio  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
         return (None, pyaudio.paContinue)
 
@@ -238,7 +238,7 @@ class VoiceActivityDetector:
         config: AudioConfig,
         energy_threshold: float = 300.0,
         silence_timeout_sec: float = 1.0,
-    ):
+    ) -> None:
         self.config = config
         self.energy_threshold = energy_threshold
         self.silence_timeout_sec = silence_timeout_sec
@@ -284,7 +284,7 @@ class VoiceActivityDetector:
 class RealTimeStreamer:
     """Orchestrates an AudioSource and VAD to stream segmented speech utterances."""
 
-    def __init__(self, source: AudioSource, vad: VoiceActivityDetector):
+    def __init__(self, source: AudioSource, vad: VoiceActivityDetector) -> None:
         self.source = source
         self.vad = vad
         self._interrupted = False

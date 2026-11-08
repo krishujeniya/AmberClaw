@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Generates CycloneDX and SPDX Software Bill of Materials (SBOM) for AmberClaw.
 
-Collects package metadata, versions, licenses, and purl references directly
-from installed distribution metadata and uv lockfile without external dependencies.
+Inventories the current installed environment, including development tools and
+extras. This is not a lockfile or production-image inventory. License conclusions
+require separate review; unrecognized declarations remain NOASSERTION.
 """
 
 from __future__ import annotations
@@ -12,15 +13,40 @@ import importlib.metadata
 import json
 import logging
 import sys
-import time
+import tomllib
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
+from urllib.parse import quote
+
+from packaging.licenses import InvalidLicenseExpression, canonicalize_license_expression
+from packaging.utils import canonicalize_name
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("sbom_generator")
+SCOPE = "Installed Python environment, including development tools and optional extras; not a production-image or lockfile inventory."
 
 
-def generate_cyclonedx(components: list[dict[str, str]]) -> dict:
+def project_version() -> str:
+    manifest = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    return str(
+        tomllib.loads(manifest.read_text(encoding="utf-8"))["project"]["version"]
+    )
+
+
+def purl(component: dict[str, str]) -> str:
+    return f"pkg:pypi/{canonicalize_name(component['name'])}@{quote(component['version'], safe='')}"
+
+
+def license_expression(value: str) -> str:
+    try:
+        return str(canonicalize_license_expression(value))
+    except InvalidLicenseExpression:
+        return "NOASSERTION"
+
+
+def generate_cyclonedx(components: list[dict[str, str]]) -> dict[str, Any]:
     """Generates CycloneDX 1.5 JSON formatted SBOM."""
     return {
         "bomFormat": "CycloneDX",
@@ -28,25 +54,31 @@ def generate_cyclonedx(components: list[dict[str, str]]) -> dict:
         "serialNumber": f"urn:uuid:{uuid.uuid4()}",
         "version": 1,
         "metadata": {
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "timestamp": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "tools": [
-                {"vendor": "AmberClaw", "name": "amberclaw-sbom", "version": "1.0.0"}
+                {
+                    "vendor": "AmberClaw",
+                    "name": "amberclaw-sbom",
+                    "version": project_version(),
+                }
             ],
             "component": {
                 "type": "application",
                 "name": "amberclaw",
-                "version": "1.0.0",
+                "version": project_version(),
                 "description": "Autonomous AI Agent Operating System",
             },
+            "properties": [{"name": "amberclaw:inventory-scope", "value": SCOPE}],
         },
         "components": [
             {
                 "type": "library",
                 "name": c["name"],
                 "version": c["version"],
-                "purl": f"pkg:pypi/{c['name']}@{c['version']}",
-                "licenses": [{"license": {"name": c["license"]}}]
-                if c.get("license")
+                "bom-ref": purl(c),
+                "purl": purl(c),
+                "licenses": [{"expression": license_expression(c.get("license", ""))}]
+                if license_expression(c.get("license", "")) != "NOASSERTION"
                 else [],
             }
             for c in components
@@ -54,9 +86,9 @@ def generate_cyclonedx(components: list[dict[str, str]]) -> dict:
     }
 
 
-def generate_spdx(components: list[dict[str, str]]) -> dict:
+def generate_spdx(components: list[dict[str, str]]) -> dict[str, Any]:
     """Generates SPDX 2.3 JSON formatted SBOM."""
-    doc_id = f"SPDXRef-DOCUMENT-{uuid.uuid4().hex[:8]}"
+    doc_id = "SPDXRef-DOCUMENT"
     spdx_packages = []
 
     for idx, c in enumerate(components, start=1):
@@ -67,13 +99,14 @@ def generate_spdx(components: list[dict[str, str]]) -> dict:
                 "versionInfo": c["version"],
                 "downloadLocation": "NOASSERTION",
                 "filesAnalyzed": False,
-                "licenseConcluded": c.get("license") or "NOASSERTION",
-                "licenseDeclared": c.get("license") or "NOASSERTION",
+                "licenseConcluded": "NOASSERTION",
+                "licenseDeclared": license_expression(c.get("license", "")),
+                "copyrightText": "NOASSERTION",
                 "externalRefs": [
                     {
                         "referenceCategory": "PACKAGE-MANAGER",
                         "referenceType": "purl",
-                        "referenceLocator": f"pkg:pypi/{c['name']}@{c['version']}",
+                        "referenceLocator": purl(c),
                     }
                 ],
             }
@@ -84,12 +117,21 @@ def generate_spdx(components: list[dict[str, str]]) -> dict:
         "dataLicense": "CC0-1.0",
         "SPDXID": doc_id,
         "name": "AmberClaw-SPDX-SBOM",
-        "documentNamespace": f"https://amberclaw.ai/spdx/{doc_id}",
+        "documentNamespace": f"https://amberclaw.ai/spdx/{project_version()}/{uuid.uuid4()}",
+        "comment": SCOPE,
         "creationInfo": {
-            "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "creators": ["Tool: amberclaw-sbom-1.0.0", "Organization: AmberClaw Core"],
+            "created": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "creators": [f"Tool: amberclaw-sbom-{project_version()}"],
         },
         "packages": spdx_packages,
+        "relationships": [
+            {
+                "spdxElementId": doc_id,
+                "relationshipType": "DESCRIBES",
+                "relatedSpdxElement": package["SPDXID"],
+            }
+            for package in spdx_packages
+        ],
     }
 
 
@@ -102,21 +144,21 @@ def collect_installed_packages() -> list[dict[str, str]]:
         name = dist.metadata.get("Name")
         if not name:
             continue
-        cleaned_name = name.strip().lower()
+        cleaned_name = canonicalize_name(name.strip())
         if cleaned_name in seen:
             continue
         seen.add(cleaned_name)
 
         version = dist.metadata.get("Version", "unknown")
-        license_name = dist.metadata.get("License", "UNKNOWN")
+        license_name = dist.metadata.get("License-Expression") or dist.metadata.get(
+            "License", ""
+        )
 
         packages.append(
             {
-                "name": name,
+                "name": cleaned_name,
                 "version": version,
-                "license": license_name.split("\n")[0].strip()
-                if license_name
-                else "UNKNOWN",
+                "license": license_expression(license_name),
             }
         )
 

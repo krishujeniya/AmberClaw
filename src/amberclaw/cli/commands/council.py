@@ -14,28 +14,35 @@ console = Console()
 def council(
     topic: str = typer.Argument(..., help="Topic to debate in the council"),
     agents: str = typer.Option(
-        "strategist,expert,critic", "--agents", help="Comma-separated agent keys"
+        "",
+        "--models",
+        "--agents",
+        help="Comma-separated model IDs (--agents is a compatibility alias); defaults to the configured model",
     ),
 ) -> None:
-    """Summon a council of expert agents to debate a topic."""
-    from amberclaw.agent.tools import council as council_mod
+    """Consult a council of models and synthesize their answers."""
+    from amberclaw.agent.tools import (  # noqa: PLC0415 - defer runtime and platform initialization until command use
+        council as council_mod,
+    )
 
     cfg = loader.load_runtime_config()
     provider = factory.make_provider(cfg)
 
     council_tool = council_mod.CouncilTool(
-        provider=provider, workspace=cfg.workspace_path, model=cfg.agents.defaults.model
+        provider=provider, model=cfg.agents.defaults.model
     )
 
-    async def run_council():
-        streamer = utils.TokenStreamer(console)
+    async def run_council() -> None:
         console.print(
             f"{__logo__} [bold yellow]Summoning the Council...[/bold yellow]\n"
         )
 
-        args = council_mod.CouncilArgs(topic=topic, agents=agents.split(","))
-        response = await council_tool._run(args)
+        args = council_mod.CouncilArgs(
+            query=topic,
+            models=[model.strip() for model in agents.split(",") if model.strip()],
+        )
+        response = await council_tool.run(args)
 
-        utils._print_agent_response(response)
+        utils._print_agent_response(response, render_markdown=True)
 
     asyncio.run(run_council())

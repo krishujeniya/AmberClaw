@@ -50,7 +50,7 @@ class SpawnTool(PydanticTool):
     def args_schema(self) -> type[SpawnArgs]:
         return SpawnArgs
 
-    def __init__(self, manager: "SubagentManager"):
+    def __init__(self, manager: "SubagentManager") -> None:
         super().__init__()
         self._manager = manager
         self._origin_channel = "cli"

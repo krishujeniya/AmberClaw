@@ -30,7 +30,7 @@ class LLMResponse:
     latency_ms: float = 0.0  # Total generation time in ms
     ttft_ms: float = 0.0  # Time to first token in ms
     reasoning_content: str | None = None  # Kimi, DeepSeek-R1 etc.
-    thinking_blocks: list[dict] | None = None  # Anthropic extended thinking
+    thinking_blocks: list[dict[Any, Any]] | None = None  # Anthropic extended thinking
 
     @property
     def has_tool_calls(self) -> bool:
@@ -62,7 +62,7 @@ class LLMProvider(ABC):
         "temporarily unavailable",
     )
 
-    def __init__(self, api_key: str | None = None, api_base: str | None = None):
+    def __init__(self, api_key: str | None = None, api_base: str | None = None) -> None:
         self.api_key = api_key
         self.api_base = api_base
 
@@ -132,7 +132,7 @@ class LLMProvider(ABC):
         return sanitized
 
     @abstractmethod
-    async def chat(
+    async def chat(  # noqa: PLR0913 - preserve the provider chat and constructor keyword contract
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
@@ -161,7 +161,9 @@ class LLMProvider(ABC):
 
     def get_capabilities(self, model: str | None = None) -> Any:
         """Get capability contract for model."""
-        from amberclaw.providers.capabilities import detect_capabilities
+        from amberclaw.providers.capabilities import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            detect_capabilities,
+        )
 
         target_model = model or self.get_default_model()
         return detect_capabilities(target_model)
@@ -170,7 +172,9 @@ class LLMProvider(ABC):
     def _is_transient_error(cls, content: str | None) -> bool:
         if not content:
             return False
-        from amberclaw.providers.errors import normalize_provider_error
+        from amberclaw.providers.errors import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+            normalize_provider_error,
+        )
 
         norm = normalize_provider_error(content)
         if norm.is_retryable:
@@ -178,7 +182,7 @@ class LLMProvider(ABC):
         err = content.lower()
         return any(marker in err for marker in cls._TRANSIENT_ERROR_MARKERS)
 
-    async def chat_with_retry(
+    async def chat_with_retry(  # noqa: PLR0913 - preserve the provider chat and constructor keyword contract
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
@@ -240,7 +244,8 @@ class LLMProvider(ABC):
                             "role": "user",
                             "content": "Your previous tool call contained malformed JSON. Please correct it and output strictly valid JSON without any markdown formatting.",
                         }
-                        messages = messages + [
+                        messages = [
+                            *messages,
                             {
                                 "role": "assistant",
                                 "content": response.content or "",

@@ -14,8 +14,13 @@ class UserFeedback(BaseModel):
         ..., description="User sentiment rating."
     )
     critique: str | None = Field(default=None, description="Optional textual critique.")
-    correction: str | None = Field(default=None, description="User-provided explicit correction.")
-    tags: list[str] = Field(default_factory=list, description="Categorical tags (e.g. 'code', 'hallucination').")
+    correction: str | None = Field(
+        default=None, description="User-provided explicit correction."
+    )
+    tags: list[str] = Field(
+        default_factory=list,
+        description="Categorical tags (e.g. 'code', 'hallucination').",
+    )
 
 
 class FeedbackCollector:
@@ -32,7 +37,13 @@ class FeedbackCollector:
         """Compute aggregated positive, negative, and satisfaction ratios."""
         total = len(self.feedback_store)
         if total == 0:
-            return {"total": 0, "positive": 0, "negative": 0, "neutral": 0, "satisfaction_rate": 1.0}
+            return {
+                "total": 0,
+                "positive": 0,
+                "negative": 0,
+                "neutral": 0,
+                "satisfaction_rate": 1.0,
+            }
 
         positive = sum(1 for f in self.feedback_store if f.rating == "positive")
         negative = sum(1 for f in self.feedback_store if f.rating == "negative")

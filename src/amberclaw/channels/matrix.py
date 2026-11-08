@@ -3,7 +3,9 @@
 import asyncio
 import logging
 import mimetypes
+from contextlib import suppress
 from pathlib import Path
+from types import FrameType
 from typing import Any, TypeAlias
 
 from loguru import logger
@@ -11,6 +13,7 @@ from loguru import logger
 try:
     import nh3
     from mistune import create_markdown
+    from mistune.renderers.html import HTMLRenderer
     from nio import (
         AsyncClient,
         AsyncClientConfig,
@@ -36,9 +39,13 @@ except ImportError as e:
     ) from e
 
 from amberclaw.bus.events import OutboundMessage
+from amberclaw.bus.queue import MessageBus
 from amberclaw.channels.base import BaseChannel
 from amberclaw.config.paths import get_data_dir, get_media_dir
 from amberclaw.utils.helpers import safe_filename
+
+DIRECT_ROOM_MAX_MEMBERS = 2
+
 
 TYPING_NOTICE_TIMEOUT_MS = 30_000
 # Must stay below TYPING_NOTICE_TIMEOUT_MS so the indicator doesn't expire mid-processing.
@@ -59,8 +66,14 @@ _MSGTYPE_MAP = {
 MATRIX_MEDIA_EVENT_FILTER = (RoomMessageMedia, RoomEncryptedMedia)
 MatrixMediaEvent: TypeAlias = RoomMessageMedia | RoomEncryptedMedia
 
+MATRIX_ALLOWED_URL_SCHEMES = {"https", "http", "matrix", "mailto", "mxc"}
+
 MATRIX_MARKDOWN = create_markdown(
     escape=True,
+    renderer=HTMLRenderer(
+        escape=True,
+        allow_harmful_protocols=[f"{s}:" for s in MATRIX_ALLOWED_URL_SCHEMES],
+    ),
     plugins=["table", "strikethrough", "url", "superscript", "subscript"],
 )
 
@@ -101,7 +114,6 @@ MATRIX_ALLOWED_HTML_ATTRIBUTES: dict[str, set[str]] = {
     "ol": {"start"},
     "img": {"src", "alt", "title", "width", "height"},
 }
-MATRIX_ALLOWED_URL_SCHEMES = {"https", "http", "matrix", "mailto", "mxc"}
 
 
 def _filter_matrix_html_attribute(tag: str, attr: str, value: str) -> str | None:
@@ -137,7 +149,10 @@ MATRIX_HTML_CLEANER = nh3.Cleaner(
 def _render_markdown_html(text: str) -> str | None:
     """Render markdown to sanitized HTML; returns None for plain text."""
     try:
-        formatted = MATRIX_HTML_CLEANER.clean(MATRIX_MARKDOWN(text)).strip()
+        rendered = MATRIX_MARKDOWN(text)
+        if not isinstance(rendered, str):
+            return None
+        formatted = MATRIX_HTML_CLEANER.clean(rendered).strip()
     except Exception:
         return None
     if not formatted:
@@ -163,11 +178,13 @@ class _NioLoguruHandler(logging.Handler):
     """Route matrix-nio stdlib logs into Loguru."""
 
     def emit(self, record: logging.LogRecord) -> None:
+        level: str | int
         try:
             level = logger.level(record.levelname).name
         except ValueError:
             level = record.levelno
-        frame, depth = logging.currentframe(), 2
+        frame: FrameType | None = logging.currentframe()
+        depth = 2
         while frame and frame.f_code.co_filename == logging.__file__:
             frame, depth = frame.f_back, depth + 1
         logger.opt(depth=depth, exception=record.exc_info).log(
@@ -191,15 +208,15 @@ class MatrixChannel(BaseChannel):
     def __init__(
         self,
         config: Any,
-        bus,
+        bus: MessageBus,
         *,
         restrict_to_workspace: bool = False,
         workspace: Path | None = None,
-    ):
+    ) -> None:
         super().__init__(config, bus)
         self.client: AsyncClient | None = None
-        self._sync_task: asyncio.Task | None = None
-        self._typing_tasks: dict[str, asyncio.Task] = {}
+        self._sync_task: asyncio.Task[Any] | None = None
+        self._typing_tasks: dict[str, asyncio.Task[Any]] = {}
         self._restrict_to_workspace = restrict_to_workspace
         self._workspace = workspace.expanduser().resolve() if workspace else None
         self._server_upload_limit_bytes: int | None = None
@@ -263,10 +280,8 @@ class MatrixChannel(BaseChannel):
                 )
             except (TimeoutError, asyncio.CancelledError):
                 self._sync_task.cancel()
-                try:
+                with suppress(asyncio.CancelledError):
                     await self._sync_task
-                except asyncio.CancelledError:
-                    pass
         if self.client:
             await self.client.close()
 
@@ -379,18 +394,11 @@ class MatrixChannel(BaseChannel):
         if not self.client:
             return _ATTACH_UPLOAD_FAILED.format(path.name or _DEFAULT_ATTACH_NAME)
 
-        resolved = path.expanduser().resolve(strict=False)
-        filename = safe_filename(resolved.name) or _DEFAULT_ATTACH_NAME
+        prepared = await self._prepare_upload_file(path, limit_bytes)
+        if isinstance(prepared, str):
+            return prepared
+        resolved, filename, size_bytes = prepared
         fail = _ATTACH_UPLOAD_FAILED.format(filename)
-
-        if not resolved.is_file() or not self._is_workspace_path_allowed(resolved):
-            return fail
-        try:
-            size_bytes = resolved.stat().st_size
-        except OSError:
-            return fail
-        if limit_bytes <= 0 or size_bytes > limit_bytes:
-            return _ATTACH_TOO_LARGE.format(filename)
 
         mime = (
             mimetypes.guess_type(filename, strict=False)[0]
@@ -417,10 +425,8 @@ class MatrixChannel(BaseChannel):
             if isinstance(upload_result, tuple) and isinstance(upload_result[1], dict)
             else None
         )
-        if isinstance(upload_response, UploadError):
-            return fail
-        mxc_url = getattr(upload_response, "content_uri", None)
-        if not isinstance(mxc_url, str) or not mxc_url.startswith("mxc://"):
+        mxc_url = self._uploaded_mxc_url(upload_response)
+        if mxc_url is None:
             return fail
 
         content = self._build_outbound_attachment_content(
@@ -437,6 +443,32 @@ class MatrixChannel(BaseChannel):
         except Exception:
             return fail
         return None
+
+    @staticmethod
+    def _uploaded_mxc_url(response: Any) -> str | None:
+        if isinstance(response, UploadError):
+            return None
+        url = getattr(response, "content_uri", None)
+        return url if isinstance(url, str) and url.startswith("mxc://") else None
+
+    async def _prepare_upload_file(
+        self, path: Path, limit_bytes: int
+    ) -> tuple[Path, str, int] | str:
+        resolved = await asyncio.to_thread(
+            lambda: path.expanduser().resolve(strict=False)
+        )
+        filename = safe_filename(resolved.name) or _DEFAULT_ATTACH_NAME
+        fail = _ATTACH_UPLOAD_FAILED.format(filename)
+
+        if not resolved.is_file() or not self._is_workspace_path_allowed(resolved):
+            return fail
+        try:
+            size_bytes = resolved.stat().st_size
+        except OSError:
+            return fail
+        if limit_bytes <= 0 or size_bytes > limit_bytes:
+            return _ATTACH_TOO_LARGE.format(filename)
+        return resolved, filename, size_bytes
 
     async def send(self, msg: OutboundMessage) -> None:
         """Send outbound content; clear typing for non-progress messages."""
@@ -474,6 +506,8 @@ class MatrixChannel(BaseChannel):
                 await self._stop_typing_keepalive(msg.chat_id, clear_typing=True)
 
     def _register_event_callbacks(self) -> None:
+        if self.client is None:
+            return
         self.client.add_event_callback(self._on_message, RoomMessageText)
         self.client.add_event_callback(
             self._on_media_message, MATRIX_MEDIA_EVENT_FILTER
@@ -481,6 +515,8 @@ class MatrixChannel(BaseChannel):
         self.client.add_event_callback(self._on_room_invite, InviteEvent)
 
     def _register_response_callbacks(self) -> None:
+        if self.client is None:
+            return
         self.client.add_response_callback(self._on_sync_error, SyncError)
         self.client.add_response_callback(self._on_join_error, JoinError)
         self.client.add_response_callback(self._on_send_error, RoomSendError)
@@ -515,8 +551,8 @@ class MatrixChannel(BaseChannel):
             )
             if isinstance(response, RoomTypingError):
                 logger.debug("Matrix typing failed for {}: {}", room_id, response)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Matrix typing unavailable in {}: {}", room_id, exc)
 
     async def _start_typing_keepalive(self, room_id: str) -> None:
         """Start periodic typing refresh (spec-recommended keepalive)."""
@@ -538,29 +574,30 @@ class MatrixChannel(BaseChannel):
     async def _stop_typing_keepalive(self, room_id: str, *, clear_typing: bool) -> None:
         if task := self._typing_tasks.pop(room_id, None):
             task.cancel()
-            try:
+            with suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
         if clear_typing:
             await self._set_typing(room_id, False)
 
     async def _sync_loop(self) -> None:
+        client = self.client
+        if client is None:
+            return
         while self._running:
             try:
-                await self.client.sync_forever(timeout=30000, full_state=True)
+                await client.sync_forever(timeout=30000, full_state=True)
             except asyncio.CancelledError:
                 break
             except Exception:
                 await asyncio.sleep(2)
 
     async def _on_room_invite(self, room: MatrixRoom, event: InviteEvent) -> None:
-        if self.is_allowed(event.sender):
+        if self.client is not None and self.is_allowed(event.sender):
             await self.client.join(room.room_id)
 
     def _is_direct_room(self, room: MatrixRoom) -> bool:
         count = getattr(room, "member_count", None)
-        return isinstance(count, int) and count <= 2
+        return isinstance(count, int) and count <= DIRECT_ROOM_MAX_MEMBERS
 
     def _is_bot_mentioned(self, event: RoomMessage) -> bool:
         """Check m.mentions payload for bot mention."""
@@ -637,7 +674,7 @@ class MatrixChannel(BaseChannel):
 
     def _event_attachment_type(self, event: MatrixMediaEvent) -> str:
         msgtype = self._event_source_content(event).get("msgtype")
-        return _MSGTYPE_MAP.get(msgtype, "file")
+        return _MSGTYPE_MAP.get(msgtype, "file") if isinstance(msgtype, str) else "file"
 
     @staticmethod
     def _is_encrypted_media_event(event: MatrixMediaEvent) -> bool:
@@ -661,9 +698,12 @@ class MatrixChannel(BaseChannel):
 
     def _event_filename(self, event: MatrixMediaEvent, attachment_type: str) -> str:
         body = getattr(event, "body", None)
-        if isinstance(body, str) and body.strip():
-            if candidate := safe_filename(Path(body).name):
-                return candidate
+        if (
+            isinstance(body, str)
+            and body.strip()
+            and (candidate := safe_filename(Path(body).name))
+        ):
+            return candidate
         return _DEFAULT_ATTACH_NAME if attachment_type == "file" else attachment_type
 
     def _build_attachment_path(
@@ -675,9 +715,12 @@ class MatrixChannel(BaseChannel):
     ) -> Path:
         safe_name = safe_filename(Path(filename).name) or _DEFAULT_ATTACH_NAME
         suffix = Path(safe_name).suffix
-        if not suffix and mime:
-            if guessed := mimetypes.guess_extension(mime, strict=False):
-                safe_name, suffix = f"{safe_name}{guessed}", guessed
+        if (
+            not suffix
+            and mime
+            and (guessed := mimetypes.guess_extension(mime, strict=False))
+        ):
+            safe_name, suffix = f"{safe_name}{guessed}", guessed
         stem = (Path(safe_name).stem or attachment_type)[:72]
         suffix = suffix[:16]
         event_id = safe_filename(
@@ -699,12 +742,16 @@ class MatrixChannel(BaseChannel):
         if isinstance(response, MemoryDownloadResponse):
             return bytes(response.body)
         if isinstance(body, (str, Path)):
-            path = Path(body)
-            if path.is_file():
-                try:
-                    return path.read_bytes()
-                except OSError:
-                    return None
+            return await self._read_media_path(Path(body))
+        return None
+
+    @staticmethod
+    async def _read_media_path(path: Path) -> bytes | None:
+        if await asyncio.to_thread(path.is_file):
+            try:
+                return await asyncio.to_thread(path.read_bytes)
+            except OSError:
+                return None
         return None
 
     def _decrypt_media_bytes(
@@ -720,16 +767,25 @@ class MatrixChannel(BaseChannel):
         if not all(isinstance(v, str) for v in (key, sha256, iv)):
             return None
         try:
-            return decrypt_attachment(ciphertext, key, sha256, iv)
+            decrypted = decrypt_attachment(ciphertext, key, sha256, iv)
+            return decrypted if isinstance(decrypted, bytes) else None
         except (EncryptionError, ValueError, TypeError):
             logger.warning(
                 "Matrix decrypt failed for event {}", getattr(event, "event_id", "")
             )
             return None
 
+    async def _download_event_media(
+        self, event: MatrixMediaEvent, mxc_url: str
+    ) -> bytes | None:
+        downloaded = await self._download_media_bytes(mxc_url)
+        if downloaded is not None and self._is_encrypted_media_event(event):
+            return self._decrypt_media_bytes(event, downloaded)
+        return downloaded
+
     async def _fetch_media_attachment(
         self,
-        room: MatrixRoom,
+        _room: MatrixRoom,
         event: MatrixMediaEvent,
     ) -> tuple[dict[str, Any] | None, str]:
         """Download, decrypt if needed, and persist a Matrix attachment."""
@@ -747,15 +803,10 @@ class MatrixChannel(BaseChannel):
         if declared is not None and declared > limit_bytes:
             return None, _ATTACH_TOO_LARGE.format(filename)
 
-        downloaded = await self._download_media_bytes(mxc_url)
-        if downloaded is None:
-            return None, fail
-
         encrypted = self._is_encrypted_media_event(event)
-        data = downloaded
-        if encrypted:
-            if (data := self._decrypt_media_bytes(event, downloaded)) is None:
-                return None, fail
+        data = await self._download_event_media(event, mxc_url)
+        if data is None:
+            return None, fail
 
         if len(data) > limit_bytes:
             return None, _ATTACH_TOO_LARGE.format(filename)

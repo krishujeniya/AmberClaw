@@ -32,10 +32,10 @@ class HeartbeatEngine:
     Continuously monitors background tasks, subagents, and memory consolidation loops.
     """
 
-    def __init__(self, check_interval_seconds: int = 5):
+    def __init__(self, check_interval_seconds: int = 5) -> None:
         self.check_interval_seconds = check_interval_seconds
         self._running = False
-        self._tasks: dict[str, asyncio.Task] = {}
+        self._tasks: dict[str, asyncio.Task[Any]] = {}
         self._statuses: dict[str, HeartbeatStatus] = {}
 
     def register_process(self, process_id: str) -> None:

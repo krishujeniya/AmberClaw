@@ -10,22 +10,20 @@ Provides:
 
 import hashlib
 import hmac
-import os
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from amberclaw.security.audit import AuditEvent, SecurityAuditLogger
+from amberclaw.security.credentials import get_signing_secret, validate_signing_secret
 
 # Secret key and cryptographic constants
-JWT_SECRET_KEY = os.getenv(
-    "JWT_SECRET_KEY", "amberclaw-insecure-default-change-me-in-prod"
-)
 ALGORITHM = "HS256"
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 15
 DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS = 7
@@ -116,12 +114,16 @@ class RefreshTokenManager:
 
     def __init__(
         self,
-        secret_key: str = JWT_SECRET_KEY,
+        secret_key: str | None = None,
         access_expire_minutes: int = DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES,
         refresh_expire_days: int = DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS,
         revocation_store: TokenRevocationStore | None = None,
     ) -> None:
-        self.secret_key = secret_key
+        self.secret_key = (
+            get_signing_secret()
+            if secret_key is None
+            else validate_signing_secret(secret_key)
+        )
         self.access_expire_minutes = access_expire_minutes
         self.refresh_expire_days = refresh_expire_days
         self.store = revocation_store or TokenRevocationStore.get_instance()
@@ -200,7 +202,7 @@ class RefreshTokenManager:
         """
         try:
             payload = jwt.decode(refresh_token, self.secret_key, algorithms=[ALGORITHM])
-        except JWTError as e:
+        except InvalidTokenError as e:
             raise PermissionError(f"Invalid refresh token: {e}") from e
 
         if payload.get("type") != "refresh":

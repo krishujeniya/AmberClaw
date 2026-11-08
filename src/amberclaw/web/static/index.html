@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
     <title>AmberClaw AI OS — Mission Control</title>
     <style>
         :root {
@@ -332,7 +333,15 @@
         }
 
         /* Responsive Mobile Drawer */
+        #login-form { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+        #login-form input { min-width: 0; max-width: 100%; }
+        .metric-card { overflow-x: auto; }
+        .brand { flex-wrap: wrap; }
+        button:disabled { cursor: not-allowed; opacity: 0.6; }
         @media (max-width: 768px) {
+            header { flex-wrap: wrap; gap: 0.75rem; }
+            .brand h1 { font-size: 1.05rem; }
+            #login-form { display: grid; grid-template-columns: 1fr; }
             .layout-container { flex-direction: column; }
             nav { width: 100%; border-right: none; border-bottom: 1px solid var(--border); flex-direction: row; overflow-x: auto; padding: 0.5rem; }
             nav button { white-space: nowrap; }
@@ -348,7 +357,7 @@
         <div class="brand">
             <span style="font-size: 1.5rem;">⚡</span>
             <h1 data-i18n="app_title">AmberClaw Mission Control</h1>
-            <span class="badge" data-i18n="kernel_active">Zero-Trust Kernel Active</span>
+            <span id="runtime-state" role="status">Sign in to view runtime status</span>
         </div>
         <div class="header-actions">
             <!-- Locale Switcher -->
@@ -361,7 +370,7 @@
                 <option value="ja">日本語 (JA)</option>
                 <option value="zh">中文 (ZH)</option>
             </select>
-            <button id="auth-btn" class="primary" data-i18n="logout_btn">Logout</button>
+            <button id="auth-btn" class="primary" hidden>Sign out</button>
         </div>
     </header>
 
@@ -393,12 +402,23 @@
 
         <!-- Main Content Area -->
         <main id="main-content">
+            <section class="metric-card" id="auth-panel" aria-labelledby="auth-title">
+                <h2 id="auth-title">Sign in</h2>
+                <form id="login-form">
+                    <label for="username">Username</label>
+                    <input id="username" name="username" autocomplete="username" required aria-describedby="auth-status">
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required aria-describedby="auth-status">
+                    <button type="submit" class="primary">Sign in</button>
+                </form>
+                <p id="auth-status" role="status" aria-live="polite">Sign in to view private dashboard data.</p>
+            </section>
             <!-- 1. Chat Tab -->
             <div id="chat-tab" class="tab-content active">
                 <div class="chat-container">
                     <div class="chat-messages" id="chat-messages" aria-live="polite">
                         <div class="msg assistant">
-                            <span data-i18n="welcome_msg">Hello! I am AmberClaw, your autonomous AI operating system. How may I assist you today?</span>
+                            <span>Sign in to check whether an agent runtime is available.</span>
                         </div>
                     </div>
 
@@ -414,8 +434,13 @@
             <div id="sessions-tab" class="tab-content">
                 <div class="metric-card">
                     <h3 data-i18n="active_sessions">Active Agent Sessions</h3>
-                    <div class="metric-val" id="session-count">1</div>
+                    <div class="metric-val" id="session-count">Unavailable</div>
                     <p data-i18n="session_desc">Ephemeral and persistent workspace sessions</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Recorded sessions</h3>
+                    <table><thead><tr><th>Session</th><th>Created</th><th>Updated</th></tr></thead>
+                    <tbody id="sessions-table-body"><tr><td colspan="5">No data source is connected for this view.</td></tr></tbody></table>
                 </div>
                 <div class="metric-card">
                     <h3 data-i18n="recall_facts">Long-Term Memory Facts</h3>
@@ -428,14 +453,7 @@
                                 <th>Timestamp</th>
                             </tr>
                         </thead>
-                        <tbody id="memory-table-body">
-                            <tr>
-                                <td>user.preferred_model</td>
-                                <td>preferences.json</td>
-                                <td><span class="badge">VERIFIED</span></td>
-                                <td>2026-10-27 15:30</td>
-                            </tr>
-                        </tbody>
+                        <tbody id="memory-table-body"><tr><td colspan="5">No data source is connected for this view.</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -453,26 +471,7 @@
                                 <th>Circuit Breaker</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td>Anthropic Claude</td>
-                                <td>claude-3-7-sonnet</td>
-                                <td><span class="badge">ONLINE</span></td>
-                                <td>CLOSED (Normal)</td>
-                            </tr>
-                            <tr>
-                                <td>OpenAI / Azure</td>
-                                <td>gpt-4o</td>
-                                <td><span class="badge">ONLINE</span></td>
-                                <td>CLOSED (Normal)</td>
-                            </tr>
-                            <tr>
-                                <td>Local Ollama</td>
-                                <td>deepseek-r1:32b</td>
-                                <td><span class="badge">STANDBY</span></td>
-                                <td>CLOSED (Normal)</td>
-                            </tr>
-                        </tbody>
+                        <tbody><tr><td colspan="5">No data source is connected for this view.</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -490,26 +489,7 @@
                                 <th>Egress DLP</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td>Web Dashboard SPA</td>
-                                <td><span class="badge">ACTIVE</span></td>
-                                <td>Authenticated Cookie</td>
-                                <td>Enforced</td>
-                            </tr>
-                            <tr>
-                                <td>Telegram Bot</td>
-                                <td><span class="badge">ACTIVE</span></td>
-                                <td>Whitelisted IDs</td>
-                                <td>Enforced</td>
-                            </tr>
-                            <tr>
-                                <td>WhatsApp Bridge</td>
-                                <td><span class="badge">ISOLATED</span></td>
-                                <td>Localhost:3001</td>
-                                <td>Enforced</td>
-                            </tr>
-                        </tbody>
+                        <tbody><tr><td colspan="5">No data source is connected for this view.</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -523,20 +503,11 @@
                             <tr>
                                 <th>Ticket ID</th>
                                 <th>Requested Action</th>
-                                <th>Risk Level</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="governance-table-body">
-                            <tr>
-                                <td>TICK-8041</td>
-                                <td>KMS Master Key Rotation</td>
-                                <td><span class="badge" style="color: #f59e0b; border-color: #f59e0b;">CRITICAL</span></td>
-                                <td>
-                                    <button class="primary" onclick="openApprovalModal('TICK-8041', 'KMS Master Key Rotation')">Review</button>
-                                </td>
-                            </tr>
-                        </tbody>
+                        <tbody id="governance-table-body"><tr><td colspan="5">No data source is connected for this view.</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -546,18 +517,18 @@
                 <div class="metrics-grid">
                     <div class="metric-card">
                         <h3 data-i18n="total_tokens">Total Tokens</h3>
-                        <div class="metric-val">1.42M</div>
+                        <div class="metric-val" id="total-tokens">Unavailable</div>
                         <div class="metric-sub">Across all agents</div>
                     </div>
                     <div class="metric-card">
                         <h3 data-i18n="est_cost">Estimated Spend</h3>
-                        <div class="metric-val">$4.18</div>
-                        <div class="metric-sub">Budget Cap: $50.00</div>
+                        <div class="metric-val" id="estimated-spend">Unavailable</div>
+                        <div class="metric-sub" id="budget-cap">Budget cap unavailable</div>
                     </div>
                     <div class="metric-card">
                         <h3 data-i18n="p95_latency">P95 Latency</h3>
-                        <div class="metric-val">340ms</div>
-                        <div class="metric-sub">SLO target: &lt;1000ms</div>
+                        <div class="metric-val" id="p95-latency">Unavailable</div>
+                        <div class="metric-sub">Recorded request latency</div>
                     </div>
                 </div>
             </div>
@@ -576,22 +547,7 @@
                                 <th>SHA-256 Hash</th>
                             </tr>
                         </thead>
-                        <tbody id="audit-table-body">
-                            <tr>
-                                <td>vault.secret_accessed</td>
-                                <td>system</td>
-                                <td>ANTHROPIC_API_KEY</td>
-                                <td><span class="badge">SUCCESS</span></td>
-                                <td><code>a7f8b9...</code></td>
-                            </tr>
-                            <tr>
-                                <td>security.policy_lock.enforced</td>
-                                <td>policy_engine</td>
-                                <td>session_alpha</td>
-                                <td><span class="badge">LOCKED</span></td>
-                                <td><code>3e42c1...</code></td>
-                            </tr>
-                        </tbody>
+                        <tbody id="audit-table-body"><tr><td colspan="5">No data source is connected for this view.</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -600,14 +556,13 @@
 
     <!-- Tool Approval Modal Dialog (Compliant with modern web guidance) -->
     <dialog id="approval-dialog" aria-labelledby="dialog-title" closedby="any">
-        <h2 id="dialog-title" data-i18n="dialog_title">Action Approval Required</h2>
-        <p id="dialog-desc">The agent has requested permission to execute a privileged tool call.</p>
+        <h2 id="dialog-title">Approval details</h2>
+        <p id="dialog-desc">Approvals are read only in this dashboard.</p>
         <div style="background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: var(--radius-md); font-family: monospace;" id="dialog-tool-details">
-            Action: KMS Master Key Rotation
+            No approval selected.
         </div>
         <form method="dialog" class="dialog-actions">
-            <button value="cancel" autofocus data-i18n="dialog_deny">Deny</button>
-            <button value="approve" class="primary" data-i18n="dialog_approve">Approve</button>
+            <button value="cancel" autofocus>Close</button>
         </form>
     </dialog>
 
@@ -823,7 +778,11 @@
                 });
 
                 if (!response.ok || !response.body) {
-                    assistantSpan.innerText = "Task dispatched to agent loop. Processing in background.";
+                    assistantSpan.innerText = response.status === 401
+                        ? "Your session has expired. Sign in again."
+                        : response.status === 503
+                        ? "Chat is unavailable: no agent runtime is connected."
+                        : "The request failed. No completed response is available.";
                     return;
                 }
 
@@ -842,7 +801,7 @@
                 if (err.name === 'AbortError') {
                     assistantSpan.innerText += " [Generation cancelled by user]";
                 } else {
-                    assistantSpan.innerText = "Execution completed: response delivered via secure channel.";
+                    assistantSpan.innerText = "Connection failed. No completed response is available.";
                 }
             } finally {
                 sendBtn.style.display = 'inline-block';
@@ -861,6 +820,119 @@
                 sendMessage();
             }
         });
+
+
+        const authPanel = document.getElementById('auth-panel');
+        const loginForm = document.getElementById('login-form');
+        const authStatus = document.getElementById('auth-status');
+        const authButton = document.getElementById('auth-btn');
+        const runtimeState = document.getElementById('runtime-state');
+        let signedIn = false;
+        let runtimeConfigured = false;
+
+        function setSessionState(active) {
+            signedIn = active;
+            authPanel.hidden = active;
+            authButton.hidden = !active;
+            chatInput.disabled = !active || !runtimeConfigured;
+            sendBtn.disabled = !active || !runtimeConfigured;
+            if (!active) runtimeState.textContent = 'Sign in to view runtime status';
+        }
+
+        function fillRows(id, rows, columns) {
+            const body = document.getElementById(id);
+            body.replaceChildren();
+            for (const row of rows) {
+                const tr = document.createElement('tr');
+                for (const value of row) {
+                    const td = document.createElement('td');
+                    td.textContent = value ?? 'Unavailable';
+                    tr.appendChild(td);
+                }
+                body.appendChild(tr);
+            }
+            if (!rows.length) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = columns;
+                td.textContent = 'No records available from a connected source.';
+                tr.appendChild(td);
+                body.appendChild(tr);
+            }
+        }
+
+        async function readDashboard(path) {
+            const response = await fetch(path);
+            if (response.status === 401) {
+                setSessionState(false);
+                throw new Error('Session expired. Sign in again.');
+            }
+            if (!response.ok) throw new Error('Dashboard data could not be loaded.');
+            return response.json();
+        }
+
+        async function loadDashboard() {
+            try {
+                const [summary, sessions, tickets, usage, audit] = await Promise.all([
+                    readDashboard('/api/dashboard/summary'), readDashboard('/api/sessions'),
+                    readDashboard('/api/governance/tickets'), readDashboard('/api/metrics/usage'),
+                    readDashboard('/api/audit/logs')
+                ]);
+                runtimeConfigured = summary.status === 'configured';
+                runtimeState.textContent = runtimeConfigured ? 'Agent runtime configured' : 'Agent runtime unavailable';
+                setSessionState(true);
+                document.getElementById('session-count').textContent = sessions.length ? sessions.length : 'No records available';
+                fillRows('sessions-table-body', sessions.map(s => [s.key ?? s.session_id, s.created_at, s.updated_at]), 3);
+                fillRows('governance-table-body', tickets.map(t => [t.ticket_id, t.action, t.status, 'Read only']), 4);
+                fillRows('audit-table-body', audit.map(a => [a.action, a.actor, a.resource, a.outcome, a.hash]), 5);
+                document.getElementById('total-tokens').textContent = usage.total_tokens ?? 'Unavailable';
+                document.getElementById('estimated-spend').textContent = usage.estimated_spend_usd == null ? 'Unavailable' : '$' + usage.estimated_spend_usd.toFixed(2);
+                document.getElementById('budget-cap').textContent = usage.budget_cap_usd == null ? 'Budget cap unavailable' : 'Budget cap: $' + usage.budget_cap_usd.toFixed(2);
+                document.getElementById('p95-latency').textContent = usage.p95_latency_ms == null ? 'Unavailable' : usage.p95_latency_ms + 'ms';
+            } catch (error) {
+                authStatus.textContent = error.message;
+                authPanel.hidden = false;
+                runtimeState.textContent = 'Dashboard data unavailable';
+            }
+        }
+
+        loginForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const submit = loginForm.querySelector('button');
+            submit.disabled = true;
+            authStatus.textContent = 'Signing in…';
+            try {
+                const response = await fetch('/api/web/login', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: document.getElementById('username').value, password: document.getElementById('password').value })
+                });
+                if (!response.ok) throw new Error('Sign-in failed. Check your credentials and dashboard configuration.');
+                document.getElementById('password').value = '';
+                await loadDashboard();
+                if (signedIn) authButton.focus();
+            } catch (error) {
+                authStatus.textContent = error.message;
+            } finally {
+                submit.disabled = false;
+            }
+        });
+
+        authButton.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/web/logout', { method: 'POST' });
+                if (!response.ok) throw new Error('Sign-out failed. Try again.');
+                currentAbortController?.abort();
+                window.location.reload();
+            } catch (error) {
+                authPanel.hidden = false;
+                authStatus.textContent = error.message;
+            }
+        });
+
+        setSessionState(false);
+        fetch('/api/web/session').then(response => {
+            if (response.ok) return loadDashboard();
+        }).catch(() => { authStatus.textContent = 'Unable to reach the dashboard. Try again.'; });
 
         // Dialog Modal Logic (Native <dialog>)
         const approvalDialog = document.getElementById('approval-dialog');

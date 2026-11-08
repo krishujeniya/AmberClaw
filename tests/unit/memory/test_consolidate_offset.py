@@ -73,8 +73,10 @@ class TestSessionLastConsolidated:
         manager.save(session1)
 
         session2 = manager.get_or_create("test:persist")
-        assert session2.last_consolidated == 15
-        assert len(session2.messages) == 20
+        expected_session2_last_consolidated = 15
+        assert session2.last_consolidated == expected_session2_last_consolidated
+        expected_session2_messages_count = 20
+        assert len(session2.messages) == expected_session2_messages_count
 
     def test_clear_resets_last_consolidated(self) -> None:
         """Test that clear() resets last_consolidated to 0."""
@@ -100,7 +102,8 @@ class TestSessionImmutableHistory:
         session.add_message("user", "msg1")
         session.add_message("assistant", "resp1")
         session.add_message("user", "msg2")
-        assert len(session.messages) == 3
+        expected_session_messages_count = 3
+        assert len(session.messages) == expected_session_messages_count
         assert session.messages[0]["content"] == "msg1"
 
     def test_get_history_returns_most_recent(self) -> None:
@@ -111,7 +114,8 @@ class TestSessionImmutableHistory:
             session.add_message("assistant", f"resp{i}")
 
         history = session.get_history(max_messages=6)
-        assert len(history) == 6
+        expected_history_count = 6
+        assert len(history) == expected_history_count
         assert history[0]["content"] == "msg7"
         assert history[-1]["content"] == "resp9"
 
@@ -119,7 +123,8 @@ class TestSessionImmutableHistory:
         """Test get_history with max_messages larger than actual."""
         session = create_session_with_messages("test:all", 5)
         history = session.get_history(max_messages=100)
-        assert len(history) == 5
+        expected_history_count_2 = 5
+        assert len(history) == expected_history_count_2
         assert history[0]["content"] == "msg0"
 
     def test_get_history_stable_for_same_session(self) -> None:
@@ -155,7 +160,8 @@ class TestSessionPersistence:
         temp_manager.save(session1)
 
         session2 = temp_manager.get_or_create("test:persistence")
-        assert len(session2.messages) == 20
+        expected_session2_messages_count_2 = 20
+        assert len(session2.messages) == expected_session2_messages_count_2
         assert session2.messages[0]["content"] == "msg0"
         assert session2.messages[-1]["content"] == "msg19"
 
@@ -166,14 +172,17 @@ class TestSessionPersistence:
 
         session2 = temp_manager.get_or_create("test:reload")
         history = session2.get_history(max_messages=10)
-        assert len(history) == 10
+        expected_history_count_3 = 10
+        assert len(history) == expected_history_count_3
         assert history[0]["content"] == "msg20"
         assert history[-1]["content"] == "msg29"
 
-    def test_clear_resets_session(self, temp_manager):
+    @pytest.mark.usefixtures("temp_manager")
+    def test_clear_resets_session(self):
         """Test that clear() properly resets session."""
         session = create_session_with_messages("test:clear", 10)
-        assert len(session.messages) == 10
+        expected_session_messages_count_2 = 10
+        assert len(session.messages) == expected_session_messages_count_2
 
         session.clear()
         assert len(session.messages) == 0
@@ -193,7 +202,8 @@ class TestConsolidationTriggerConditions:
         assert messages_to_process > 0
 
         expected_consolidate_count = total_messages - KEEP_COUNT
-        assert expected_consolidate_count == 35
+        expected_expected_consolidate_count = 35
+        assert expected_consolidate_count == expected_expected_consolidate_count
 
     def test_consolidation_skipped_when_within_keep_count(self):
         """Test consolidation skipped when total messages <= keep_count."""
@@ -248,7 +258,8 @@ class TestLastConsolidatedEdgeCases:
         old_messages = get_old_messages(session, session.last_consolidated, keep_count)
 
         # messages[-5:-3] with 10 messages gives indices 5,6
-        assert len(old_messages) == 2
+        expected_old_messages_count = 2
+        assert len(old_messages) == expected_old_messages_count
         assert old_messages[0]["content"] == "msg5"
         assert old_messages[-1]["content"] == "msg6"
 
@@ -289,7 +300,8 @@ class TestArchiveAllMode:
         archive_all = True
         if archive_all:
             old_messages = session.messages
-            assert len(old_messages) == 50
+            expected_old_messages_count_2 = 50
+            assert len(old_messages) == expected_old_messages_count_2
 
         assert session.last_consolidated == 0
 
@@ -303,7 +315,8 @@ class TestArchiveAllMode:
             session.last_consolidated = 0
 
         assert session.last_consolidated == 0
-        assert len(session.messages) == 40
+        expected_session_messages_count_3 = 40
+        assert len(session.messages) == expected_session_messages_count_3
 
     def test_archive_all_vs_normal_consolidation(self):
         """Test difference between archive_all and normal consolidation."""
@@ -315,10 +328,13 @@ class TestArchiveAllMode:
         session2 = create_session_with_messages("test:all", 60)
         session2.last_consolidated = 0
 
-        assert session1.last_consolidated == 35
-        assert len(session1.messages) == 60
+        expected_session1_last_consolidated = 35
+        assert session1.last_consolidated == expected_session1_last_consolidated
+        expected_session1_messages_count = 60
+        assert len(session1.messages) == expected_session1_messages_count
         assert session2.last_consolidated == 0
-        assert len(session2.messages) == 60
+        expected_session2_messages_count_3 = 60
+        assert len(session2.messages) == expected_session2_messages_count_3
 
 
 class TestCacheImmutability:
@@ -342,9 +358,11 @@ class TestCacheImmutability:
 
         for _ in range(5):
             history = session.get_history(max_messages=10)
-            assert len(history) == 10
+            expected_history_count_4 = 10
+            assert len(history) == expected_history_count_4
 
-        assert len(session.messages) == 40
+        expected_session_messages_count_4 = 40
+        assert len(session.messages) == expected_session_messages_count_4
         for i, msg in enumerate(session.messages):
             assert msg["content"] == original_messages[i]["content"]
 
@@ -361,7 +379,8 @@ class TestCacheImmutability:
         assert session.messages == original_messages
         assert session.key == original_key
         assert session.metadata == original_metadata
-        assert session.last_consolidated == 35
+        expected_session_last_consolidated = 35
+        assert session.last_consolidated == expected_session_last_consolidated
 
 
 class TestSliceLogic:
@@ -373,11 +392,13 @@ class TestSliceLogic:
 
         old_messages = get_old_messages(session, 0, KEEP_COUNT)
 
-        assert len(old_messages) == 35
+        expected_old_messages_count_3 = 35
+        assert len(old_messages) == expected_old_messages_count_3
         assert_messages_content(old_messages, 0, 34)
 
         remaining = session.messages[-KEEP_COUNT:]
-        assert len(remaining) == 25
+        expected_remaining_count = 25
+        assert len(remaining) == expected_remaining_count
         assert_messages_content(remaining, 35, 59)
 
     def test_slice_with_partial_consolidation(self):
@@ -387,7 +408,8 @@ class TestSliceLogic:
         last_consolidated = 30
         old_messages = get_old_messages(session, last_consolidated, KEEP_COUNT)
 
-        assert len(old_messages) == 15
+        expected_old_messages_count_4 = 15
+        assert len(old_messages) == expected_old_messages_count_4
         assert_messages_content(old_messages, 30, 44)
 
     def test_slice_with_various_keep_counts(self):
@@ -447,7 +469,8 @@ class TestEmptyAndBoundarySessions:
         """Test session with one message over keep_count."""
         session = create_session_with_messages("test:over", KEEP_COUNT + 1)
 
-        assert len(session.messages) == 26
+        expected_session_messages_count_5 = 26
+        assert len(session.messages) == expected_session_messages_count_5
 
         old_messages = get_old_messages(session, session.last_consolidated, KEEP_COUNT)
         assert len(old_messages) == 1
@@ -457,14 +480,17 @@ class TestEmptyAndBoundarySessions:
         """Test consolidation with very large message count."""
         session = create_session_with_messages("test:large", 1000)
 
-        assert len(session.messages) == 1000
+        expected_session_messages_count_6 = 1000
+        assert len(session.messages) == expected_session_messages_count_6
 
         old_messages = get_old_messages(session, session.last_consolidated, KEEP_COUNT)
-        assert len(old_messages) == 975
+        expected_old_messages_count_5 = 975
+        assert len(old_messages) == expected_old_messages_count_5
         assert_messages_content(old_messages, 0, 974)
 
         remaining = session.messages[-KEEP_COUNT:]
-        assert len(remaining) == 25
+        expected_remaining_count_2 = 25
+        assert len(remaining) == expected_remaining_count_2
         assert_messages_content(remaining, 975, 999)
 
     def test_session_with_gaps_in_consolidation(self):
@@ -491,10 +517,18 @@ class TestConsolidationDeduplicationGuard:
         self, tmp_path: Path
     ) -> None:
         """Concurrent messages above memory_window spawn only one consolidation task."""
-        from amberclaw.agent.loop import AgentLoop
-        from amberclaw.bus.events import InboundMessage
-        from amberclaw.bus.queue import MessageBus
-        from amberclaw.providers.base import LLMResponse
+        from amberclaw.agent.loop import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            AgentLoop,
+        )
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+        )
+        from amberclaw.bus.queue import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            MessageBus,
+        )
+        from amberclaw.providers.base import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            LLMResponse,
+        )
 
         bus = MessageBus()
         provider = MagicMock()
@@ -520,7 +554,7 @@ class TestConsolidationDeduplicationGuard:
 
         consolidation_calls = 0
 
-        async def _fake_consolidate(_session, archive_all: bool = False) -> None:
+        async def _fake_consolidate(_session, archive_all: bool = False) -> None:  # noqa: ARG001 - preserve the fake SDK keyword contract
             nonlocal consolidation_calls
             consolidation_calls += 1
             _session.last_consolidated = len(_session.messages)
@@ -545,10 +579,18 @@ class TestConsolidationDeduplicationGuard:
         tmp_path: Path,
     ) -> None:
         """/new command does not run consolidation concurrently with in-flight consolidation."""
-        from amberclaw.agent.loop import AgentLoop
-        from amberclaw.bus.events import InboundMessage
-        from amberclaw.bus.queue import MessageBus
-        from amberclaw.providers.base import LLMResponse
+        from amberclaw.agent.loop import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            AgentLoop,
+        )
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+        )
+        from amberclaw.bus.queue import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            MessageBus,
+        )
+        from amberclaw.providers.base import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            LLMResponse,
+        )
 
         bus = MessageBus()
         provider = MagicMock()
@@ -576,7 +618,7 @@ class TestConsolidationDeduplicationGuard:
         active = 0
         max_active = 0
 
-        async def _fake_consolidate(_session, archive_all: bool = False) -> None:
+        async def _fake_consolidate(_session, archive_all: bool = False) -> None:  # noqa: ARG001 - preserve the fake SDK keyword contract
             nonlocal consolidation_calls, active, max_active
             consolidation_calls += 1
             active += 1
@@ -597,7 +639,8 @@ class TestConsolidationDeduplicationGuard:
         await loop._process_message(new_msg)
         await asyncio.sleep(0.1)
 
-        assert consolidation_calls == 2, (
+        expected_consolidation_calls = 2
+        assert consolidation_calls == expected_consolidation_calls, (
             f"Expected normal + /new consolidations, got {consolidation_calls}"
         )
         assert max_active == 1, (
@@ -607,10 +650,18 @@ class TestConsolidationDeduplicationGuard:
     @pytest.mark.asyncio
     async def test_consolidation_tasks_are_referenced(self, tmp_path: Path) -> None:
         """create_task results are tracked in _consolidation_tasks while in flight."""
-        from amberclaw.agent.loop import AgentLoop
-        from amberclaw.bus.events import InboundMessage
-        from amberclaw.bus.queue import MessageBus
-        from amberclaw.providers.base import LLMResponse
+        from amberclaw.agent.loop import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            AgentLoop,
+        )
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+        )
+        from amberclaw.bus.queue import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            MessageBus,
+        )
+        from amberclaw.providers.base import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            LLMResponse,
+        )
 
         bus = MessageBus()
         provider = MagicMock()
@@ -636,7 +687,7 @@ class TestConsolidationDeduplicationGuard:
 
         started = asyncio.Event()
 
-        async def _slow_consolidate(_session, archive_all: bool = False) -> None:
+        async def _slow_consolidate(_session, archive_all: bool = False) -> None:  # noqa: ARG001 - preserve the fake SDK keyword contract
             started.set()
             await asyncio.sleep(0.1)
 
@@ -663,10 +714,18 @@ class TestConsolidationDeduplicationGuard:
         tmp_path: Path,
     ) -> None:
         """/new waits for in-flight consolidation and archives before clear."""
-        from amberclaw.agent.loop import AgentLoop
-        from amberclaw.bus.events import InboundMessage
-        from amberclaw.bus.queue import MessageBus
-        from amberclaw.providers.base import LLMResponse
+        from amberclaw.agent.loop import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            AgentLoop,
+        )
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+        )
+        from amberclaw.bus.queue import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            MessageBus,
+        )
+        from amberclaw.providers.base import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            LLMResponse,
+        )
 
         bus = MessageBus()
         provider = MagicMock()
@@ -739,10 +798,18 @@ class TestConsolidationDeduplicationGuard:
         self, tmp_path: Path
     ) -> None:
         """/new must keep session data if archive step reports failure."""
-        from amberclaw.agent.loop import AgentLoop
-        from amberclaw.bus.events import InboundMessage
-        from amberclaw.bus.queue import MessageBus
-        from amberclaw.providers.base import LLMResponse
+        from amberclaw.agent.loop import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            AgentLoop,
+        )
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+        )
+        from amberclaw.bus.queue import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            MessageBus,
+        )
+        from amberclaw.providers.base import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            LLMResponse,
+        )
 
         bus = MessageBus()
         provider = MagicMock()
@@ -767,10 +834,8 @@ class TestConsolidationDeduplicationGuard:
         loop.sessions.save(session)
         before_count = len(session.messages)
 
-        async def _failing_consolidate(sess, archive_all: bool = False) -> bool:
-            if archive_all:
-                return False
-            return True
+        async def _failing_consolidate(_sess, archive_all: bool = False) -> bool:
+            return not archive_all
 
         loop._consolidate_memory = _failing_consolidate  # type: ignore[method-assign]
 
@@ -792,10 +857,18 @@ class TestConsolidationDeduplicationGuard:
         tmp_path: Path,
     ) -> None:
         """/new should archive only messages not yet consolidated by prior task."""
-        from amberclaw.agent.loop import AgentLoop
-        from amberclaw.bus.events import InboundMessage
-        from amberclaw.bus.queue import MessageBus
-        from amberclaw.providers.base import LLMResponse
+        from amberclaw.agent.loop import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            AgentLoop,
+        )
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+        )
+        from amberclaw.bus.queue import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            MessageBus,
+        )
+        from amberclaw.providers.base import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            LLMResponse,
+        )
 
         bus = MessageBus()
         provider = MagicMock()
@@ -854,17 +927,26 @@ class TestConsolidationDeduplicationGuard:
 
         assert response is not None
         assert "new session started" in response.content.lower()
-        assert archived_count == 3, (
+        expected_archived_count = 3
+        assert archived_count == expected_archived_count, (
             f"Expected only unconsolidated tail to archive, got {archived_count}"
         )
 
     @pytest.mark.asyncio
     async def test_new_clears_session_and_responds(self, tmp_path: Path) -> None:
         """/new clears session and returns confirmation."""
-        from amberclaw.agent.loop import AgentLoop
-        from amberclaw.bus.events import InboundMessage
-        from amberclaw.bus.queue import MessageBus
-        from amberclaw.providers.base import LLMResponse
+        from amberclaw.agent.loop import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            AgentLoop,
+        )
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+        )
+        from amberclaw.bus.queue import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            MessageBus,
+        )
+        from amberclaw.providers.base import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            LLMResponse,
+        )
 
         bus = MessageBus()
         provider = MagicMock()
@@ -887,7 +969,7 @@ class TestConsolidationDeduplicationGuard:
             session.add_message("assistant", f"resp{i}")
         loop.sessions.save(session)
 
-        async def _ok_consolidate(sess, archive_all: bool = False) -> bool:
+        async def _ok_consolidate(_sess, archive_all: bool = False) -> bool:  # noqa: ARG001 - preserve the fake SDK keyword contract
             return True
 
         loop._consolidate_memory = _ok_consolidate  # type: ignore[method-assign]

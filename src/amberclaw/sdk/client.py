@@ -17,6 +17,25 @@ from amberclaw.sdk.exceptions import (
 )
 
 
+def _parse_json_object_response(response: httpx.Response) -> dict[str, Any]:
+    """Validate the object envelope promised by non-streaming SDK methods."""
+    try:
+        data: object = response.json()
+    except ValueError as exc:
+        raise AmberClawAPIError(
+            message="Gateway response must be a JSON object",
+            code="INVALID_RESPONSE",
+            status_code=response.status_code,
+        ) from exc
+    if not isinstance(data, dict):
+        raise AmberClawAPIError(
+            message="Gateway response must be a JSON object",
+            code="INVALID_RESPONSE",
+            status_code=response.status_code,
+        )
+    return data
+
+
 def _parse_error_response(response: httpx.Response) -> AmberClawAPIError:
     """Parse standard AmberClaw error envelopes."""
     status_code = response.status_code
@@ -88,7 +107,7 @@ class AsyncAmberClawClient:
             res = await self._client.get("/health")
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
             raise AmberClawConnectionError(f"Failed to reach Gateway: {e}") from e
 
@@ -110,7 +129,7 @@ class AsyncAmberClawClient:
                 raise AmberClawAuthError("Unauthorized access to provider health")
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
             raise AmberClawConnectionError(f"Failed to reach Gateway: {e}") from e
 
@@ -128,10 +147,12 @@ class AsyncAmberClawClient:
         try:
             res = await self._client.post("/api/v1/chat", json=payload)
             if res.status_code in (401, 403):
-                raise AmberClawAuthError("Invalid credentials or unauthorized chat access")
+                raise AmberClawAuthError(
+                    "Invalid credentials or unauthorized chat access"
+                )
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
             raise AmberClawConnectionError(f"Chat request failed: {e}") from e
 
@@ -147,7 +168,9 @@ class AsyncAmberClawClient:
             payload["session_id"] = session_id
 
         try:
-            async with self._client.stream("POST", "/api/v1/chat/stream", json=payload) as response:
+            async with self._client.stream(
+                "POST", "/api/v1/chat/stream", json=payload
+            ) as response:
                 if response.status_code in (401, 403):
                     raise AmberClawAuthError("Unauthorized stream request")
                 if response.is_error:
@@ -181,10 +204,12 @@ class AsyncAmberClawClient:
     async def list_agents(self, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         """List configured agent profiles."""
         try:
-            res = await self._client.get("/api/v1/agents", params={"limit": limit, "offset": offset})
+            res = await self._client.get(
+                "/api/v1/agents", params={"limit": limit, "offset": offset}
+            )
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
             raise AmberClawConnectionError(f"Failed to list agents: {e}") from e
 
@@ -194,9 +219,11 @@ class AsyncAmberClawClient:
             res = await self._client.get(f"/api/v1/agents/{agent_id}")
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
-            raise AmberClawConnectionError(f"Failed to get agent {agent_id}: {e}") from e
+            raise AmberClawConnectionError(
+                f"Failed to get agent {agent_id}: {e}"
+            ) from e
 
     async def delete_memory(
         self,
@@ -214,7 +241,7 @@ class AsyncAmberClawClient:
             res = await self._client.delete("/api/v1/memory", params=params)
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
             raise AmberClawConnectionError(f"Failed to delete memory: {e}") from e
 
@@ -266,7 +293,7 @@ class AmberClawClient:
             res = self._client.get("/health")
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
             raise AmberClawConnectionError(f"Failed to reach Gateway: {e}") from e
 
@@ -288,7 +315,7 @@ class AmberClawClient:
                 raise AmberClawAuthError("Unauthorized access to provider health")
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
             raise AmberClawConnectionError(f"Failed to reach Gateway: {e}") from e
 
@@ -306,10 +333,12 @@ class AmberClawClient:
         try:
             res = self._client.post("/api/v1/chat", json=payload)
             if res.status_code in (401, 403):
-                raise AmberClawAuthError("Invalid credentials or unauthorized chat access")
+                raise AmberClawAuthError(
+                    "Invalid credentials or unauthorized chat access"
+                )
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
             raise AmberClawConnectionError(f"Chat request failed: {e}") from e
 
@@ -325,7 +354,9 @@ class AmberClawClient:
             payload["session_id"] = session_id
 
         try:
-            with self._client.stream("POST", "/api/v1/chat/stream", json=payload) as response:
+            with self._client.stream(
+                "POST", "/api/v1/chat/stream", json=payload
+            ) as response:
                 if response.status_code in (401, 403):
                     raise AmberClawAuthError("Unauthorized stream request")
                 if response.is_error:
@@ -359,10 +390,12 @@ class AmberClawClient:
     def list_agents(self, limit: int = 50, offset: int = 0) -> dict[str, Any]:
         """List configured agent profiles."""
         try:
-            res = self._client.get("/api/v1/agents", params={"limit": limit, "offset": offset})
+            res = self._client.get(
+                "/api/v1/agents", params={"limit": limit, "offset": offset}
+            )
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
             raise AmberClawConnectionError(f"Failed to list agents: {e}") from e
 
@@ -372,9 +405,11 @@ class AmberClawClient:
             res = self._client.get(f"/api/v1/agents/{agent_id}")
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
-            raise AmberClawConnectionError(f"Failed to get agent {agent_id}: {e}") from e
+            raise AmberClawConnectionError(
+                f"Failed to get agent {agent_id}: {e}"
+            ) from e
 
     def delete_memory(
         self,
@@ -392,6 +427,6 @@ class AmberClawClient:
             res = self._client.delete("/api/v1/memory", params=params)
             if res.is_error:
                 raise _parse_error_response(res)
-            return res.json()
+            return _parse_json_object_response(res)
         except httpx.RequestError as e:
             raise AmberClawConnectionError(f"Failed to delete memory: {e}") from e

@@ -21,7 +21,9 @@ class OrgChart(BaseModel):
             if agent.manager_id == agent.id:
                 raise ValueError(f"Agent {agent.id} cannot be its own manager.")
             if self._creates_cycle(agent.id, agent.manager_id):
-                raise ValueError(f"Adding manager {agent.manager_id} to agent {agent.id} creates a cycle.")
+                raise ValueError(
+                    f"Adding manager {agent.manager_id} to agent {agent.id} creates a cycle."
+                )
 
         self.nodes[agent.id] = agent
 
@@ -72,7 +74,9 @@ class OrgChart(BaseModel):
             return None
         return self.nodes.get(agent.manager_id)
 
-    def get_subordinates(self, agent_id: str, recursive: bool = False) -> list[AgentNode]:
+    def get_subordinates(
+        self, agent_id: str, recursive: bool = False
+    ) -> list[AgentNode]:
         """Retrieve subordinates of an agent."""
         agent = self.get_agent(agent_id)
         if not agent:
@@ -92,12 +96,16 @@ class OrgChart(BaseModel):
                 visited.add(curr.id)
                 results.append(curr)
                 queue.extend(
-                    self.nodes[sid] for sid in curr.subordinate_ids if sid in self.nodes and sid not in visited
+                    self.nodes[sid]
+                    for sid in curr.subordinate_ids
+                    if sid in self.nodes and sid not in visited
                 )
 
         return results
 
-    def get_department_agents(self, department: str, tenant_id: str = "default") -> list[AgentNode]:
+    def get_department_agents(
+        self, department: str, tenant_id: str = "default"
+    ) -> list[AgentNode]:
         """Retrieve all agents belonging to a department within a tenant."""
         return [
             node

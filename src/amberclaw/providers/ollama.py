@@ -1,5 +1,7 @@
 """Ollama local inference provider implementation."""
 
+from typing import Any
+
 from amberclaw.providers.litellm_provider import LiteLLMProvider
 
 
@@ -11,7 +13,7 @@ class OllamaProvider(LiteLLMProvider):
         api_key: str | None = None,
         api_base: str | None = "http://localhost:11434",
         default_model: str = "ollama/llama3.2",
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             api_key=api_key or "ollama",

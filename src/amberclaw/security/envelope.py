@@ -1,4 +1,4 @@
-# ruff: noqa: ERA001, PTH123, PTH101
+# ruff: noqa: ERA001
 """Envelope Encryption and Key Versioning System for AmberClaw.
 
 Implements:
@@ -79,7 +79,7 @@ class EnvelopeEncryptionManager:
         self._persist_keystore()
 
     def _persist_keystore(self) -> None:
-        """Persist encrypted key rings securely."""
+        """Persist encrypted key rings securely and atomically."""
         payload = {
             "active_version": self._active_version,
             "keks": {
@@ -87,10 +87,12 @@ class EnvelopeEncryptionManager:
             },
             "updated_at": datetime.now(UTC).isoformat(),
         }
-        self.store_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        # Restrict permissions to owner only (chmod 0600)
-        with open(self.store_file) as _:
-            os.chmod(self.store_file, 0o600)
+        tmp_file = self.store_file.with_name(
+            f"{self.store_file.name}.tmp.{os.getpid()}"
+        )
+        tmp_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        tmp_file.chmod(0o600)
+        tmp_file.replace(self.store_file)
 
     @property
     def active_version(self) -> str:

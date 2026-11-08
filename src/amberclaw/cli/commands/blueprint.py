@@ -1,9 +1,11 @@
 """Blueprint management CLI commands."""
 
 from pathlib import Path
+from typing import Never
 
 import typer
 import yaml
+from pydantic import ValidationError
 from rich.panel import Panel
 from rich.table import Table
 
@@ -11,10 +13,20 @@ from amberclaw.blueprints.applier import BlueprintApplier
 from amberclaw.blueprints.loader import BlueprintLoader
 from amberclaw.blueprints.validator import BlueprintValidator
 from amberclaw.config.loader import get_config_path, load_config, save_config
+from amberclaw.config.schema import Config
 
 from .utils import console
 
 blueprint_app = typer.Typer(help="Manage declarative agent blueprint configurations")
+
+
+def _reject_application(errors: list[str]) -> Never:
+    console.print(
+        "[bold red]Blueprint was not applied; no configuration was saved.[/bold red]"
+    )
+    for error in errors:
+        console.print(f"  • {error}", markup=False)
+    raise typer.Exit(code=1)
 
 
 @blueprint_app.command("list")
@@ -60,16 +72,25 @@ def blueprint_show(
         else:
             bp = loader.load_preset(name_or_path)
     except Exception as ex:
-        console.print(f"[bold red]Failed to load blueprint '{name_or_path}': {ex}[/bold red]")
+        console.print(
+            f"[bold red]Failed to load blueprint '{name_or_path}': {ex}[/bold red]"
+        )
         raise typer.Exit(code=1) from ex
 
     dumped_yaml = yaml.dump(bp.model_dump(), sort_keys=False)
-    console.print(Panel(dumped_yaml, title=f"Blueprint: [bold cyan]{bp.name}[/bold cyan] (v{bp.version})"))
+    console.print(
+        Panel(
+            dumped_yaml,
+            title=f"Blueprint: [bold cyan]{bp.name}[/bold cyan] (v{bp.version})",
+        )
+    )
 
 
 @blueprint_app.command("validate")
 def blueprint_validate(
-    file_path: Path = typer.Argument(..., help="Path to YAML blueprint file to validate"),
+    file_path: Path = typer.Argument(
+        ..., help="Path to YAML blueprint file to validate"
+    ),
 ) -> None:
     """Validate a YAML blueprint file against the AmberClaw schema."""
     loader = BlueprintLoader()
@@ -92,7 +113,9 @@ def blueprint_validate(
             for w in res.warnings:
                 console.print(f"[yellow]Warning: {w}[/yellow]")
     else:
-        console.print(f"[bold red]✗ Blueprint '{bp.name}' failed validation:[/bold red]")
+        console.print(
+            f"[bold red]✗ Blueprint '{bp.name}' failed validation:[/bold red]"
+        )
         for err in res.errors:
             console.print(f"  [red]• {err}[/red]")
         raise typer.Exit(code=1)
@@ -104,7 +127,7 @@ def blueprint_apply(
         ..., help="Preset name (e.g. 'developer') or path to YAML file"
     ),
 ) -> None:
-    """Apply a blueprint preset or custom YAML file to active configuration."""
+    """Apply supported explicit settings; reject policies lacking runtime enforcement."""
     loader = BlueprintLoader()
     applier = BlueprintApplier()
     path = Path(name_or_path)
@@ -115,18 +138,30 @@ def blueprint_apply(
         else:
             bp = loader.load_preset(name_or_path)
     except Exception as ex:
-        console.print(f"[bold red]Failed to load blueprint '{name_or_path}': {ex}[/bold red]")
+        console.print(
+            f"[bold red]Failed to load blueprint '{name_or_path}': {ex}[/bold red]"
+        )
         raise typer.Exit(code=1) from ex
 
-    current_cfg = load_config().model_dump()
-    report = applier.apply(bp, target_config=current_cfg)
+    # Loading existing configuration can migrate credentials and save it.
+    # Unsupported policies must be rejected before that side effect is possible.
+    if errors := applier.runtime_errors(bp):
+        _reject_application(errors)
+    current_cfg = load_config()
+    report = applier.apply_to_config(bp, target_config=current_cfg)
 
     if not report.success:
-        console.print(f"[bold red]Failed to apply blueprint: {report.errors}[/bold red]")
-        raise typer.Exit(code=1)
+        _reject_application(report.errors)
 
     cfg_path = get_config_path()
-    save_config(report.applied_settings, cfg_path)
+    try:
+        validated_config = Config.model_validate(report.applied_settings)
+    except ValidationError as exc:
+        console.print(
+            "[red]Blueprint settings do not form a valid configuration; nothing was saved.[/red]"
+        )
+        raise typer.Exit(code=1) from exc
+    save_config(validated_config, cfg_path)
     console.print(
-        f"[bold green]✓ Successfully applied blueprint '[cyan]{bp.name}[/cyan]' to active configuration![/bold green]"
+        f"[bold green]✓ Applied supported blueprint settings for '[cyan]{bp.name}[/cyan]' to configuration.[/bold green]"
     )

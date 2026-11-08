@@ -16,11 +16,17 @@ class PersonalityProfile(BaseModel):
         default="standard", description="Response length and verbosity level."
     )
     technical_depth: int = Field(
-        default=3, ge=1, le=5, description="Technical depth scale from 1 (simple) to 5 (expert)."
+        default=3,
+        ge=1,
+        le=5,
+        description="Technical depth scale from 1 (simple) to 5 (expert).",
     )
-    empathy: bool = Field(default=True, description="Enable empathetic acknowledgments.")
+    empathy: bool = Field(
+        default=True, description="Enable empathetic acknowledgments."
+    )
     custom_directives: list[str] = Field(
-        default_factory=list, description="Explicit personal preferences or persona instructions."
+        default_factory=list,
+        description="Explicit personal preferences or persona instructions.",
     )
 
     def render_system_prompt_directive(self) -> str:
@@ -33,9 +39,13 @@ class PersonalityProfile(BaseModel):
         ]
 
         if self.tone == "concise":
-            directives.append("Prioritize brevity and high signal-to-noise ratio. Avoid fluff.")
+            directives.append(
+                "Prioritize brevity and high signal-to-noise ratio. Avoid fluff."
+            )
         elif self.tone == "technical":
-            directives.append("Include precise code references, API signatures, and architectural rationale.")
+            directives.append(
+                "Include precise code references, API signatures, and architectural rationale."
+            )
 
         for d in self.custom_directives:
             directives.append(f"- {d}")

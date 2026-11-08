@@ -1,5 +1,8 @@
 """Integration tests for API authentication, CORS, security headers, and routes."""
 
+import os
+from http import HTTPStatus
+
 from fastapi.testclient import TestClient
 
 from amberclaw.api.auth import create_access_token
@@ -11,7 +14,7 @@ client = TestClient(app)
 def test_health_endpoint_unauthenticated():
     """Health check endpoint should be accessible without authentication."""
     response = client.get("/health")
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert response.json()["status"] == "ok"
 
 
@@ -28,7 +31,7 @@ def test_protected_routes_require_auth():
             response = client.get(endpoint)
         else:
             response = client.post(endpoint, json={})
-        assert response.status_code == 401, (
+        assert response.status_code == HTTPStatus.UNAUTHORIZED, (
             f"{endpoint} allowed unauthenticated access!"
         )
 
@@ -39,7 +42,7 @@ def test_protected_route_with_valid_jwt():
     headers = {"Authorization": f"Bearer {token}"}
 
     response = client.get("/api/v1/tickets/pending", headers=headers)
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     assert isinstance(response.json(), list)
 
 
@@ -47,12 +50,15 @@ def test_token_generation_endpoint():
     """Token endpoint should issue access token for valid credentials."""
     response = client.post(
         "/api/v1/auth/token",
-        json={"client_id": "admin", "client_secret": "amberclaw-secret"},
+        json={
+            "client_id": os.environ["AUTH_CLIENT_ID"],
+            "client_secret": os.environ["AUTH_CLIENT_SECRET"],
+        },
     )
-    assert response.status_code == 200
+    assert response.status_code == HTTPStatus.OK
     data = response.json()
     assert "access_token" in data
-    assert data["token_type"] == "bearer"
+    assert data["token_type"] == "bearer"  # noqa: S105 - synthetic credential or protocol expectation in an offline test
 
 
 def test_security_headers_present():

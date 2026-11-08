@@ -1,0 +1,26 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: Ruff (CI source and test boundary)
+        entry: uv run --frozen ruff check src/ tests/
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: ruff-format
+        name: Ruff formatting check
+        entry: uv run --frozen ruff format --check src/ tests/
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: mypy
+        name: Strict mypy (CI source boundary)
+        entry: uv run --frozen python -m mypy src/
+        language: system
+        pass_filenames: false
+        types: [python]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+        args: [--redact]

@@ -14,9 +14,11 @@ def usage(
     all_time: bool = typer.Option(False, "--all", "-a", help="Show all-time usage"),
 ) -> None:
     """Show token usage and cost monitoring dashboard."""
-    from amberclaw.utils import cost_tracker
+    from amberclaw.utils import (  # noqa: PLC0415 - defer runtime and platform initialization until command use
+        cost_tracker,
+    )
 
-    costs = cost_tracker.get_total_costs(days=None if all_time else days)
+    costs = cost_tracker.get_model_costs(days=None if all_time else days)
 
     console.print(f"{__logo__} [bold cyan]Token Usage Dashboard[/bold cyan]\n")
     if all_time:

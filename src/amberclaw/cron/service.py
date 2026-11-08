@@ -8,6 +8,7 @@ from collections.abc import Callable, Coroutine
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from loguru import logger
 
@@ -37,9 +38,9 @@ def _compute_next_run(schedule: CronSchedule, now_ms: int) -> int | None:
 
     if schedule.kind == "cron" and schedule.expr:
         try:
-            from zoneinfo import ZoneInfo
-
-            from croniter import croniter
+            from croniter import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                croniter,
+            )
 
             # Use caller-provided reference time for deterministic scheduling
             base_time = now_ms / 1000
@@ -65,8 +66,6 @@ def _validate_schedule_for_add(schedule: CronSchedule) -> None:
 
     if schedule.kind == "cron" and schedule.tz:
         try:
-            from zoneinfo import ZoneInfo
-
             ZoneInfo(schedule.tz)
         except Exception:
             raise ValueError(f"unknown timezone '{schedule.tz}'") from None
@@ -79,12 +78,12 @@ class CronService:
         self,
         store_path: Path,
         on_job: Callable[[CronJob], Coroutine[Any, Any, str | None]] | None = None,
-    ):
+    ) -> None:
         self.store_path = store_path
         self.on_job = on_job
         self._store: CronStore | None = None
         self._last_mtime: float = 0.0
-        self._timer_task: asyncio.Task | None = None
+        self._timer_task: asyncio.Task[Any] | None = None
         self._running = False
 
     def _load_store(self) -> CronStore:
@@ -239,7 +238,7 @@ class CronService:
         delay_ms = max(0, next_wake - _now_ms())
         delay_s = delay_ms / 1000
 
-        async def tick():
+        async def tick() -> None:
             await asyncio.sleep(delay_s)
             if self._running:
                 await self._on_timer()
@@ -306,7 +305,7 @@ class CronService:
         jobs = store.jobs if include_disabled else [j for j in store.jobs if j.enabled]
         return sorted(jobs, key=lambda j: j.state.next_run_at_ms or float("inf"))
 
-    def add_job(
+    def add_job(  # noqa: PLR0913 - preserve the public job scheduling keyword API
         self,
         name: str,
         schedule: CronSchedule,
@@ -391,7 +390,7 @@ class CronService:
                 return True
         return False
 
-    def status(self) -> dict:
+    def status(self) -> dict[Any, Any]:
         """Get service status."""
         store = self._load_store()
         return {

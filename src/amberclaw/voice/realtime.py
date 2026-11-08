@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import uuid
 from collections.abc import AsyncIterator, Callable
 from typing import Any
@@ -31,7 +32,7 @@ class RealtimeVoiceSession:
         tts_engine: Any = None,
         audio_config: AudioConfig | None = None,
         agent_callback: Callable[[str], Any] | None = None,
-    ):
+    ) -> None:
         self.session_id = session_id or str(uuid.uuid4())
         self.config = audio_config or AudioConfig()
         self.stt_engine = stt_engine or SpeechToTextEngine()
@@ -43,8 +44,8 @@ class RealtimeVoiceSession:
         self._input_queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._output_queue: asyncio.Queue[bytes] = asyncio.Queue()
 
-        self._processing_task: asyncio.Task | None = None
-        self._tts_task: asyncio.Task | None = None
+        self._processing_task: asyncio.Task[Any] | None = None
+        self._tts_task: asyncio.Task[Any] | None = None
         self._lock = asyncio.Lock()
 
     async def start(self) -> None:
@@ -63,10 +64,8 @@ class RealtimeVoiceSession:
 
             if self._processing_task and not self._processing_task.done():
                 self._processing_task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await self._processing_task
-                except asyncio.CancelledError:
-                    pass
             logger.info(f"RealtimeVoiceSession {self.session_id} stopped.")
 
     def push_audio_chunk(self, chunk: bytes) -> None:
@@ -178,7 +177,7 @@ class RealtimeVoiceSession:
 class RealtimeSessionManager:
     """Orchestrates active RealtimeVoiceSession instances."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.sessions: dict[str, RealtimeVoiceSession] = {}
 
     def create_session(

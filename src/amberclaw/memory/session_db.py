@@ -23,7 +23,7 @@ from loguru import logger
 class SessionDB:
     """SQLite-backed conversation session log with FTS5 search."""
 
-    def __init__(self, db_path: Path | None = None):
+    def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = db_path or Path("data/sessions.db")
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
@@ -170,7 +170,10 @@ class SessionDB:
                     ),
                 )
                 self.conn.commit()
-                return cursor.lastrowid
+                turn_id = cursor.lastrowid
+                if turn_id is None:
+                    raise RuntimeError("SQLite did not return an inserted turn ID")
+                return turn_id
             except sqlite3.IntegrityError as e:
                 logger.error(f"Integrity error adding turn: {e}")
                 self.conn.rollback()

@@ -11,8 +11,12 @@ class SubTaskAssignment(BaseModel):
     subtask_id: str = Field(..., description="Unique identifier for the subtask.")
     title: str = Field(..., description="Short summary of the subtask.")
     target_role: str = Field(..., description="Assigned role or agent capability.")
-    dependencies: list[str] = Field(default_factory=list, description="IDs of subtasks that must complete first.")
-    payload: dict[str, Any] = Field(default_factory=dict, description="Parameters or payload for the subtask.")
+    dependencies: list[str] = Field(
+        default_factory=list, description="IDs of subtasks that must complete first."
+    )
+    payload: dict[str, Any] = Field(
+        default_factory=dict, description="Parameters or payload for the subtask."
+    )
     status: Literal["pending", "in_progress", "completed", "failed"] = Field(
         default="pending", description="Current status of the subtask."
     )
@@ -54,7 +58,9 @@ class DelegationPlanner:
 
     def is_all_completed(self) -> bool:
         """Check if all planned subtasks have completed successfully."""
-        return bool(self.subtasks) and all(t.status == "completed" for t in self.subtasks.values())
+        return bool(self.subtasks) and all(
+            t.status == "completed" for t in self.subtasks.values()
+        )
 
     def has_failures(self) -> bool:
         """Check if any subtask has failed."""

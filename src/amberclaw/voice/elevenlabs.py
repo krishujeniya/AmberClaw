@@ -34,7 +34,7 @@ class ElevenLabsConfig(BaseModel):
 class ElevenLabsTTS:
     """ElevenLabs streaming Text-to-Speech client."""
 
-    def __init__(self, config: ElevenLabsConfig | None = None):
+    def __init__(self, config: ElevenLabsConfig | None = None) -> None:
         self.config = config or ElevenLabsConfig()
         self._api_key = self.config.api_key or os.environ.get("ELEVENLABS_API_KEY")
 

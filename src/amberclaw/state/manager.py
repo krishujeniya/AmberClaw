@@ -38,7 +38,9 @@ class StateManager:
         state_file = self.storage_dir / "state.json"
         if state_file.exists():
             try:
-                self._in_memory_state = json.loads(state_file.read_text(encoding="utf-8"))
+                self._in_memory_state = json.loads(
+                    state_file.read_text(encoding="utf-8")
+                )
             except Exception:
                 self._in_memory_state = {}
 
@@ -47,7 +49,9 @@ class StateManager:
             return
         state_file = self.storage_dir / "state.json"
         tmp_file = self.storage_dir / "state.json.tmp"
-        tmp_file.write_text(json.dumps(self._in_memory_state, indent=2), encoding="utf-8")
+        tmp_file.write_text(
+            json.dumps(self._in_memory_state, indent=2), encoding="utf-8"
+        )
         tmp_file.replace(state_file)
 
     def save_state(self, key: str, data: dict[str, Any]) -> None:
@@ -76,7 +80,9 @@ class StateManager:
         with self._lock:
             return list(self._in_memory_state.keys())
 
-    def create_checkpoint(self, checkpoint_id: str, description: str = "") -> CheckpointMetadata:
+    def create_checkpoint(
+        self, checkpoint_id: str, description: str = ""
+    ) -> CheckpointMetadata:
         """Capture a snapshot of the current state repository."""
         with self._lock:
             snapshot = {k: v.copy() for k, v in self._in_memory_state.items()}

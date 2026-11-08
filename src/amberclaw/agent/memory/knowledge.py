@@ -14,13 +14,15 @@ class KnowledgeEntry(BaseModel):
     category: str
     content: str
     metadata: dict[str, Any] = Field(default_factory=dict)
-    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = Field(
+        default_factory=lambda: datetime.now().astimezone().isoformat()
+    )
 
 
 class KnowledgeStore:
     """Manages long-term knowledge storage using SQLite."""
 
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str) -> None:
         self.db_path = Path(db_path).expanduser()
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
@@ -70,7 +72,7 @@ class KnowledgeStore:
                     category,
                     content,
                     json.dumps(metadata or {}),
-                    datetime.now().isoformat(),
+                    datetime.now().astimezone().isoformat(),
                 ),
             )
             return int(cursor.lastrowid or 0)

@@ -19,11 +19,13 @@ async def test_simulated_audio_source():
     chunks = []
     async for chunk in source.chunks():
         chunks.append(chunk)
-        if len(chunks) >= 3:
+        minimum_chunks_count = 3
+        if len(chunks) >= minimum_chunks_count:
             break
 
     await source.stop()
-    assert len(chunks) == 3
+    expected_chunks_count = 3
+    assert len(chunks) == expected_chunks_count
     assert len(chunks[0]) == 320 * 2  # 16-bit PCM (2 bytes per sample)
 
 

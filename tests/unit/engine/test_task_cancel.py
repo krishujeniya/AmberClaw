@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
+from tempfile import gettempdir
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -10,21 +12,25 @@ import pytest
 
 def _make_loop():
     """Create a minimal AgentLoop with mocked dependencies."""
-    from amberclaw.agent.loop import AgentLoop
-    from amberclaw.bus.queue import MessageBus
+    from amberclaw.agent.loop import (  # noqa: PLC0415 - import after dependency fixtures are installed
+        AgentLoop,
+    )
+    from amberclaw.bus.queue import (  # noqa: PLC0415 - import after dependency fixtures are installed
+        MessageBus,
+    )
 
     bus = MessageBus()
     provider = MagicMock()
     provider.get_default_model.return_value = "test-model"
-    workspace = MagicMock()
-    workspace.__truediv__ = MagicMock(return_value=MagicMock())
+    workspace = Path(gettempdir()) / "amberclaw_test_task_cancel"
+    workspace.mkdir(parents=True, exist_ok=True)
 
     with (
         patch("amberclaw.agent.loop.ContextBuilder"),
         patch("amberclaw.agent.loop.SessionManager"),
-        patch("amberclaw.agent.loop.SubagentManager") as MockSubMgr,
+        patch("amberclaw.agent.loop.SubagentManager") as mock_subagent_manager,
     ):
-        MockSubMgr.return_value.cancel_by_session = AsyncMock(return_value=0)
+        mock_subagent_manager.return_value.cancel_by_session = AsyncMock(return_value=0)
         loop = AgentLoop(bus=bus, provider=provider, workspace=workspace)
     return loop, bus
 
@@ -32,7 +38,9 @@ def _make_loop():
 class TestHandleStop:
     @pytest.mark.asyncio
     async def test_stop_no_active_task(self):
-        from amberclaw.bus.events import InboundMessage
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+        )
 
         loop, bus = _make_loop()
         msg = InboundMessage(
@@ -44,7 +52,9 @@ class TestHandleStop:
 
     @pytest.mark.asyncio
     async def test_stop_cancels_active_task(self):
-        from amberclaw.bus.events import InboundMessage
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+        )
 
         loop, bus = _make_loop()
         cancelled = asyncio.Event()
@@ -71,7 +81,9 @@ class TestHandleStop:
 
     @pytest.mark.asyncio
     async def test_stop_cancels_multiple_tasks(self):
-        from amberclaw.bus.events import InboundMessage
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+        )
 
         loop, bus = _make_loop()
         events = [asyncio.Event(), asyncio.Event()]
@@ -100,7 +112,10 @@ class TestHandleStop:
 class TestDispatch:
     @pytest.mark.asyncio
     async def test_dispatch_processes_and_publishes(self):
-        from amberclaw.bus.events import InboundMessage, OutboundMessage
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+            OutboundMessage,
+        )
 
         loop, bus = _make_loop()
         msg = InboundMessage(
@@ -115,12 +130,15 @@ class TestDispatch:
 
     @pytest.mark.asyncio
     async def test_processing_lock_serializes(self):
-        from amberclaw.bus.events import InboundMessage, OutboundMessage
+        from amberclaw.bus.events import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            InboundMessage,
+            OutboundMessage,
+        )
 
-        loop, bus = _make_loop()
+        loop, _bus = _make_loop()
         order = []
 
-        async def mock_process(m, **kwargs):
+        async def mock_process(m, **_kwargs):
             order.append(f"start-{m.content}")
             await asyncio.sleep(0.05)
             order.append(f"end-{m.content}")
@@ -139,8 +157,12 @@ class TestDispatch:
 class TestSubagentCancellation:
     @pytest.mark.asyncio
     async def test_cancel_by_session(self):
-        from amberclaw.agent.subagent import SubagentManager
-        from amberclaw.bus.queue import MessageBus
+        from amberclaw.agent.subagent import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            SubagentManager,
+        )
+        from amberclaw.bus.queue import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            MessageBus,
+        )
 
         bus = MessageBus()
         provider = MagicMock()
@@ -167,8 +189,12 @@ class TestSubagentCancellation:
 
     @pytest.mark.asyncio
     async def test_cancel_by_session_no_tasks(self):
-        from amberclaw.agent.subagent import SubagentManager
-        from amberclaw.bus.queue import MessageBus
+        from amberclaw.agent.subagent import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            SubagentManager,
+        )
+        from amberclaw.bus.queue import (  # noqa: PLC0415 - import after dependency fixtures are installed
+            MessageBus,
+        )
 
         bus = MessageBus()
         provider = MagicMock()

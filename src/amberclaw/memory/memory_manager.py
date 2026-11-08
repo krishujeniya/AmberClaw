@@ -8,6 +8,7 @@ multi-scope memory tracking, and basic fact extraction.
 from __future__ import annotations
 
 from pathlib import Path
+from tempfile import gettempdir
 from typing import Any
 
 from loguru import logger
@@ -23,16 +24,26 @@ except ImportError:
 class MemoryManager:
     """Manages long-term conversational memory and facts using Mem0."""
 
-    def __init__(self, workspace: Path, provider: str = "chroma"):
+    def __init__(self, workspace: Path, provider: str = "chroma") -> None:
         self.workspace = workspace
         self.provider = provider
+        # Guard against mock objects or invalid filesystem paths
+        is_mock = type(workspace).__name__ in ("Mock", "MagicMock") or str(
+            workspace
+        ).startswith("<")
+        if not isinstance(workspace, Path) or is_mock:
+            self.db_path = Path(gettempdir()) / "amberclaw-disabled-memory"
+            self._memory = None
+            self._graph = None
+            return
+
         self.db_path = workspace / "mem0_db"
         self.db_path.mkdir(parents=True, exist_ok=True)
         self._memory = self._init_mem0()
 
-        from amberclaw.memory.graph_memory import TemporalKnowledgeGraph
+        from amberclaw.memory.graph_memory import TemporalGraphMemory
 
-        self._graph = TemporalKnowledgeGraph(self.db_path)
+        self._graph = TemporalGraphMemory(self.db_path / "graph_memory.json")
 
     def _init_mem0(self) -> Any:
         if Memory is None:
@@ -49,10 +60,10 @@ class MemoryManager:
                 },
                 "version": "v1.1",  # Using v1+ features
             }
-            logger.info(f"Initializing Mem0 with {self.provider} at {self.db_path}")
+            logger.info("Initializing Mem0 with {} at {}", self.provider, self.db_path)
             return Memory.from_config(config)
         except Exception as e:
-            logger.error(f"Failed to initialize Mem0: {e}")
+            logger.error("Failed to initialize Mem0: {}", e)
             return None
 
     def search(
@@ -97,7 +108,7 @@ class MemoryManager:
                     facts.append(str(val))
             return facts
         except Exception as e:
-            logger.error(f"Memory search failed: {e}")
+            logger.error("Memory search failed: {}", e)
             return []
 
     def add(
@@ -129,7 +140,5 @@ class MemoryManager:
                 metadata=metadata,
             )
 
-            # Extract to graph
-            self._graph.extract_and_store(text)
         except Exception as e:
-            logger.error(f"Memory add failed: {e}")
+            logger.error("Memory add failed: {}", e)

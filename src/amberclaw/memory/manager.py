@@ -23,7 +23,9 @@ except ImportError:
     class Document:  # type: ignore
         """Fallback Document stub class when LangChain is not installed."""
 
-        def __init__(self, page_content: str, metadata: dict[str, Any] | None = None):
+        def __init__(
+            self, page_content: str, metadata: dict[str, Any] | None = None
+        ) -> None:
             self.page_content = page_content
             self.metadata = metadata or {}
 
@@ -39,27 +41,26 @@ class MemoryManager:
         workspace: Path | None = None,
         recall_mode: str = "hybrid",
         write_frequency: str | int = "turn",
-    ):
+    ) -> None:
         self.workspace = workspace or Path("~/.amberclaw/workspace").expanduser()
         self.recall_mode = recall_mode.lower()
         self.write_frequency = write_frequency
 
         # Initialize sub-components
         self.session_db = SessionDB(self.workspace / "memory" / "sessions.db")
+        self.hybrid_retriever: HybridRetriever | None
         try:
             self.hybrid_retriever = HybridRetriever(
                 db_dir=self.workspace / "memory" / "chroma",
             )
-        except ImportError:
-            logger.warning(
-                "HybridRetriever disabled (LangChain/Chroma dependencies not installed)"
-            )
+        except Exception as exc:
+            logger.warning("Optional HybridRetriever disabled: {}", exc)
             self.hybrid_retriever = None
         self.frozen_memory = FrozenSnapshotMemory(workspace=self.workspace)
 
         # Buffering for RAG vector ingestion
         self.turn_buffers: dict[str, list[Document]] = {}
-        self.background_tasks: set[asyncio.Task] = set()
+        self.background_tasks: set[asyncio.Task[Any]] = set()
 
     async def add_turn(
         self,
@@ -171,7 +172,7 @@ class MemoryManager:
             rag_docs = []
             if self.hybrid_retriever:
                 # Build metadata filter enforcing tenant scope as invariant
-                filter_dict = None
+                filter_dict: dict[str, Any] | None = None
                 if org_id:
                     tenant_clause = {"org_id": org_id}
                     sub_clauses = []

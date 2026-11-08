@@ -20,7 +20,7 @@ class EDAArgs(BaseModel):
 class DataEDATool(PydanticTool):
     """Run exploratory data analysis using the DataAgent EDAToolsAgent."""
 
-    def __init__(self, model: Any = None):
+    def __init__(self, model: Any = None) -> None:
         self._model = model
 
     @property
@@ -41,9 +41,11 @@ class DataEDATool(PydanticTool):
 
     async def run(self, args: EDAArgs) -> str:
         try:
-            import pandas as pd
+            import pandas as pd  # noqa: PLC0415 - load the optional runtime dependency only for this operation
 
-            from amberclaw.data.ds_agents.eda_tools_agent import EDAToolsAgent
+            from amberclaw.data.ds_agents.eda_tools_agent import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                EDAToolsAgent,
+            )
 
             file_path = args.file_path
             df = (

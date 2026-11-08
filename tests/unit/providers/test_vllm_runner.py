@@ -14,7 +14,8 @@ def test_vllm_runner_argument_builder():
         api_base="http://localhost:8000/v1",
     )
     assert runner.host == "localhost"
-    assert runner.port == 8000
+    expected_runner_port = 8000
+    assert runner.port == expected_runner_port
     assert runner.is_local_base() is True
 
     args = runner.build_command_args(use_binary=False)
@@ -39,7 +40,8 @@ def test_vllm_runner_argument_builder():
         num_speculative_tokens=5,
     )
     assert runner_adv.host == "127.0.0.1"
-    assert runner_adv.port == 9090
+    expected_runner_adv_port = 9090
+    assert runner_adv.port == expected_runner_adv_port
     assert runner_adv.is_local_base() is True
 
     args_adv = runner_adv.build_command_args(use_binary=False)

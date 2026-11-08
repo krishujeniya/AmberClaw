@@ -70,7 +70,19 @@ def render_inspector_card(
     table.add_row("Sandbox", state.active_sandbox)
     table.add_row("Workspace", state.workspace)
     table.add_row("Tokens", str(state.total_tokens))
-    table.add_row("Approvals", f"[red]{state.pending_approvals}[/red]" if state.pending_approvals > 0 else "[green]0[/green]")
-    table.add_row("Status", "[yellow]Streaming...[/yellow]" if state.is_streaming else "[green]Idle[/green]")
+    table.add_row(
+        "Approvals",
+        f"[red]{state.pending_approvals}[/red]"
+        if state.pending_approvals > 0
+        else "[green]0[/green]",
+    )
+    table.add_row(
+        "Status",
+        "[yellow]Streaming...[/yellow]"
+        if state.is_streaming
+        else "[green]Idle[/green]",
+    )
 
-    return Panel(table, title="🔍 [bold]Runtime Inspector[/bold]", border_style=theme.secondary)
+    return Panel(
+        table, title="🔍 [bold]Runtime Inspector[/bold]", border_style=theme.secondary
+    )

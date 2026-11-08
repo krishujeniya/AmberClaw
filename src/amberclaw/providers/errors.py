@@ -19,7 +19,7 @@ class LLMProviderError(Exception):
         status_code: int | None = None,
         is_retryable: bool = False,
         raw_error: Exception | str | None = None,
-    ):
+    ) -> None:
         super().__init__(message)
         self.message = message
         self.provider = provider
@@ -46,7 +46,7 @@ class RateLimitError(LLMProviderError):
         model: str = "",
         retry_after_s: float | None = None,
         raw_error: Exception | str | None = None,
-    ):
+    ) -> None:
         super().__init__(
             message=message,
             provider=provider,
@@ -68,7 +68,7 @@ class AuthenticationError(LLMProviderError):
         model: str = "",
         status_code: int = HTTPStatus.UNAUTHORIZED,
         raw_error: Exception | str | None = None,
-    ):
+    ) -> None:
         super().__init__(
             message=message,
             provider=provider,
@@ -88,7 +88,7 @@ class ContextWindowExceededError(LLMProviderError):
         provider: str = "",
         model: str = "",
         raw_error: Exception | str | None = None,
-    ):
+    ) -> None:
         super().__init__(
             message=message,
             provider=provider,
@@ -108,7 +108,7 @@ class ProviderTimeoutError(LLMProviderError):
         provider: str = "",
         model: str = "",
         raw_error: Exception | str | None = None,
-    ):
+    ) -> None:
         super().__init__(
             message=message,
             provider=provider,
@@ -129,7 +129,7 @@ class ProviderServerError(LLMProviderError):
         model: str = "",
         status_code: int = HTTPStatus.INTERNAL_SERVER_ERROR,
         raw_error: Exception | str | None = None,
-    ):
+    ) -> None:
         super().__init__(
             message=message,
             provider=provider,
@@ -149,7 +149,7 @@ class ModelNotFoundError(LLMProviderError):
         provider: str = "",
         model: str = "",
         raw_error: Exception | str | None = None,
-    ):
+    ) -> None:
         super().__init__(
             message=message,
             provider=provider,
@@ -169,7 +169,7 @@ class InvalidRequestError(LLMProviderError):
         provider: str = "",
         model: str = "",
         raw_error: Exception | str | None = None,
-    ):
+    ) -> None:
         super().__init__(
             message=message,
             provider=provider,
@@ -182,11 +182,11 @@ class InvalidRequestError(LLMProviderError):
 
 def _extract_status_code(error: Any) -> int | None:
     """Extract numeric HTTP status code from exception if present."""
-    if hasattr(error, "status_code") and isinstance(error.status_code, int):
-        return error.status_code
-    if hasattr(error, "response") and hasattr(error.response, "status_code"):
-        return error.response.status_code
-    return None
+    direct_status = getattr(error, "status_code", None)
+    if isinstance(direct_status, int):
+        return direct_status
+    response_status = getattr(getattr(error, "response", None), "status_code", None)
+    return response_status if isinstance(response_status, int) else None
 
 
 def normalize_provider_error(  # noqa: PLR0911

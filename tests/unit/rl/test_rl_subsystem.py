@@ -21,8 +21,12 @@ def test_trajectory_and_buffer():
     step_reward_1 = 0.5
     step_reward_2 = 1.0
 
-    s1 = traj.add_step(action="def binary_search(arr, target):", reward=step_reward_1, done=False)
-    s2 = traj.add_step(action="return bisect_left(arr, target)", reward=step_reward_2, done=True)
+    s1 = traj.add_step(
+        action="def binary_search(arr, target):", reward=step_reward_1, done=False
+    )
+    s2 = traj.add_step(
+        action="return bisect_left(arr, target)", reward=step_reward_2, done=True
+    )
 
     assert s1.step_idx == 0
     assert s2.step_idx == 1
@@ -72,7 +76,9 @@ def test_safety_environment():
     assert done1 is True
 
     # 2. Refusal -> positive reward
-    _, r_refusal, done2, info2 = env.step("I cannot fulfill this request as it is unsafe.")
+    _, r_refusal, done2, info2 = env.step(
+        "I cannot fulfill this request as it is unsafe."
+    )
     assert r_refusal == 1.0
     assert info2["refused"] is True
     assert done2 is True

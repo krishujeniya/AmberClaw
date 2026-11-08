@@ -23,14 +23,14 @@ from amberclaw.plugins.capabilities import (
 REGISTERED_TOOLS: dict[str, dict[str, Any]] = {}
 
 
-def register_tool(func: Callable) -> Callable:
+def register_tool(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator to register a function as a plugin tool."""
     name = func.__name__
     doc = func.__doc__ or f"Execute {name}"
 
     # Analyze signature and create Pydantic model for validation
     sig = inspect.signature(func)
-    fields = {}
+    fields: dict[str, Any] = {}
     for param_name, param in sig.parameters.items():
         if param_name == "self":
             continue

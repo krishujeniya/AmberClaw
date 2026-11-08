@@ -30,7 +30,8 @@ def test_video_processor_keyframes():
     processor = VideoProcessor()
     dummy_mp4 = b"ftypisom\x00\x00\x02\x00isomiso2mp41"
     keyframes = processor.extract_keyframes(dummy_mp4, max_frames=3)
-    assert len(keyframes) == 3
+    expected_keyframes_count = 3
+    assert len(keyframes) == expected_keyframes_count
 
 
 def test_multimodal_router():

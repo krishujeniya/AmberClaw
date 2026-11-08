@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import contextlib
 import contextvars
@@ -5,7 +7,7 @@ import functools
 import time
 import uuid
 from collections.abc import Callable, Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -14,17 +16,17 @@ _CORRELATION_ID_CTX: contextvars.ContextVar[str] = contextvars.ContextVar(
     "amberclaw_correlation_id", default=""
 )
 
-# Try importing OpenTelemetry API
-_OTEL_AVAILABLE = False
+if TYPE_CHECKING:
+    from opentelemetry.trace import Tracer
+
+# Keep telemetry optional without assigning None to imported SDK classes.
 try:
     from opentelemetry import trace
     from opentelemetry.trace import Status, StatusCode
-
-    _OTEL_AVAILABLE = True
 except ImportError:
-    trace = None  # type: ignore
-    Status = None  # type: ignore
-    StatusCode = None  # type: ignore
+    _OTEL_AVAILABLE = False
+else:
+    _OTEL_AVAILABLE = True
 
 
 def get_correlation_id() -> str:
@@ -41,9 +43,9 @@ def set_correlation_id(correlation_id: str) -> None:
     _CORRELATION_ID_CTX.set(correlation_id)
 
 
-def get_tracer(module_name: str = "amberclaw") -> Any:
+def get_tracer(module_name: str = "amberclaw") -> Tracer | None:
     """Return an OpenTelemetry tracer if available, else a no-op tracer."""
-    if _OTEL_AVAILABLE and trace:
+    if _OTEL_AVAILABLE:
         return trace.get_tracer(module_name)
     return None
 
@@ -66,7 +68,7 @@ def trace_span(
             try:
                 yield ctx_data
             except Exception as e:
-                if Status and StatusCode:
+                if _OTEL_AVAILABLE:
                     span.set_status(Status(StatusCode.ERROR, str(e)))
                 raise
     else:
@@ -77,13 +79,17 @@ def trace_span(
             raise
         finally:
             elapsed = time.perf_counter() - start_time
-            logger.debug(f"[Trace: {name}] correlation_id={cid} duration={elapsed:.4f}s")
+            logger.debug(
+                f"[Trace: {name}] correlation_id={cid} duration={elapsed:.4f}s"
+            )
 
 
-def traced(name: str | None = None, attributes: dict[str, Any] | None = None) -> Callable:
+def traced(
+    name: str | None = None, attributes: dict[str, Any] | None = None
+) -> Callable[..., Any]:
     """Decorator to trace execution of async or sync functions."""
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         span_name = name or func.__qualname__
 
         @functools.wraps(func)
