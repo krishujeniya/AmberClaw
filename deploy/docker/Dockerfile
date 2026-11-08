@@ -13,7 +13,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Copy dependency files
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
 
 # Install dependencies into a virtual environment
 RUN uv sync --frozen --no-install-project --no-dev
@@ -42,7 +42,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy the application code
 COPY --chown=amberclaw:amberclaw src/ ./src/
-COPY --chown=amberclaw:amberclaw pyproject.toml ./
+COPY --chown=amberclaw:amberclaw pyproject.toml README.md ./
 
 # Install the project itself (without reinstalling dependencies)
 RUN uv pip install -e . --no-deps
