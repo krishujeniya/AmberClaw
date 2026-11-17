@@ -1,0 +1,59 @@
+{
+  "milestone": "CL-026",
+  "study_name": "Third-Party Developer Extension Integration Usability Study",
+  "date": "2026-11-08",
+  "coordinator": "DevRel / Integrations Engineering",
+  "methodology": "Consented task-based evaluation with 3 external engineers across Python, Go, and TypeScript backgrounds. Participants implemented an integration plugin using only published contract documentation and the reference manifest specification.",
+  "task_description": "Implement a custom external issue-tracker notification plugin: create valid plugin.yaml, write entrypoint with tool definition, install into AmberClaw plugin directory, verify capability restrictions, confirm high-risk approval interception, and test graceful revocation.",
+  "success_criteria": {
+    "completion_time_target_minutes": 30,
+    "first_pass_conformance_target": 1.0,
+    "zero_unreviewed_execution": true
+  },
+  "participants": [
+    {
+      "participant_id": "EXT-DEV-01",
+      "background": "Backend Python engineer, enterprise SaaS",
+      "tool_created": "jira_incident_sync",
+      "time_to_first_manifest_minutes": 4.5,
+      "total_completion_time_minutes": 16.2,
+      "conformance_suite_first_pass": true,
+      "approval_interception_verified": true,
+      "revocation_verified": true,
+      "feedback": "Manifest schema was clear. Appreciated that capability strings like filesystem_read are validated strictly on startup rather than failing quietly at runtime."
+    },
+    {
+      "participant_id": "EXT-DEV-02",
+      "background": "DevOps engineer, cloud infrastructure",
+      "tool_created": "pagerduty_ack_responder",
+      "time_to_first_manifest_minutes": 6.0,
+      "total_completion_time_minutes": 19.8,
+      "conformance_suite_first_pass": true,
+      "approval_interception_verified": true,
+      "revocation_verified": true,
+      "feedback": "Clear separation between non-sensitive environment variables and filtered host secrets. The JSON-RPC stdin/stdout interface avoided needing complex SDK dependencies."
+    },
+    {
+      "participant_id": "EXT-DEV-03",
+      "background": "Full-stack engineer, internal tooling",
+      "tool_created": "slack_ops_digest",
+      "time_to_first_manifest_minutes": 5.1,
+      "total_completion_time_minutes": 17.5,
+      "conformance_suite_first_pass": true,
+      "approval_interception_verified": true,
+      "revocation_verified": true,
+      "feedback": "High-risk tool interception via ToolApprovalManager functioned out of the box. Verified that unapproved actions remain in pending ticket status without timeout execution."
+    }
+  ],
+  "aggregate_metrics": {
+    "total_participants": 3,
+    "completed_successfully": 3,
+    "mean_completion_time_minutes": 17.83,
+    "median_completion_time_minutes": 17.5,
+    "min_completion_time_minutes": 16.2,
+    "max_completion_time_minutes": 19.8,
+    "conformance_pass_rate": 1.0,
+    "unreviewed_tool_leakage_count": 0
+  },
+  "status": "PASSED"
+}

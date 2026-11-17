@@ -1,0 +1,20 @@
+{
+  "milestone": "CL-021",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T10:04:00+05:30",
+  "description": "Evidence bundle for Ship three complete private-operations recipes",
+  "artifacts": {
+    "recipe-manifests.json": {
+      "sha256": "3f71daf7d7ecd963e046f54ab74332a58da86e5b9f8f85464776efd6d1db6924",
+      "description": "Declarative manifests for cited knowledge, incident triage, and scheduled report recipes"
+    },
+    "recipe-verification-runs.txt": {
+      "sha256": "45c314e6a9f2f294af7d0177d43a9ba885c5286440e24cfe52249c88db8a48a6",
+      "description": "Test execution log across 5 held-out fixture cases verifying approval gates and abstentions"
+    },
+    "outcome-cost-scorecards.json": {
+      "sha256": "8d8d544a5b5a6372b22c98272a938691747eeb17c566d37a00d25e89205d312c",
+      "description": "Detailed token accounting, per-run latency, dollar cost metrics, and safety grader scores"
+    }
+  }
+}

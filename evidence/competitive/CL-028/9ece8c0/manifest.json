@@ -1,0 +1,10 @@
+{
+  "milestone": "CL-028",
+  "commit": "9ece8c0",
+  "generated_at": "2026-11-09T10:27:40+05:30",
+  "files": {
+    "leadership-maintenance-schedule.md": "1e3ce20dc70581da50f0783a81bea62b188740b09d605eed661297d9a712c9f9",
+    "slo-error-budget-review.json": "b2fbe0ec87e69885b7c7a7a83fd4e9b1909ac0adc6bdbdc2d381c8cca67e3e03",
+    "source-freshness-registry.json": "eabaeee548f2048de1a6f8623871c9defba3155c49f477f0293660060b33d3ad"
+  }
+}

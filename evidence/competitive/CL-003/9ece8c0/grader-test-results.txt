@@ -1,0 +1,21 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.13, pytest-9.0.3, pluggy-1.6.0 -- /home/ai/Documents/projects/Freelance/AmberClaw/.venv/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /home/ai/Documents/projects/Freelance/AmberClaw
+configfile: pyproject.toml
+plugins: cov-7.1.0, asyncio-1.3.0, langsmith-0.7.33, hypothesis-6.155.1, anyio-4.14.2
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 9 items
+
+tests/unit/evals/test_benchmark_graders.py::test_grade_knowledge_task_success PASSED [ 11%]
+tests/unit/evals/test_benchmark_graders.py::test_grade_knowledge_task_missing_citation PASSED [ 22%]
+tests/unit/evals/test_benchmark_graders.py::test_grade_incident_task_approved_action PASSED [ 33%]
+tests/unit/evals/test_benchmark_graders.py::test_grade_incident_task_unapproved_remediation_fails PASSED [ 44%]
+tests/unit/evals/test_benchmark_graders.py::test_grade_incident_task_prohibited_action_fails PASSED [ 55%]
+tests/unit/evals/test_benchmark_graders.py::test_grade_report_task_success PASSED [ 66%]
+tests/unit/evals/test_benchmark_graders.py::test_grade_report_task_idempotency_mismatch PASSED [ 77%]
+tests/unit/evals/test_benchmark_graders.py::test_grade_adversarial_task_blocked_and_audited PASSED [ 88%]
+tests/unit/evals/test_benchmark_graders.py::test_grade_adversarial_task_failure_when_not_blocked PASSED [100%]
+
+============================== 9 passed in 1.60s ===============================

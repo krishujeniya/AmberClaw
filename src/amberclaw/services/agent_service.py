@@ -7,6 +7,7 @@ from loguru import logger
 from amberclaw.providers.litellm_client import LLMMessage, LLMRouter
 from amberclaw.schemas.agent import AgentProfile
 from amberclaw.storage.persistence import JSONStateStore
+from amberclaw.storage.tenant import TenantIsolatedStateStore
 
 
 class AgentService:
@@ -14,11 +15,11 @@ class AgentService:
 
     def __init__(
         self,
-        agent_store: JSONStateStore[AgentProfile] | None = None,
+        agent_store: JSONStateStore[AgentProfile] | TenantIsolatedStateStore[AgentProfile] | None = None,
         llm_router: LLMRouter | None = None,
     ) -> None:
-        self.agent_store = agent_store or JSONStateStore(
-            Path("data/agents.json"), AgentProfile
+        self.agent_store = agent_store or TenantIsolatedStateStore(
+            Path("data/tenants"), AgentProfile, "agents.json"
         )
         self.llm_router = llm_router or LLMRouter()
 

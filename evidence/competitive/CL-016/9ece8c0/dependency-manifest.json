@@ -1,0 +1,44 @@
+{
+  "milestone": "CL-016",
+  "evaluated_at": "2026-11-09T09:31:00+05:30",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "packaging_architecture": {
+    "base_runtime": {
+      "target_group": "amberclaw",
+      "count": 33,
+      "packages": [
+        "fastapi", "uvicorn", "pydantic", "pydantic-settings", "typer", "rich", "textual",
+        "openai", "anthropic", "litellm", "langchain", "langgraph", "sqlalchemy", "greenlet",
+        "alembic", "aiosqlite", "httpx", "python-multipart", "passlib[bcrypt]",
+        "opentelemetry-api", "opentelemetry-sdk", "opentelemetry-instrumentation-fastapi",
+        "prometheus-client", "python-dotenv", "pyyaml", "loguru", "websockets",
+        "json-repair", "pillow", "croniter", "python3-saml", "authlib", "pyjwt[crypto]"
+      ]
+    },
+    "optional_extras": {
+      "data": {
+        "count": 6,
+        "packages": ["pandas", "matplotlib", "seaborn", "openpyxl", "h2o", "ipython"]
+      },
+      "channels": {
+        "count": 8,
+        "packages": [
+          "python-telegram-bot", "matrix-nio", "slack-sdk", "slackify-markdown",
+          "google-api-python-client", "google-auth-oauthlib", "oauth-cli-kit", "pyserial"
+        ]
+      },
+      "storage": {
+        "count": 5,
+        "packages": ["chromadb", "mem0ai", "asyncpg", "redis", "paramiko"]
+      },
+      "sandboxes": {
+        "count": 6,
+        "packages": ["daytona", "modal", "vercel", "wasmtime", "micropython-wasm", "e2b"]
+      },
+      "all": {
+        "meta": "amberclaw[data,channels,storage,sandboxes]"
+      }
+    }
+  },
+  "status": "PASS"
+}

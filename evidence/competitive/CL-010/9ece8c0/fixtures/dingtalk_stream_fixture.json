@@ -1,0 +1,18 @@
+{
+  "specversion": "1.0",
+  "type": "chat.message.receive",
+  "msgId": "msg_dd_77112233",
+  "time": 1731110420,
+  "data": {
+    "conversationId": "cid_ding_room_42",
+    "conversationType": "2",
+    "openConversationId": "cid_ding_room_42",
+    "senderId": "$:LWCP_v1:$staff9988",
+    "senderStaffId": "staff9988",
+    "senderNick": "Senior SRE",
+    "msgtype": "text",
+    "text": {
+      "content": "generate daily infrastructure incident report"
+    }
+  }
+}

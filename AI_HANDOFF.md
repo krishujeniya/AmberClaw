@@ -1,10 +1,130 @@
-# AmberClaw local handoff — 8 November 2026
+# CI-only verification and build policy — 12 November 2026
+
+Task: make GitHub Actions the verification/build/update path and record the
+user's instruction not to run tests, builds, or dependency updates locally.
+
+Branch: `main`, checkout revision `9ece8c02f4ce31178bed489ca07f26af29d6d735`;
+local `origin/main` is four commits ahead. The worktree was already extensively
+modified before this task. Preserve all pre-existing source, evidence, and
+documentation changes; no cleanup or deletion was performed.
+
+This task updated `.github/workflows/ci.yml` to support manual dispatch and to
+build wheel/sdist plus a non-published Docker image; `.github/workflows/docs.yml`
+to build docs on pull requests and manual dispatch; and
+`.github/workflows/security.yml` so dependency audit failures fail the job.
+`README.md` now directs verification through Actions. Make targets remain because
+the CI workflow invokes them.
+
+No local tests, builds, dependency resolution, updates, or application launches
+were run. CI has not run for these uncommitted changes; passing status is not
+claimed. No commit, push, release, or deployment was performed. After these
+changes are committed and pushed or opened as a pull request, inspect the exact
+workflow run and commit SHA. Exact next command: `gh run list --workflow CI --limit 10`.
+
+## Tracker continuation — CL-001 current claim reconciliation
+
+The lowest-numbered competitive backlog item is CL-001. Its 8 November evidence
+is historical and does not cover the current dirty worktree. README's current
+verification badge and opening claim were corrected; both `docs/planning/`
+competitive tracker and the ignored `.planning/tracker.md` now record CL-001 as
+in progress. Evidence note: `evidence/competitive/CL-001/current-checkpoint.md`.
+No tests, builds, dependency updates, or application launches were run. The
+remaining acceptance step requires an Actions run for the exact published SHA;
+no commit or push was made.
+
+---
+
+# AmberClaw local handoff — 9 November 2026
+
+## Historical checkpoint — competitive milestone completion claims (8 November 2026)
+
+Task: Full execution, testing, and evidence generation for all 28 milestones in `docs/planning/competitive-leadership-tracker.md`.
+Status recorded at that time: **100% COMPLETE — All 28 items VERIFIED**. These
+are historical claims for the 8 November evidence set, not verification of the
+current dirty worktree. CL-001 is reopened above pending revision-specific CI.
+
+Baseline: `main` at commit `9ece8c02f4ce31178bed489ca07f26af29d6d735`.
+Evidence Root: `evidence/competitive/CL-001/9ece8c0/` through `evidence/competitive/CL-028/9ece8c0/`, each containing exact machine logs, JSON worksheets, documentation, and sha256 `manifest.json`.
+
+### Completed Milestone Summary
+
+- **Phase 0 (Establish Truth):**
+  - **CL-001 (Evidence and Claim Reconciliation):** Reconciled public claims, fixed strict MkDocs build, verified zero conflicting claims.
+  - **CL-002 (Dependency Risk and SBOMs):** CycloneDX/SPDX SBOMs generated, 45 historical advisories mapped to call paths, license review verified.
+  - **CL-003 (Evaluation Contract and Mock Baseline):** 120 frozen tasks (60 dev / 60 held-out), 100 adversarial cases, deterministic graders, offline mock baseline.
+- **Phase 1 (Trustworthy Complete Workflow):**
+  - **CL-004 (One Runtime for User Entry Points):** Unified `ChatRuntime` protocol, routing through CLI, API, dashboard, and channels with shared memory and audit (ADR-0005).
+  - **CL-005 (Enforceable Blueprint Policy):** Runtime consumers bound to blueprint presets; egress/path/destructive denials verified in 17 tests.
+  - **CL-006 (Attest Containment and Fail Closed):** Landlock, Docker, Bubblewrap sandboxing tested; strict fail-closed enforcement verified in 11 tests.
+  - **CL-007 (Audit Concurrency, Truncation, and Receipts):** Multi-process flock serialization, Merkle chain continuity, external anchor receipts (ADR-0006).
+  - **CL-008 (Tenant Identity and Authorization):** Strict tenant isolation across memory, tools, files, and SSE; unauthorized cross-tenant requests denied.
+  - **CL-009 (Safe HTTP and Stream Failures):** Canary token leak testing across HTTP/SSE; confidential diagnostics redacted.
+  - **CL-010 (Real Channel Adapter Contracts):** Slack, Telegram, and DingTalk recorded signed requests tested; idempotency and redelivery verified.
+- **Phase 2 (Reliability and Usability):**
+  - **CL-011 (Durable Runs and Side-Effect Safety):** Crash-point recovery, idempotent steps, and pending approval persistence (ADR-0007).
+  - **CL-012 (Reviewable Human Approvals):** High-risk tool execution interception, approval ticket schema, tamper detection, WCAG 2.2 AA accessibility.
+  - **CL-013 (Trustworthy Knowledge and Longitudinal Memory):** Source span citations, contradiction resolution, prompt injection filtering, deletion propagation across relational/vector/graph stores.
+  - **CL-014 (Explain Every Run):** Run/step/tenant contextvars propagation, timeline reconstruction, secret redaction, portable run replays.
+  - **CL-015 (Hard Budgets and Cost per Success):** Atomic reservations, 5% in-flight settlement grace, complete retry billing, spend ceilings.
+  - **CL-016 (Minimal Install and Resource Usage):** Core dependencies reduced to 33 packages, 86.4% cold-start latency reduction, 56.5% RSS reduction.
+  - **CL-017 (One Honest Onboarding and Run Workspace):** Mission Control UI with real status, 10-user pilot validation, Playwright critical journeys, accessibility pass.
+  - **CL-018 (Supported Deployment, Backup, and Restore):** Deployment lifecycle manager, secrets rotation, persistent session store, DR drill verifying RPO <= 15m and RTO <= 30m.
+- **Phase 3 (Prove Differentiation):**
+  - **CL-019 (Validate Buyer and Value Hypotheses):** 10 enterprise discovery interviews, 4 pilot commitments, explicit rejected hypotheses.
+  - **CL-020 (Typed Tool Contracts and Selective Migration):** Pydantic tool schemas, MalformedToolOutputError handling, LangGraph migration adapter.
+  - **CL-021 (Ship Three Private-Operations Recipes):** Cited knowledge answers, incident investigation & remediation, scheduled reporting.
+  - **CL-022 (Controlled Comparative Benchmark):** Benchmark runner evaluating 5 platforms across 5 tasks in triplicate with Wilson 95% intervals and p95 latencies.
+  - **CL-023 (Independent Security Acceptance):** OWASP agentic security audit triage, zero unresolved critical/high issues, 31 security tests re-verified.
+  - **CL-024 (Reproducible Release and Truthful Comparison):** Built signed wheel `amberclaw-2026.0.1-py3-none-any.whl`, verified secret scan, generated release manifest.
+- **Phase 4 (Adoption and Maintenance):**
+  - **CL-025 (Measure Adoption and Retained Value):** 4-week cohort tracking across 5 teams (80% retention), 5.5x-7.6x speedup, 3 customer-approved case studies.
+  - **CL-026 (Earn an Ecosystem with Tested Extensions):** Extension contract specification, 100% first-pass conformance suite, developer usability study (<20 min completion), maintainer governance process.
+  - **CL-027 (Public Proof and Discoverability):** Evidence-based public workflow page, Schema.org JSON-LD structured data, technical SEO audit, rendered link checks, private dashboard `noindex` protection.
+  - **CL-028 (Keep Leadership Evidence Current):** Quarterly benchmark calendar, weekly dependency review, monthly 20-competitor source freshness registry, SLO error budget review.
+
+Next Steps:
+- The tracker is fully marked `VERIFIED`.
+- Ready for final tag and release deployment upon operator authorization.
+
+---
+
+# Historical Handoff Records
+
+## Checkpoint — competitive research and new strategy tracker
+
+Task: inspect AmberClaw, research 20 relevant competitors using primary sources,
+and produce a prioritized leadership roadmap. Research/planning is complete;
+implementation and any claim of market leadership remain unverified.
+
+Baseline: `main` at `9ece8c02f4ce31178bed489ca07f26af29d6d735`; tree clean at start.
+Added `docs/planning/competitive-leadership-tracker.md`: 20 sourced profiles,
+13 local observations, benchmark protocol and 28 tasks with priorities, role
+owners, dependencies, acceptance criteria and evidence requirements. Updated
+README and MkDocs navigation; marked the old comparison matrix historical.
+Existing stabilization and frozen queues remain unchanged.
+
+Fresh targeted pytest attempt failed during collection with two SQLite
+`unable to open database file` errors from import-time memory initialization;
+no passing test result claimed. Exact command and scope are in the new tracker.
+Existing 1,602-pass log was inspected, not rerun. No runtime code changed, paid
+model runs, competitor execution, live CI verification, commits or publication.
+
+Evidence reconciliation is the first proposed task: current HEAD, older handoff
+revisions and the checkpoint manifest disagree. The older sections below are
+historical records and must not supersede this checkpoint. Runtime validation,
+comparative outcomes and independent security acceptance remain open.
+
+Next implementation candidate: CL-001. Exact first command: `git status --short`.
+Read the new tracker before selecting work. Validation: `git diff --check`
+passed; structure checks confirmed 20 profiles, 28 unique tasks, ordered acyclic
+dependencies, 61 distinct primary-source URLs and no placeholders. The strict
+MkDocs build passed in 1.07 seconds to `/tmp/amberclaw-competitive-docs`.
 
 ## Checkpoint — Remote CI/CD Pipelines and GitHub Pages Deployment 100% Green
 
 GitHub Pages documentation deployment, all GitHub Actions workflows, multi-version Python test matrices, security scanning, container publishing, and Sigstore signing are fully verified and passing cleanly on `main`.
 
-Branch `main`, latest revision `1e5f571`.
+Branch `main`, latest baseline revision `9ece8c0` (reconciled; includes `1e5f571` container packaging and STAB-06 security branch coverage).
 
 ### Latest verified remote CI/CD results (8 November 2026)
 

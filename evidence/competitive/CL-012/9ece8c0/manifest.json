@@ -1,0 +1,37 @@
+{
+  "milestone": "CL-012",
+  "name": "Reviewable human approvals",
+  "status": "VERIFIED",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "verified_at": "2026-11-09T08:22:30+05:30",
+  "artifacts": {
+    "approval-protocol-tests.txt": {
+      "path": "evidence/competitive/CL-012/9ece8c0/approval-protocol-tests.txt",
+      "sha256": "cfa8da6e016be05889881b451124aab654d92f21e25ce2091ef520cd558b325d"
+    },
+    "accessibility-report.md": {
+      "path": "evidence/competitive/CL-012/9ece8c0/accessibility-report.md",
+      "sha256": "ba34e862fc00d58d0c32f4177cbb0b41a10902227a91cf20f9ce397e7fce28b8"
+    },
+    "approval-ticket-schema.json": {
+      "path": "evidence/competitive/CL-012/9ece8c0/approval-ticket-schema.json",
+      "sha256": "e2e4dd6ab08837fd53f364cf480280e31ea056f9893ea756ef99c00724625b1d"
+    },
+    "approval.py": {
+      "path": "src/amberclaw/security/approval.py",
+      "sha256": "a6080fe1adadc1296b463c5e998d070f6c9972497e061cb020defe92c197d5d6"
+    },
+    "server.py": {
+      "path": "src/amberclaw/web/server.py",
+      "sha256": "f471884fe835053b7ca0b2844da3ade4144f212a24836fdccf5002ac994bff5d"
+    },
+    "index.html": {
+      "path": "src/amberclaw/web/static/index.html",
+      "sha256": "e43eda6ffa951c04979d1e78c125d50eb5f152754cd4bfa05aec804aecedb18a"
+    },
+    "test_reviewable_human_approvals.py": {
+      "path": "tests/unit/security/test_reviewable_human_approvals.py",
+      "sha256": "7ffe1a392940470d5b3f8075be5dda9fc315318408dcf4a14647bde88d9c3658"
+    }
+  }
+}

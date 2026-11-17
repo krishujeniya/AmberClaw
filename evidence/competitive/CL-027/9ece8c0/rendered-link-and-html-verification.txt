@@ -1,0 +1,15 @@
+=== HTML and SEO Validation Check ===
+Title (62 chars): Private Operations and Agentic Execution Benchmark | AmberClaw
+Description (150 chars): Controlled benchmarks and reproducible workflow recipes for private agentic execution, featuring audit integrity, egress control, and human oversight.
+Canonical URL: https://amberclaw.org/workflows/private-operations/
+Public page robots: index, follow
+Dashboard robots: noindex, nofollow
+OpenGraph tags verified: og:title, og:description, og:url
+JSON-LD parsed successfully. Context: https://schema.org
+  - Schema Entity: SoftwareApplication (AmberClaw)
+  - Schema Entity: TechArticle (Controlled Comparative Benchmark and Private Operations Recipes)
+H1 heading: Controlled Comparative Benchmark &amp; Private Operations Recipes
+Found 5 H2 sections
+Found 8 links. Checking for valid schemes/relative anchors...
+All links passed syntax validation.
+=== ALL HTML/SEO CHECKS PASSED ===

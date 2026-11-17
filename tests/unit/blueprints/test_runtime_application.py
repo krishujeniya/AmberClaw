@@ -70,40 +70,46 @@ def test_model_only_patch_preserves_other_agent_settings():
 
 
 @pytest.mark.parametrize("preset", ["default", "developer", "minimal", "paranoid"])
-def test_full_presets_reject_unimplemented_policy_without_partial_application(preset):
+def test_full_presets_apply_to_config_successfully(preset):
     config = Config()
     original = config.model_dump()
     blueprint = BlueprintLoader().load_preset(preset)
     report = BlueprintApplier().apply_to_config(blueprint, config)
-    assert not report.success
-    assert report.applied_settings == {}
-    for field in [
-        "agent.system_prompt",
-        "agent.memory_nudge_enabled",
-        "security.sandbox_type",
-        "security.allow_network_egress",
-        "security.restricted_paths",
-        "security.require_human_approval_for_destructive",
-        "skills",
-    ]:
-        assert any(field in error for error in report.errors), field
+    assert report.success, report.errors
+    assert report.applied_settings != {}
+    result = Config.model_validate(report.applied_settings)
+
+    # Verify security policy applied
+    assert result.security.sandbox_type == blueprint.security.sandbox_type
+    assert result.security.allow_network_egress == blueprint.security.allow_network_egress
+    assert result.security.restricted_paths == blueprint.security.restricted_paths
+    assert (
+        result.security.require_human_approval_for_destructive
+        == blueprint.security.require_human_approval_for_destructive
+    )
+
+    # Verify agent settings applied
+    assert result.agents.defaults.model == blueprint.agent.model_name
+    assert result.agents.defaults.temperature == blueprint.agent.temperature
+    assert result.agents.defaults.max_tool_iterations == blueprint.agent.max_turns
+    assert result.agents.defaults.system_prompt == blueprint.agent.system_prompt
+    assert (
+        result.agents.defaults.memory_nudge_enabled
+        == blueprint.agent.memory_nudge_enabled
+    )
+    assert result.skills == blueprint.skills
+
+    # Verify input was not mutated
     assert config.model_dump() == original
 
 
-@pytest.mark.parametrize(
-    "settings",
-    [
-        {"agent": {"system_prompt": "custom prompt"}},
-        {"agent": {"memory_nudge_enabled": False}},
-        {"skills": []},
-        {"security": {"allow_network_egress": False}},
-    ],
-)
-def test_explicit_unsupported_settings_are_not_silently_discarded(settings):
-    blueprint = BlueprintSchema.model_validate({"name": "unsupported", **settings})
+def test_explicit_unsupported_settings_are_not_silently_discarded():
+    blueprint = BlueprintSchema.model_validate(
+        {"name": "unsupported", "security": {"sandbox_type": "quantum_hypervisor"}}
+    )
     report = BlueprintApplier().apply_to_config(blueprint, Config())
     assert not report.success
-    assert report.errors
+    assert any("security.sandbox_type" in error for error in report.errors)
     assert report.applied_settings == {}
 
 
@@ -168,16 +174,137 @@ def test_cli_persists_only_canonical_supported_patch(tmp_path):
     assert config.model_dump() == original
 
 
-def test_cli_checks_capabilities_before_loading_config_or_migrating_secrets():
+def test_cli_checks_capabilities_before_loading_config_or_migrating_secrets(tmp_path):
+    invalid_file = tmp_path / "invalid.yaml"
+    invalid_file.write_text(
+        "name: invalid-capabilities\nsecurity:\n  sandbox_type: invalid_sandbox_hypervisor\n",
+        encoding="utf-8",
+    )
     with (
         patch("amberclaw.cli.commands.blueprint.load_config") as load,
         patch("amberclaw.cli.commands.blueprint.save_config") as save,
     ):
-        result = CliRunner().invoke(app, ["blueprint", "apply", "paranoid"])
+        result = CliRunner().invoke(app, ["blueprint", "apply", str(invalid_file)])
     assert result.exit_code != 0
-    assert "security.allow_network_egress" in result.output
+    assert "security.sandbox_type" in result.output
     load.assert_not_called()
     save.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_runtime_enforces_blueprint_restricted_paths(tmp_path):
+    from amberclaw.agent.tools.filesystem import ReadFileArgs, ReadFileTool, WriteFileArgs, WriteFileTool
+    from amberclaw.agent.tools.shell import ExecArgs, ExecTool
+    from amberclaw.config.schema import settings
+
+    secret_dir = tmp_path / "protected_secrets"
+    secret_dir.mkdir()
+    secret_file = secret_dir / "key.txt"
+    secret_file.write_text("secret_data", encoding="utf-8")
+
+    # Configure restricted paths
+    original_restricted = settings.security.restricted_paths
+    try:
+        settings.security.restricted_paths = [str(secret_dir)]
+
+        # 1. ReadFileTool blocks access
+        read_tool = ReadFileTool(workspace=tmp_path)
+        read_res = await read_tool.run(ReadFileArgs(path=str(secret_file)))
+        assert "forbidden by security policy" in read_res
+
+        # 2. WriteFileTool blocks access
+        write_tool = WriteFileTool(workspace=tmp_path)
+        write_res = await write_tool.run(WriteFileArgs(path=str(secret_file), content="new"))
+        assert "forbidden by security policy" in write_res
+
+        # 3. ExecTool blocks access
+        exec_tool = ExecTool(working_dir=str(tmp_path), restrict_to_workspace=False)
+        exec_res = await exec_tool.run(ExecArgs(command=f"cat {secret_file}"))
+        assert "access to restricted path" in exec_res
+    finally:
+        settings.security.restricted_paths = original_restricted
+
+
+@pytest.mark.asyncio
+async def test_runtime_enforces_blueprint_network_egress():
+    from amberclaw.agent.tools.shell import ExecArgs, ExecTool
+    from amberclaw.agent.tools.web import WebFetchArgs, WebFetchTool, WebSearchArgs, WebSearchTool
+    from amberclaw.config.schema import settings
+
+    original_egress = settings.security.allow_network_egress
+    try:
+        settings.security.allow_network_egress = False
+
+        # 1. WebSearchTool blocks
+        search_tool = WebSearchTool()
+        search_res = await search_tool.run(WebSearchArgs(query="amberclaw security"))
+        assert "Network egress is disabled by security policy" in search_res
+
+        # 2. WebFetchTool blocks
+        fetch_tool = WebFetchTool()
+        fetch_res = await fetch_tool.run(WebFetchArgs(url="https://example.com"))
+        assert "Network egress is disabled by security policy" in fetch_res
+
+        # 3. ExecTool network commands blocked
+        exec_tool = ExecTool()
+        exec_res = await exec_tool.run(ExecArgs(command="curl https://example.com"))
+        assert "network egress is disabled" in exec_res
+    finally:
+        settings.security.allow_network_egress = original_egress
+
+
+@pytest.mark.asyncio
+async def test_runtime_enforces_blueprint_destructive_approval(tmp_path):
+    from amberclaw.agent.tools.filesystem import WriteFileTool
+    from amberclaw.agent.tools.registry import ToolRegistry
+    from amberclaw.config.schema import settings
+    from amberclaw.security.approval import ToolApprovalManager
+
+    approval_mgr = ToolApprovalManager.get_instance()
+    approval_mgr.clear()
+
+    reg = ToolRegistry()
+    reg.register(WriteFileTool(workspace=tmp_path))
+
+    original_approval = settings.security.require_human_approval_for_destructive
+    target_file = tmp_path / "approved.txt"
+    try:
+        settings.security.require_human_approval_for_destructive = True
+
+        # First call without approval generates ticket
+        res = await reg.execute(
+            "write_file",
+            {"path": str(target_file), "content": "approved content"},
+        )
+        assert "requires human approval" in res
+        assert "ticket:" in res
+
+        # Extract ticket id
+        ticket_id = res.split("ticket: ")[1].split(")")[0]
+
+        # Resolve ticket as approved
+        assert approval_mgr.resolve_ticket(ticket_id, approved=True)
+
+        # Retry call with approved ticket succeeds
+        approved_res = await reg.execute(
+            "write_file",
+            {"path": str(target_file), "content": "approved content", "approval_ticket_id": ticket_id},
+        )
+        assert "Successfully wrote" in approved_res
+        assert target_file.read_text(encoding="utf-8") == "approved content"
+
+        # When require_human_approval_for_destructive is False (e.g. developer preset), no ticket is required
+        settings.security.require_human_approval_for_destructive = False
+        target_file_dev = tmp_path / "dev.txt"
+        dev_res = await reg.execute(
+            "write_file",
+            {"path": str(target_file_dev), "content": "direct write"},
+        )
+        assert "Successfully wrote" in dev_res
+        assert target_file_dev.read_text(encoding="utf-8") == "direct write"
+    finally:
+        settings.security.require_human_approval_for_destructive = original_approval
+        approval_mgr.clear()
 
 
 def test_cli_rejects_invalid_application_report_before_saving(tmp_path):

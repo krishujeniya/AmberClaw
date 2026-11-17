@@ -8,6 +8,7 @@ RUFF := uv run ruff
 help:
 	@echo "AmberClaw AI OS Makefile"
 	@echo "========================"
+	@echo "Verification and build targets are invoked by GitHub Actions only."
 	@echo "Usage:"
 	@echo "  make install      Install the project and dependencies using uv"
 	@echo "  make dev          Start the development server (API Gateway & OS Loop)"

@@ -1,0 +1,29 @@
+{
+  "milestone": "CL-011",
+  "name": "Durable runs and side-effect safety",
+  "status": "VERIFIED",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "verified_at": "2026-11-09T08:03:00+05:30",
+  "artifacts": {
+    "failure-matrix.json": {
+      "path": "evidence/competitive/CL-011/9ece8c0/failure-matrix.json",
+      "sha256": "1ff6400142da876778c46e82fd997393f8c5a7e888e2c18c83a091abfcd62b50"
+    },
+    "replay-logs.txt": {
+      "path": "evidence/competitive/CL-011/9ece8c0/replay-logs.txt",
+      "sha256": "1d9fb766551874e1f2e5fb8ca479ae41bb8606b66f9c8046942266edd1a53a08"
+    },
+    "0007-durable-runs-and-side-effect-safety.md": {
+      "path": "docs/adr/0007-durable-runs-and-side-effect-safety.md",
+      "sha256": "d719ab5106f10917f336a1d3d0a1269bb613ac87565518e14a5093fd807f80b9"
+    },
+    "durable.py": {
+      "path": "src/amberclaw/runtime/durable.py",
+      "sha256": "aab51d6a14b00c91e22174d183608442b6046b7c477c59c13c49a06ca41b77bc"
+    },
+    "test_durable_runs.py": {
+      "path": "tests/unit/runtime/test_durable_runs.py",
+      "sha256": "eefcd18db95fcdf0203892b4d4e68b9adfe0f1c73ec426a6dfaf39ba7d297adf"
+    }
+  }
+}

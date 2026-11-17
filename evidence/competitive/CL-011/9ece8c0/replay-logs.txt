@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.13, pytest-9.0.3, pluggy-1.6.0 -- /home/ai/Documents/projects/Freelance/AmberClaw/.venv/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /home/ai/Documents/projects/Freelance/AmberClaw
+configfile: pyproject.toml
+plugins: cov-7.1.0, asyncio-1.3.0, langsmith-0.7.33, hypothesis-6.155.1, anyio-4.14.2
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 4 items
+
+tests/unit/runtime/test_durable_runs.py::test_100_injected_crash_points_and_zero_duplicate_side_effects PASSED [ 25%]
+tests/unit/runtime/test_durable_runs.py::test_pending_approval_survives_restart PASSED [ 50%]
+tests/unit/runtime/test_durable_runs.py::test_ambiguous_remote_completion_visible PASSED [ 75%]
+tests/unit/runtime/test_durable_runs.py::test_saga_compensation_chain PASSED [100%]
+
+============================== 4 passed in 4.94s ===============================

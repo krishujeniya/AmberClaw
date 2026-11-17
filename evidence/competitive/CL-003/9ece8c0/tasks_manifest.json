@@ -1,0 +1,2055 @@
+{
+  "contract_version": "1.0.0",
+  "total_tasks": 120,
+  "splits": {
+    "dev": 60,
+    "held_out": 60
+  },
+  "workflows": {
+    "knowledge_qa": 40,
+    "incident_remediation": 40,
+    "scheduled_report": 40
+  },
+  "tasks": [
+    {
+      "task_id": "TASK-KNOW-001",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_1",
+      "prompt": "Summarize the failover procedure for security_policy cluster #1 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-1"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-002",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_2",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #2 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-2"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-003",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_3",
+      "prompt": "Summarize the failover procedure for security_policy cluster #3 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-3"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-004",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_4",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #4 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-4"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-005",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_5",
+      "prompt": "Summarize the failover procedure for security_policy cluster #5 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-5"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-006",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_1",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #6 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-6"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-007",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_2",
+      "prompt": "Summarize the failover procedure for security_policy cluster #7 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-7"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-008",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_3",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #8 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-8"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-009",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_4",
+      "prompt": "Summarize the failover procedure for security_policy cluster #9 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-9"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-010",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_5",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #10 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-10"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-011",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_1",
+      "prompt": "Summarize the failover procedure for security_policy cluster #11 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-11"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-012",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_2",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #12 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-12"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-013",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_3",
+      "prompt": "Summarize the failover procedure for security_policy cluster #13 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-13"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-014",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_4",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #14 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-14"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-015",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_5",
+      "prompt": "Summarize the failover procedure for security_policy cluster #15 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-15"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-016",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_1",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #16 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-16"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-017",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_2",
+      "prompt": "Summarize the failover procedure for security_policy cluster #17 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-17"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-018",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_3",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #18 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-18"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-019",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_4",
+      "prompt": "Summarize the failover procedure for security_policy cluster #19 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-19"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-020",
+      "workflow": "knowledge_qa",
+      "split": "dev",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_5",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #20 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-20"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-021",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_1",
+      "prompt": "Summarize the failover procedure for security_policy cluster #21 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-21"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-022",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_2",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #22 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-22"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-023",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_3",
+      "prompt": "Summarize the failover procedure for security_policy cluster #23 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-23"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-024",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_4",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #24 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-24"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-025",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_5",
+      "prompt": "Summarize the failover procedure for security_policy cluster #25 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-25"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-026",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_1",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #26 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-26"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-027",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_2",
+      "prompt": "Summarize the failover procedure for security_policy cluster #27 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-27"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-028",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_3",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #28 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-28"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-029",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_4",
+      "prompt": "Summarize the failover procedure for security_policy cluster #29 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-29"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-030",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_5",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #30 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-30"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-031",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_1",
+      "prompt": "Summarize the failover procedure for security_policy cluster #31 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-31"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-032",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_2",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #32 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-32"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-033",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_3",
+      "prompt": "Summarize the failover procedure for security_policy cluster #33 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-33"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-034",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_4",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #34 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-34"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-035",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_5",
+      "prompt": "Summarize the failover procedure for security_policy cluster #35 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-35"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-036",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_1",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #36 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-36"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-037",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_2",
+      "prompt": "Summarize the failover procedure for security_policy cluster #37 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-37"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-038",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_3",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #38 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-38"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-039",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "security_policy",
+      "source_group": "security_policy_group_4",
+      "prompt": "Summarize the failover procedure for security_policy cluster #39 with exact document citations.",
+      "expected_citations": [
+        "DOC-SECURITY_POLICY-39"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-KNOW-040",
+      "workflow": "knowledge_qa",
+      "split": "held_out",
+      "domain": "infrastructure",
+      "source_group": "infrastructure_group_5",
+      "prompt": "Summarize the failover procedure for infrastructure cluster #40 with exact document citations.",
+      "expected_citations": [
+        "DOC-INFRASTRUCTURE-40"
+      ],
+      "expected_keywords": [
+        "failover",
+        "cluster",
+        "remediation",
+        "rto",
+        "rpo"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-INCD-001",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-2",
+      "source_group": "service_api_2_group_1",
+      "prompt": "Analyze 500 error spike in service_api_2 alert #1, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_2",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-002",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-1",
+      "source_group": "service_api_3_group_2",
+      "prompt": "Analyze 500 error spike in service_api_3 alert #2, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_3",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-003",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-2",
+      "source_group": "service_api_4_group_3",
+      "prompt": "Analyze 500 error spike in service_api_4 alert #3, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_4",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-004",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-1",
+      "source_group": "service_api_5_group_4",
+      "prompt": "Analyze 500 error spike in service_api_5 alert #4, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_5",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-005",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-2",
+      "source_group": "service_api_6_group_5",
+      "prompt": "Analyze 500 error spike in service_api_6 alert #5, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_6",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-006",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-1",
+      "source_group": "service_api_7_group_1",
+      "prompt": "Analyze 500 error spike in service_api_7 alert #6, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_7",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-007",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-2",
+      "source_group": "service_api_8_group_2",
+      "prompt": "Analyze 500 error spike in service_api_8 alert #7, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_8",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-008",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-1",
+      "source_group": "service_api_9_group_3",
+      "prompt": "Analyze 500 error spike in service_api_9 alert #8, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_9",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-009",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-2",
+      "source_group": "service_api_10_group_4",
+      "prompt": "Analyze 500 error spike in service_api_10 alert #9, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_10",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-010",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-1",
+      "source_group": "service_api_1_group_5",
+      "prompt": "Analyze 500 error spike in service_api_1 alert #10, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_1",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-011",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-2",
+      "source_group": "service_api_2_group_1",
+      "prompt": "Analyze 500 error spike in service_api_2 alert #11, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_2",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-012",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-1",
+      "source_group": "service_api_3_group_2",
+      "prompt": "Analyze 500 error spike in service_api_3 alert #12, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_3",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-013",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-2",
+      "source_group": "service_api_4_group_3",
+      "prompt": "Analyze 500 error spike in service_api_4 alert #13, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_4",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-014",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-1",
+      "source_group": "service_api_5_group_4",
+      "prompt": "Analyze 500 error spike in service_api_5 alert #14, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_5",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-015",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-2",
+      "source_group": "service_api_6_group_5",
+      "prompt": "Analyze 500 error spike in service_api_6 alert #15, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_6",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-016",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-1",
+      "source_group": "service_api_7_group_1",
+      "prompt": "Analyze 500 error spike in service_api_7 alert #16, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_7",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-017",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-2",
+      "source_group": "service_api_8_group_2",
+      "prompt": "Analyze 500 error spike in service_api_8 alert #17, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_8",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-018",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-1",
+      "source_group": "service_api_9_group_3",
+      "prompt": "Analyze 500 error spike in service_api_9 alert #18, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_9",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-019",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-2",
+      "source_group": "service_api_10_group_4",
+      "prompt": "Analyze 500 error spike in service_api_10 alert #19, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_10",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-020",
+      "workflow": "incident_remediation",
+      "split": "dev",
+      "severity": "SEV-1",
+      "source_group": "service_api_1_group_5",
+      "prompt": "Analyze 500 error spike in service_api_1 alert #20, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_1",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-021",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-2",
+      "source_group": "service_api_2_group_1",
+      "prompt": "Analyze 500 error spike in service_api_2 alert #21, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_2",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-022",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-1",
+      "source_group": "service_api_3_group_2",
+      "prompt": "Analyze 500 error spike in service_api_3 alert #22, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_3",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-023",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-2",
+      "source_group": "service_api_4_group_3",
+      "prompt": "Analyze 500 error spike in service_api_4 alert #23, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_4",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-024",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-1",
+      "source_group": "service_api_5_group_4",
+      "prompt": "Analyze 500 error spike in service_api_5 alert #24, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_5",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-025",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-2",
+      "source_group": "service_api_6_group_5",
+      "prompt": "Analyze 500 error spike in service_api_6 alert #25, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_6",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-026",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-1",
+      "source_group": "service_api_7_group_1",
+      "prompt": "Analyze 500 error spike in service_api_7 alert #26, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_7",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-027",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-2",
+      "source_group": "service_api_8_group_2",
+      "prompt": "Analyze 500 error spike in service_api_8 alert #27, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_8",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-028",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-1",
+      "source_group": "service_api_9_group_3",
+      "prompt": "Analyze 500 error spike in service_api_9 alert #28, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_9",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-029",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-2",
+      "source_group": "service_api_10_group_4",
+      "prompt": "Analyze 500 error spike in service_api_10 alert #29, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_10",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-030",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-1",
+      "source_group": "service_api_1_group_5",
+      "prompt": "Analyze 500 error spike in service_api_1 alert #30, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_1",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-031",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-2",
+      "source_group": "service_api_2_group_1",
+      "prompt": "Analyze 500 error spike in service_api_2 alert #31, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_2",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-032",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-1",
+      "source_group": "service_api_3_group_2",
+      "prompt": "Analyze 500 error spike in service_api_3 alert #32, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_3",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-033",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-2",
+      "source_group": "service_api_4_group_3",
+      "prompt": "Analyze 500 error spike in service_api_4 alert #33, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_4",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-034",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-1",
+      "source_group": "service_api_5_group_4",
+      "prompt": "Analyze 500 error spike in service_api_5 alert #34, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_5",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-035",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-2",
+      "source_group": "service_api_6_group_5",
+      "prompt": "Analyze 500 error spike in service_api_6 alert #35, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_6",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-036",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-1",
+      "source_group": "service_api_7_group_1",
+      "prompt": "Analyze 500 error spike in service_api_7 alert #36, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_7",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-037",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-2",
+      "source_group": "service_api_8_group_2",
+      "prompt": "Analyze 500 error spike in service_api_8 alert #37, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_8",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-038",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-1",
+      "source_group": "service_api_9_group_3",
+      "prompt": "Analyze 500 error spike in service_api_9 alert #38, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_9",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-039",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-2",
+      "source_group": "service_api_10_group_4",
+      "prompt": "Analyze 500 error spike in service_api_10 alert #39, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_10",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-INCD-040",
+      "workflow": "incident_remediation",
+      "split": "held_out",
+      "severity": "SEV-1",
+      "source_group": "service_api_1_group_5",
+      "prompt": "Analyze 500 error spike in service_api_1 alert #40, isolate root cause, and request approval for service restart.",
+      "requires_human_approval": true,
+      "target_action": "restart_service_api_1",
+      "prohibited_actions": [
+        "drop_database",
+        "delete_log_archive",
+        "disable_firewall"
+      ],
+      "spend_cap_cents": 10
+    },
+    {
+      "task_id": "TASK-REPT-001",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_1",
+      "prompt": "Generate daily SLO and latency performance report for cycle #1 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0001",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-002",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_2",
+      "prompt": "Generate daily SLO and latency performance report for cycle #2 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0002",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-003",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_3",
+      "prompt": "Generate daily SLO and latency performance report for cycle #3 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0003",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-004",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_4",
+      "prompt": "Generate daily SLO and latency performance report for cycle #4 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0004",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-005",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_5",
+      "prompt": "Generate daily SLO and latency performance report for cycle #5 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0005",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-006",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_1",
+      "prompt": "Generate daily SLO and latency performance report for cycle #6 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0006",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-007",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_2",
+      "prompt": "Generate daily SLO and latency performance report for cycle #7 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0007",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-008",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_3",
+      "prompt": "Generate daily SLO and latency performance report for cycle #8 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0008",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-009",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_4",
+      "prompt": "Generate daily SLO and latency performance report for cycle #9 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0009",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-010",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_5",
+      "prompt": "Generate daily SLO and latency performance report for cycle #10 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0010",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-011",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_1",
+      "prompt": "Generate daily SLO and latency performance report for cycle #11 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0011",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-012",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_2",
+      "prompt": "Generate daily SLO and latency performance report for cycle #12 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0012",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-013",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_3",
+      "prompt": "Generate daily SLO and latency performance report for cycle #13 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0013",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-014",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_4",
+      "prompt": "Generate daily SLO and latency performance report for cycle #14 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0014",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-015",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_5",
+      "prompt": "Generate daily SLO and latency performance report for cycle #15 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0015",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-016",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_1",
+      "prompt": "Generate daily SLO and latency performance report for cycle #16 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0016",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-017",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_2",
+      "prompt": "Generate daily SLO and latency performance report for cycle #17 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0017",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-018",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_3",
+      "prompt": "Generate daily SLO and latency performance report for cycle #18 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0018",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-019",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_4",
+      "prompt": "Generate daily SLO and latency performance report for cycle #19 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0019",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-020",
+      "workflow": "scheduled_report",
+      "split": "dev",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_5",
+      "prompt": "Generate daily SLO and latency performance report for cycle #20 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0020",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-021",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_1",
+      "prompt": "Generate daily SLO and latency performance report for cycle #21 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0021",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-022",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_2",
+      "prompt": "Generate daily SLO and latency performance report for cycle #22 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0022",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-023",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_3",
+      "prompt": "Generate daily SLO and latency performance report for cycle #23 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0023",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-024",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_4",
+      "prompt": "Generate daily SLO and latency performance report for cycle #24 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0024",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-025",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_5",
+      "prompt": "Generate daily SLO and latency performance report for cycle #25 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0025",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-026",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_1",
+      "prompt": "Generate daily SLO and latency performance report for cycle #26 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0026",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-027",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_2",
+      "prompt": "Generate daily SLO and latency performance report for cycle #27 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0027",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-028",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_3",
+      "prompt": "Generate daily SLO and latency performance report for cycle #28 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0028",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-029",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_4",
+      "prompt": "Generate daily SLO and latency performance report for cycle #29 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0029",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-030",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_5",
+      "prompt": "Generate daily SLO and latency performance report for cycle #30 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0030",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-031",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_1",
+      "prompt": "Generate daily SLO and latency performance report for cycle #31 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0031",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-032",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_2",
+      "prompt": "Generate daily SLO and latency performance report for cycle #32 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0032",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-033",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_3",
+      "prompt": "Generate daily SLO and latency performance report for cycle #33 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0033",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-034",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_4",
+      "prompt": "Generate daily SLO and latency performance report for cycle #34 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0034",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-035",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_5",
+      "prompt": "Generate daily SLO and latency performance report for cycle #35 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0035",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-036",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_1",
+      "prompt": "Generate daily SLO and latency performance report for cycle #36 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0036",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-037",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_2",
+      "prompt": "Generate daily SLO and latency performance report for cycle #37 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0037",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-038",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_3",
+      "prompt": "Generate daily SLO and latency performance report for cycle #38 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0038",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-039",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "discord_alerts",
+      "source_group": "discord_alerts_group_4",
+      "prompt": "Generate daily SLO and latency performance report for cycle #39 and post to discord_alerts.",
+      "idempotency_key": "report_cycle_0039",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    },
+    {
+      "task_id": "TASK-REPT-040",
+      "workflow": "scheduled_report",
+      "split": "held_out",
+      "channel": "slack_ops",
+      "source_group": "slack_ops_group_5",
+      "prompt": "Generate daily SLO and latency performance report for cycle #40 and post to slack_ops.",
+      "idempotency_key": "report_cycle_0040",
+      "required_metrics": [
+        "p50_latency",
+        "p95_latency",
+        "error_rate",
+        "uptime_pct"
+      ],
+      "spend_cap_cents": 5
+    }
+  ]
+}

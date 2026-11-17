@@ -141,6 +141,7 @@ class RefreshTokenManager:
     def create_token_pair(
         self,
         user_id: str,
+        tenant_id: str = "default",
         role: str = "user",
         scopes: list[str] | None = None,
         session_id: str | None = None,
@@ -157,6 +158,7 @@ class RefreshTokenManager:
         access_exp = now + timedelta(minutes=self.access_expire_minutes)
         access_payload = {
             "sub": user_id,
+            "tenant_id": tenant_id,
             "role": role,
             "scopes": scopes,
             "session_id": sid,
@@ -171,6 +173,7 @@ class RefreshTokenManager:
         refresh_exp = now + timedelta(days=self.refresh_expire_days)
         refresh_payload = {
             "sub": user_id,
+            "tenant_id": tenant_id,
             "role": role,
             "scopes": scopes,
             "session_id": sid,
@@ -211,6 +214,7 @@ class RefreshTokenManager:
         jti = payload.get("jti")
         fam_id = payload.get("family_id")
         user_id = payload.get("sub")
+        tenant_id = payload.get("tenant_id", "default")
         role = payload.get("role", "user")
         scopes = payload.get("scopes", [])
         session_id = payload.get("session_id")
@@ -262,6 +266,7 @@ class RefreshTokenManager:
         # 5. Issue new pair with the same family_id
         return self.create_token_pair(
             user_id=user_id,
+            tenant_id=tenant_id,
             role=role,
             scopes=scopes,
             session_id=session_id,
@@ -277,6 +282,7 @@ class APIKeyRecord(BaseModel):
     hashed_key: str
     salt: str
     owner_id: str
+    tenant_id: str = "default"
     scopes: list[str] = Field(default_factory=list)
     name: str = "default"
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -305,6 +311,7 @@ class APIKeyManager:
     def create_api_key(
         self,
         owner_id: str,
+        tenant_id: str = "default",
         scopes: list[str] | None = None,
         name: str = "API Key",
         expires_in_days: int | None = 30,
@@ -329,6 +336,7 @@ class APIKeyManager:
             hashed_key=hashed,
             salt=salt,
             owner_id=owner_id,
+            tenant_id=tenant_id,
             scopes=scopes or ["*"],
             name=name,
             created_at=now,

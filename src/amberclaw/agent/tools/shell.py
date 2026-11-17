@@ -46,6 +46,8 @@ class ExecTool(PydanticTool):
         allow_patterns: list[str] | None = None,
         restrict_to_workspace: bool = True,
         path_append: str = "",
+        restricted_paths: list[str] | None = None,
+        allow_network_egress: bool | None = None,
     ) -> None:
         super().__init__()
         self.timeout = timeout
@@ -68,6 +70,8 @@ class ExecTool(PydanticTool):
         self.allow_patterns = allow_patterns if allow_patterns is not None else []
         self.restrict_to_workspace = restrict_to_workspace
         self.path_append = path_append
+        self.restricted_paths = restricted_paths
+        self.allow_network_egress = allow_network_egress
 
     async def run(self, args: ExecArgs) -> str:
         cwd = (
@@ -162,6 +166,54 @@ class ExecTool(PydanticTool):
         """Best-effort safety guard for potentially destructive commands."""
         cmd = command.strip()
         lower = cmd.lower()
+
+        # Check restricted paths policy
+        restricted = self.restricted_paths
+        if restricted is None:
+            try:
+                from amberclaw.config.schema import settings  # noqa: PLC0415
+
+                restricted = getattr(settings.security, "restricted_paths", None)
+            except Exception:
+                restricted = None
+
+        if restricted:
+            for raw in self._extract_absolute_paths(command):
+                try:
+                    p = Path(raw.strip()).expanduser().resolve()
+                    for rp in restricted:
+                        rp_p = Path(rp).expanduser().resolve()
+                        if p == rp_p or rp_p in p.parents:
+                            return f"Error: Command blocked by security policy (access to restricted path '{raw}')"
+                except Exception:
+                    continue
+
+        # Check network egress policy
+        egress_allowed = self.allow_network_egress
+        if egress_allowed is None:
+            try:
+                from amberclaw.config.schema import settings  # noqa: PLC0415
+
+                egress_allowed = getattr(settings.security, "allow_network_egress", True)
+            except Exception:
+                egress_allowed = True
+
+        if not egress_allowed:
+            network_commands = [
+                r"\bcurl\b",
+                r"\bwget\b",
+                r"\bnc\b",
+                r"\bnetcat\b",
+                r"\bssh\b",
+                r"\bscp\b",
+                r"\bping\b",
+                r"\btelnet\b",
+                r"\bftp\b",
+                r"\bnmap\b",
+            ]
+            for pat in network_commands:
+                if re.search(pat, lower):
+                    return "Error: Command blocked by security policy (network egress is disabled)"
 
         for pattern in self.deny_patterns:
             if re.search(pattern, lower):

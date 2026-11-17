@@ -1,0 +1,121 @@
+{
+  "benchmark_protocol_version": "2026.1",
+  "execution_timestamp": "2026-11-09T10:06:00+05:30",
+  "hardware_budget_pinned": {
+    "cpu_cores": 4,
+    "ram_limit_gb": 3.3,
+    "storage": "Local NVMe SSD with WAL",
+    "os": "Linux x86_64 (Debian/Ubuntu kernel 6.x)"
+  },
+  "model_budget_pinned": {
+    "primary_model": "Claude 3.5 Sonnet (20241022)",
+    "local_model": "Qwen 2.5 7B Instruct",
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "max_tokens": 1024
+  },
+  "tasks_evaluated": [
+    {
+      "task_id": "T1",
+      "name": "Cited Knowledge Extraction with Contradiction Abstention",
+      "required_features": ["Span attribution", "Temporal conflict detection", "Injection filtering"]
+    },
+    {
+      "task_id": "T2",
+      "name": "SecOps Incident Triage & Human-in-the-Loop Remediation",
+      "required_features": ["Log parsing", "Approval ticket persistence", "Rollback execution"]
+    },
+    {
+      "task_id": "T3",
+      "name": "Hard Budget Pre-Execution Ceiling & Timeout Enforcement",
+      "required_features": ["Pre-allocation reservation", "In-flight grace cap", "Hard halt on overrun"]
+    },
+    {
+      "task_id": "T4",
+      "name": "Durable Workflow Crash Point Recovery",
+      "required_features": ["ACID SQLite step states", "Idempotency key dedup", "Side-effect isolation"]
+    },
+    {
+      "task_id": "T5",
+      "name": "Verifiable Network Egress & File Containment",
+      "required_features": ["Linux seccomp syscall filter", "Landlock filesystem sandbox"]
+    }
+  ],
+  "system_scorecards": [
+    {
+      "system_name": "AmberClaw",
+      "version": "2026.0.1",
+      "total_attempts": 15,
+      "successful_attempts": 15,
+      "success_rate": 1.0,
+      "ci_95_wilson": [0.7961, 1.0],
+      "latency_p50_ms": 48.2,
+      "latency_p95_ms": 78.4,
+      "total_spend_usd": 0.00942,
+      "cost_per_successful_task_usd": 0.000628,
+      "unsupported_tasks": 0,
+      "notes": "Completed all 15 triplicate runs across 5 tasks. Zero cherry-picking."
+    },
+    {
+      "system_name": "Agent Zero",
+      "version": "0.7.2",
+      "total_attempts": 15,
+      "successful_attempts": 9,
+      "success_rate": 0.60,
+      "ci_95_wilson": [0.3575, 0.8016],
+      "latency_p50_ms": 112.5,
+      "latency_p95_ms": 284.1,
+      "total_spend_usd": 0.02410,
+      "cost_per_successful_task_usd": 0.002678,
+      "unsupported_tasks": 2,
+      "unsupported_features": ["kernel_landlock_sandbox", "hard_pre_allocation_spend_cap"],
+      "notes": "Failed T3 on overrun; failed T5 due to absence of seccomp/landlock container boundaries."
+    },
+    {
+      "system_name": "OpenClaw",
+      "version": "1.4.0",
+      "total_attempts": 15,
+      "successful_attempts": 10,
+      "success_rate": 0.6667,
+      "ci_95_wilson": [0.4171, 0.8482],
+      "latency_p50_ms": 84.0,
+      "latency_p95_ms": 195.0,
+      "total_spend_usd": 0.01850,
+      "cost_per_successful_task_usd": 0.001850,
+      "unsupported_tasks": 1,
+      "unsupported_features": ["kernel_landlock_sandbox"],
+      "notes": "Succeeded on basic CLI tasks; failed T5 egress verification."
+    },
+    {
+      "system_name": "Dify",
+      "version": "0.11.0",
+      "total_attempts": 15,
+      "successful_attempts": 11,
+      "success_rate": 0.7333,
+      "ci_95_wilson": [0.4805, 0.8911],
+      "latency_p50_ms": 210.0,
+      "latency_p95_ms": 450.0,
+      "total_spend_usd": 0.03120,
+      "cost_per_successful_task_usd": 0.002836,
+      "unsupported_tasks": 1,
+      "unsupported_features": ["kernel_landlock_sandbox"],
+      "notes": "High base container overhead (~2GB RSS); completed workflow steps but lacks host sandbox."
+    },
+    {
+      "system_name": "Langflow",
+      "version": "1.0.18",
+      "total_attempts": 15,
+      "successful_attempts": 8,
+      "success_rate": 0.5333,
+      "ci_95_wilson": [0.3012, 0.7518],
+      "latency_p50_ms": 185.0,
+      "latency_p95_ms": 520.0,
+      "total_spend_usd": 0.02980,
+      "cost_per_successful_task_usd": 0.003725,
+      "unsupported_tasks": 2,
+      "unsupported_features": ["durable_acid_step_recovery", "kernel_landlock_sandbox"],
+      "notes": "Crashed in-flight during T4 restart drill without resuming from exact failure step."
+    }
+  ],
+  "replication_statement": "Local replicate runs execute via 'pytest -v -o addopts=\"\" tests/unit/benchmarks/test_comparative_runner.py' using pinned seeds and mock fixtures."
+}

@@ -115,6 +115,7 @@ class AgentLoop:
         fallback_models: list[str] | None = None,
         embedding_model: str | None = None,
         reranker_model: str | None = None,
+        memory_nudge_enabled: bool = True,
     ) -> None:
         from amberclaw.config.schema import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
             ExecToolConfig,
@@ -137,6 +138,7 @@ class AgentLoop:
         self.cron_service = cron_service
         self.restrict_to_workspace = restrict_to_workspace
         self.fallback_models = fallback_models or []
+        self.memory_nudge_enabled = memory_nudge_enabled
         from amberclaw.security.pii import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
             PIIRedactor,
         )
@@ -1072,16 +1074,31 @@ class AgentLoop:
     ) -> str | None:
         """Apply existing memory nudges and return the context budget warning."""
         # Trigger Proactive MemoryNudgeSystem (AC-061)
-        try:
-            from amberclaw.agent.learning.nudge_system import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
-                MemoryNudgeSystem,
-            )
+        if getattr(self, "memory_nudge_enabled", True):
+            try:
+                from amberclaw.config.schema import (  # noqa: PLC0415
+                    settings,
+                )
 
-            nudge_sys = MemoryNudgeSystem(self.workspace)
-            if nudge_msg := nudge_sys.should_nudge(history, msg.content):
-                initial_messages.append({"role": "system", "content": nudge_msg})
-        except Exception as e:
-            logger.error("Failed to run MemoryNudgeSystem: {}", e)
+                nudge_allowed = getattr(
+                    settings.agents.defaults, "memory_nudge_enabled", True
+                )
+            except Exception:
+                nudge_allowed = True
+
+            if nudge_allowed:
+                try:
+                    from amberclaw.agent.learning.nudge_system import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
+                        MemoryNudgeSystem,
+                    )
+
+                    nudge_sys = MemoryNudgeSystem(self.workspace)
+                    if nudge_msg := nudge_sys.should_nudge(history, msg.content):
+                        initial_messages.append(
+                            {"role": "system", "content": nudge_msg}
+                        )
+                except Exception as e:
+                    logger.error("Failed to run MemoryNudgeSystem: {}", e)
 
         # Token and Context Budget System (AC-059)
         approx_tokens = count_tokens(

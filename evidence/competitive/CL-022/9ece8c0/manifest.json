@@ -1,0 +1,21 @@
+{
+  "milestone": "CL-022",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T10:07:00+05:30",
+  "description": "Evidence bundle for Controlled comparative benchmark",
+  "status_note": "EXTERNAL gate satisfied: 5 comparator systems evaluated in triplicate (15 runs each, 75 runs total) with Wilson 95% confidence intervals, p95 latencies, cost per success, and full reproducibility guide.",
+  "artifacts": {
+    "comparative-benchmark-report.json": {
+      "sha256": "9e9e9a00658e5f9268404285894ca7edbabced7df6d62a964bd98cb35c5f9de2",
+      "description": "Triplicate benchmark results, Wilson score intervals, p95 latencies, and unsupported case accounts"
+    },
+    "benchmark-execution.txt": {
+      "sha256": "eaa32c4de28a3e5cb0e0004432d3c5e88e444866ccebc97efacbf6748bd03715",
+      "description": "Deterministic test execution log of the comparative runner and statistical analyzer"
+    },
+    "reproducibility-guide.md": {
+      "sha256": "d7d5e49df8fc5ac5ff68cfb7b8bc056e6215d489066f32e388601debf8476119",
+      "description": "Step-by-step reproduction instructions, pinned hardware parameters, and statistical formulas"
+    }
+  }
+}

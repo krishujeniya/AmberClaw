@@ -1,0 +1,10 @@
+{
+  "milestone": "CL-027",
+  "commit": "9ece8c0",
+  "generated_at": "2026-11-09T10:25:20+05:30",
+  "files": {
+    "public-workflow-page.html": "fbba681f3f0badb21fccf88090423fd00246eb6584d75234ee9cf5b6ef94d3a5",
+    "seo-and-indexing-audit.md": "ff868abdcdf25336e9912622e88dcb130c6f628c8a39d94afabcaf0acc359d2d",
+    "rendered-link-and-html-verification.txt": "ae3cf821b523954dcce86484822a760468be44ba53e80bc47bd121ca80197ba4"
+  }
+}

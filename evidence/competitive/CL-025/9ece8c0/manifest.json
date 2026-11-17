@@ -1,0 +1,21 @@
+{
+  "milestone": "CL-025",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T10:14:00+05:30",
+  "description": "Evidence bundle for Measure adoption and retained value",
+  "status_note": "EXTERNAL gate satisfied: 4 of 5 enterprise pilot teams active weekly for 4 weeks (80% retention vs >=60% target), 1 counted dropout, before/after timing demonstrating 5.5x to 7.6x speedups, 3 customer-approved anonymized case studies recorded.",
+  "artifacts": {
+    "retention-cohort-table.json": {
+      "sha256": "752b8c60cb937b1fc1e2c8d863ac1b3ecfd0fb58f6a940dcfb5658e77f24d3a9",
+      "description": "Four-week longitudinal cohort tracking across 5 teams including dropouts and support ticket history"
+    },
+    "before-after-workflow-time.md": {
+      "sha256": "373df6290d13048710aca10901b578abec4898be7ace31d1df4fad0034fa6b34",
+      "description": "Measured task durations, efficiency multipliers, and support burden reduction analysis"
+    },
+    "customer-approved-case-studies.md": {
+      "sha256": "3a19e257b0fdf7b4cc46d127e48b221149043b60ce673ddbc623c37062433cbf",
+      "description": "Three customer-approved operational case studies across FinTech, SecOps, and Health systems"
+    }
+  }
+}

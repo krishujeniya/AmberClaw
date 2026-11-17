@@ -250,3 +250,15 @@ class TenantIsolatedStateStore(Generic[T]):
     def delete(self, key: str, tenant_id: str | None = None) -> bool:
         active = self._resolve_tenant(tenant_id)
         return self._get_store(active).delete(key)
+
+    def contains(self, key: str, tenant_id: str | None = None) -> bool:
+        active = self._resolve_tenant(tenant_id)
+        return self._get_store(active).contains(key)
+
+    def count(self, tenant_id: str | None = None) -> int:
+        active = self._resolve_tenant(tenant_id)
+        return self._get_store(active).count()
+
+    def clear(self, tenant_id: str | None = None) -> None:
+        active = self._resolve_tenant(tenant_id)
+        self._get_store(active).clear()

@@ -255,6 +255,8 @@ class AgentDefaults(Base):
     )
     embedding_model: str = "openai/text-embedding-3-small"
     reranker_model: str | None = None  # e.g. "cohere/rerank-v3-english"
+    system_prompt: str | None = None
+    memory_nudge_enabled: bool = True
 
 
 class AgentsConfig(Base):
@@ -427,6 +429,12 @@ class SecurityConfig(Base):
 
     pii_redaction: bool = True
     rbac: RBACConfig = Field(default_factory=RBACConfig)
+    sandbox_type: str = "docker"
+    allow_network_egress: bool = True
+    restricted_paths: list[str] = Field(
+        default_factory=lambda: ["/etc", "/root", "~/.ssh"]
+    )
+    require_human_approval_for_destructive: bool = True
 
 
 class ToolsConfig(Base):
@@ -503,6 +511,7 @@ class Config(BaseSettings):
     plugins: PluginsModuleConfig = Field(default_factory=PluginsModuleConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
+    skills: list[str] = Field(default_factory=list)
 
     @property
     def control_plane(self) -> ControlPlaneConfig:

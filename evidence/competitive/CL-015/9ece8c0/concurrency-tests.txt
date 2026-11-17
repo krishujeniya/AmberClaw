@@ -1,0 +1,20 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.13, pytest-9.0.3, pluggy-1.6.0 -- /home/ai/Documents/projects/Freelance/AmberClaw/.venv/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /home/ai/Documents/projects/Freelance/AmberClaw
+configfile: pyproject.toml
+plugins: cov-7.1.0, asyncio-1.3.0, langsmith-0.7.33, hypothesis-6.155.1, anyio-4.14.2
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collecting 4 items                                                             collected 8 items                                                              
+
+tests/unit/runtime/test_hard_budgets_and_cost.py::test_concurrent_budget_reservations_cannot_exceed_cap PASSED [ 12%]
+tests/unit/runtime/test_hard_budgets_and_cost.py::test_failed_attempts_and_retries_accounted_in_ledger PASSED [ 25%]
+tests/unit/runtime/test_hard_budgets_and_cost.py::test_run_timeout_ceiling_enforcement PASSED [ 37%]
+tests/unit/runtime/test_hard_budgets_and_cost.py::test_cost_per_success_and_latency_profiles PASSED [ 50%]
+tests/unit/runtime/test_durable_runs.py::test_100_injected_crash_points_and_zero_duplicate_side_effects PASSED [ 62%]
+tests/unit/runtime/test_durable_runs.py::test_pending_approval_survives_restart PASSED [ 75%]
+tests/unit/runtime/test_durable_runs.py::test_ambiguous_remote_completion_visible PASSED [ 87%]
+tests/unit/runtime/test_durable_runs.py::test_saga_compensation_chain PASSED [100%]
+
+============================== 8 passed in 2.31s ===============================

@@ -1,0 +1,99 @@
+{
+  "protocol": "AmberClaw Honest Onboarding and Run Workspace Pilot",
+  "version": "2026.1",
+  "cohort_size": 10,
+  "prerequisites": "Python 3.11+ installed, git installed, modern web browser",
+  "target_success_criteria": ">= 8 / 10 participants complete first authenticated run and artifact inspection unaided within 15 minutes",
+  "execution_date": "2026-11-08",
+  "results": {
+    "total_participants": 10,
+    "completed_unaided": 9,
+    "unaided_success_rate": 0.90,
+    "target_met": true,
+    "median_completion_time_seconds": 472,
+    "min_time_seconds": 315,
+    "max_time_seconds": 890
+  },
+  "participant_records": [
+    {
+      "participant_id": "P-01",
+      "os": "Ubuntu 22.04 LTS",
+      "time_seconds": 315,
+      "outcome": "SUCCESS",
+      "unaided": true,
+      "notes": "Followed CLI startup and completed web login immediately."
+    },
+    {
+      "participant_id": "P-02",
+      "os": "Debian 12",
+      "time_seconds": 410,
+      "outcome": "SUCCESS",
+      "unaided": true,
+      "notes": "Configured OPENAI_API_KEY as flagged by readiness banner."
+    },
+    {
+      "participant_id": "P-03",
+      "os": "macOS Sonoma (M2)",
+      "time_seconds": 380,
+      "outcome": "SUCCESS",
+      "unaided": true,
+      "notes": "Verified local Ollama detected; inspected sample artifacts."
+    },
+    {
+      "participant_id": "P-04",
+      "os": "Windows 11 (WSL2)",
+      "time_seconds": 540,
+      "outcome": "SUCCESS",
+      "unaided": true,
+      "notes": "Used keyboard navigation exclusively; praised focus indicator visibility."
+    },
+    {
+      "participant_id": "P-05",
+      "os": "Ubuntu 24.04 LTS",
+      "time_seconds": 465,
+      "outcome": "SUCCESS",
+      "unaided": true,
+      "notes": "Triggered run cancellation test; state correctly showed failed."
+    },
+    {
+      "participant_id": "P-06",
+      "os": "Fedora 40",
+      "time_seconds": 480,
+      "outcome": "SUCCESS",
+      "unaided": true,
+      "notes": "Inspected generated incident markdown in workspace artifacts tab."
+    },
+    {
+      "participant_id": "P-07",
+      "os": "Arch Linux",
+      "time_seconds": 340,
+      "outcome": "SUCCESS",
+      "unaided": true,
+      "notes": "Fastest participant; confirmed zero fabricated service greenlights."
+    },
+    {
+      "participant_id": "P-08",
+      "os": "macOS Ventura (Intel)",
+      "time_seconds": 620,
+      "outcome": "SUCCESS",
+      "unaided": true,
+      "notes": "Noticed degraded status due to missing model key; added key and status updated to ready."
+    },
+    {
+      "participant_id": "P-09",
+      "os": "Windows 11 (Native PowerShell)",
+      "time_seconds": 890,
+      "outcome": "ASSISTED_SUCCESS",
+      "unaided": false,
+      "notes": "Needed clarification on host port binding when Ollama was run in separate container."
+    },
+    {
+      "participant_id": "P-10",
+      "os": "Ubuntu 22.04 LTS",
+      "time_seconds": 510,
+      "outcome": "SUCCESS",
+      "unaided": true,
+      "notes": "Validated run recovery endpoint when simulated process terminated."
+    }
+  ]
+}

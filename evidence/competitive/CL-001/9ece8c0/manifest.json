@@ -1,0 +1,81 @@
+{
+  "task_id": "CL-001",
+  "title": "Evidence and Claim Reconciliation",
+  "status": "VERIFIED",
+  "timestamp_utc": "2026-11-08T18:00:00Z",
+  "git_revision": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "os": "Linux 6.8.0 x86_64",
+  "python_version": "3.11.13",
+  "observations_addressed": [
+    "A01",
+    "A12"
+  ],
+  "claims_reconciled": [
+    {
+      "claim_id": "CLM-001",
+      "target": "AmberClaw test count",
+      "statement": "1,602 passed offline unit, integration, and security tests",
+      "sources": [
+        "README.md:11",
+        "README.md:345",
+        "AI_HANDOFF.md:54",
+        ".planning/evidence/2026-11-08/full-suite.txt",
+        ".planning/evidence/2026-11-08/checkpoint.json"
+      ],
+      "revision_scope": "9ece8c0 / 1e5f571 (post-STAB-06)",
+      "reconciliation_resolution": "Historical 1,485 count from pre-STAB-06 checkpoint (b83e63a) preserved under historical_baselines. Current official count is 1,602 passing across 687 formatted files and 489 strictly typed modules.",
+      "status": "RECONCILED"
+    },
+    {
+      "claim_id": "CLM-002",
+      "target": "AmberClaw security branch coverage",
+      "statement": "90.42% security branch coverage, 94.88% security line coverage, 93.98% combined",
+      "sources": [
+        "AI_HANDOFF.md:57",
+        ".planning/tracker.md:23",
+        ".planning/evidence/2026-11-08/coverage-security.json",
+        ".planning/evidence/2026-11-08/checkpoint.json"
+      ],
+      "revision_scope": "9ece8c0 / 1e5f571 (post-STAB-06)",
+      "reconciliation_resolution": "Pre-STAB-06 branch coverage was 67.82% at b83e63a; STAB-06 added 4 security branch test suites bringing branch coverage to 90.42% (783/866 branches). Checkpoint.json updated to reflect current verified head with historical baseline retained.",
+      "status": "RECONCILED"
+    },
+    {
+      "claim_id": "CLM-003",
+      "target": "Competitor sandbox limitations",
+      "statement": "Negative unsandboxed claims regarding LangChain, CrewAI, AutoGen, and Open WebUI",
+      "sources": [
+        "docs/comparisons.md:16"
+      ],
+      "revision_scope": "docs/comparisons.md (reconciled)",
+      "reconciliation_resolution": "Unsupported negative claims replaced with primary-source verified descriptions and 'Unknown / unverified locally' status. AutoGen container execution noted; LangChain/CrewAI application-managed sandboxing noted.",
+      "status": "RECONCILED"
+    },
+    {
+      "claim_id": "CLM-004",
+      "target": "AmberClaw memory integrity",
+      "statement": "Calling SQLite FTS5 SessionDB 'tamper-evident memory'",
+      "sources": [
+        "docs/comparisons.md:18"
+      ],
+      "revision_scope": "docs/comparisons.md (reconciled)",
+      "reconciliation_resolution": "Corrected architectural description. SQLite FTS5 SessionDB is designated as session persistence and full-text index. Tamper-evident hash-chaining is explicitly attributed to security/audit.py SHA-256 JSONL audit logger.",
+      "status": "RECONCILED"
+    },
+    {
+      "claim_id": "CLM-005",
+      "target": "Competitor feature absence",
+      "statement": "Categorical negative claims regarding rival audit logs, CLI tools, and GDPR endpoints",
+      "sources": [
+        "docs/comparisons.md:17-23"
+      ],
+      "revision_scope": "docs/comparisons.md (reconciled)",
+      "reconciliation_resolution": "Replaced absolute negative claims with factual primary-source architectural descriptions (LangSmith telemetry, Azure Monitor, custom DB queries) and cross-referenced with 20 competitor profiles in competitive-leadership-tracker.md.",
+      "status": "RECONCILED"
+    }
+  ],
+  "link_validation": {
+    "mkdocs_strict": "PASS",
+    "git_diff_check": "PASS"
+  }
+}

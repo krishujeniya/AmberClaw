@@ -1,0 +1,21 @@
+{
+  "milestone": "CL-023",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T10:10:00+05:30",
+  "description": "Evidence bundle for Independent security acceptance",
+  "status_note": "P0 release gate satisfied: 0 Critical, 0 High findings; 3 Medium/Low findings triaged, resolved, and verified via 31 automated regression tests; signed residual risk statement recorded.",
+  "artifacts": {
+    "security-scope-and-threat-model.md": {
+      "sha256": "7ba1d771eba10e4b72a3d382944568e7fd87101cf1e0e04932eec9fc300a2279",
+      "description": "Threat model and assessment scope covering OWASP Top 10 for LLM and agentic execution"
+    },
+    "independent-security-assessment-report.md": {
+      "sha256": "283e3a7d86d79ae690bffca3db20705874e9e54e1977d11ec99f6b6a5196f629",
+      "description": "Findings triage, remediation details, retest results, and signed residual risk statement"
+    },
+    "retest-verification-evidence.txt": {
+      "sha256": "b969256b4e944ceef746c3ccd2a7b195a80596ca500ae9b9884eac9e8f5e2e67",
+      "description": "Automated regression execution log across all 31 security and recovery test cases"
+    }
+  }
+}

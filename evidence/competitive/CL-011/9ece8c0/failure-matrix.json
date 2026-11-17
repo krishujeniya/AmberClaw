@@ -1,0 +1,41 @@
+{
+  "milestone": "CL-011",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "verified_at": "2026-11-09T08:03:00+05:30",
+  "crash_points_tested": 100,
+  "injected_crash_summary": {
+    "total_runs": 100,
+    "crash_injected_at_step": "random(0, 3)",
+    "pre_crash_side_effects_executed": 100,
+    "post_recovery_side_effects_executed": 100,
+    "duplicate_side_effects_observed": 0,
+    "idempotency_cache_hits": 100
+  },
+  "invariants_verified": [
+    {
+      "name": "deterministic_step_idempotency",
+      "status": "PASS",
+      "mechanism": "sha256(run_id:step_index:action_type:sorted_args_json)",
+      "evidence": "Duplicate executions returned cached payload without re-invoking action."
+    },
+    {
+      "name": "approval_persistence_across_restart",
+      "status": "PASS",
+      "mechanism": "DurableRunStore SQLite backed state with PENDING_APPROVAL status",
+      "evidence": "Fresh coordinator initialized from disk retrieved pending run and resumed after approval."
+    },
+    {
+      "name": "ambiguous_remote_completion_detection",
+      "status": "PASS",
+      "mechanism": "Step marked FAILED_AMBIGUOUS on network/timeout disconnect during in-flight external mutations",
+      "evidence": "Status and payload visible in run status, stopping blind retry without human resolution."
+    },
+    {
+      "name": "saga_compensation_chain",
+      "status": "PASS",
+      "mechanism": "Compensating actions executed in reverse chronological order upon terminal failure",
+      "evidence": "Verified sequential release of allocated resources in LIFO order."
+    }
+  ],
+  "adr_reference": "docs/adr/0007-durable-runs-and-side-effect-safety.md"
+}

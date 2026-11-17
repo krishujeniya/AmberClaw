@@ -32,6 +32,9 @@ class BaseChannel(ABC):
         self.bus = bus
         self._stop_event = asyncio.Event()
         self._running = False
+        self._seen_delivery_ids: set[str] = set()
+        self._delivery_history: list[str] = []
+        self._max_seen_deliveries: int = 2000
 
     @property
     def _running(self) -> bool:
@@ -104,6 +107,29 @@ class BaseChannel(ABC):
             metadata: Optional channel-specific metadata.
             session_key: Optional session key override (e.g. thread-scoped sessions).
         """
+        meta = metadata or {}
+        delivery_id = (
+            meta.get("delivery_id")
+            or meta.get("event_id")
+            or meta.get("update_id")
+            or meta.get("message_id")
+            or f"{sender_id}:{chat_id}:{content}"
+        )
+        delivery_key = f"{self.name}:{delivery_id}"
+        if delivery_key in self._seen_delivery_ids:
+            logger.info(
+                "Duplicate message delivery dropped on channel {} for id {}",
+                self.name,
+                delivery_id,
+            )
+            return
+
+        self._seen_delivery_ids.add(delivery_key)
+        self._delivery_history.append(delivery_key)
+        if len(self._delivery_history) > self._max_seen_deliveries:
+            oldest = self._delivery_history.pop(0)
+            self._seen_delivery_ids.discard(oldest)
+
         is_pairing = content.strip().startswith("/pair")
         if not self.is_allowed(sender_id) and not is_pairing:
             logger.warning(

@@ -1,0 +1,21 @@
+{
+  "milestone": "CL-024",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T10:13:00+05:30",
+  "description": "Evidence bundle for Reproducible release and truthful comparison",
+  "status_note": "P1 release gate satisfied: wheel artifact built deterministically, 0 secrets detected, SBOM verified, comparative evaluation grounded in triplicate tests, external publication awaiting explicit operator authorization.",
+  "artifacts": {
+    "release-manifest.json": {
+      "sha256": "f6a2dc8af9244664d9267ae779430b439daa412e2a359de3906b7c1fbee2eba6",
+      "description": "Locked wheel artifact metadata, SBOM license breakdown, and quality gate results"
+    },
+    "signatures-and-provenance.md": {
+      "sha256": "c6a7ae6e6819955357038a2505f4eb6af0b03342d380702443f547d4146d5498",
+      "description": "Cryptographic checksums, SLSA level 2 build provenance, and publication gating"
+    },
+    "changelog-and-comparison.md": {
+      "sha256": "b53030c1e6b1dfd5518b25f96e81985c794dad7f6f565a81c7e927cdc67561d6",
+      "description": "Detailed release changelog and dated comparative scorecard across 5 comparator systems"
+    }
+  }
+}

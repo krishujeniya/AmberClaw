@@ -59,21 +59,55 @@ class ToolRegistry:
         except Exception as e:
             return f"Error: {e}" + error_hint
 
+        from amberclaw.config.schema import (  # noqa: PLC0415
+            settings,
+        )
+        from amberclaw.security.approval import (  # noqa: PLC0415
+            ApprovalStatus,
+            ToolApprovalManager,
+            ToolRiskLevel,
+        )
+
+        destructive_tools = {"exec", "write_file", "edit_file"}
+        if (
+            getattr(settings.security, "require_human_approval_for_destructive", True)
+            and name in destructive_tools
+        ):
+            approval_mgr = ToolApprovalManager.get_instance()
+            decision = approval_mgr.evaluate_tool_execution(
+                tool_name=name,
+                agent_id="default_agent",
+                args=params,
+                risk_level=ToolRiskLevel.HIGH,
+            )
+            if decision.status == ApprovalStatus.PENDING_APPROVAL:
+                return (
+                    f"Error: Tool execution blocked: '{name}' requires human approval (ticket: {decision.ticket_id})"
+                    + error_hint
+                )
+            if decision.status == ApprovalStatus.REJECTED:
+                return (
+                    f"Error: Tool execution rejected: {decision.reason}"
+                    + error_hint
+                )
+
+        exec_params = {k: v for k, v in params.items() if k != "approval_ticket_id"}
+
         try:
             # Pydantic tools handle their own internal validation and execution
             if isinstance(tool, PydanticTool):
-                result = await tool.execute(**params)
+                result = await tool.execute(**exec_params)
             else:
                 # Legacy path for non-pydantic tools
-                params = tool.cast_params(params)
-                errors = tool.validate_params(params)
+                exec_params = tool.cast_params(exec_params)
+                errors = tool.validate_params(exec_params)
                 if errors:
                     return (
                         f"Error: Invalid parameters for tool '{name}': "
                         + "; ".join(errors)
                         + error_hint
                     )
-                result = await tool.execute(**params)
+                result = await tool.execute(**exec_params)
 
             if isinstance(result, str) and result.startswith("Error"):
                 return result + error_hint

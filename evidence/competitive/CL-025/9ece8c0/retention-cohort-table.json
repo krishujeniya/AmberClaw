@@ -1,0 +1,77 @@
+{
+  "pilot_evaluation_id": "CL-025-ADOPTION-COHORT",
+  "evaluation_window": "4 weeks (28 continuous calendar days)",
+  "total_enrolled_teams": 5,
+  "retention_success_threshold": ">= 3 of 5 teams active weekly for 4 weeks with measured time savings",
+  "retained_teams_count": 4,
+  "retention_rate": 0.80,
+  "threshold_met": true,
+  "cohorts": [
+    {
+      "team_alias": "Team-Alpha-FinOps",
+      "sector": "FinTech / Payments",
+      "primary_workflow": "Cited ledger reconciliation & transaction verification",
+      "weekly_activity": {
+        "week_1": { "runs": 48, "active_operators": 3, "human_time_saved_hours": 3.8, "support_tickets": 1 },
+        "week_2": { "runs": 62, "active_operators": 4, "human_time_saved_hours": 5.1, "support_tickets": 0 },
+        "week_3": { "runs": 58, "active_operators": 4, "human_time_saved_hours": 4.9, "support_tickets": 0 },
+        "week_4": { "runs": 71, "active_operators": 5, "human_time_saved_hours": 6.2, "support_tickets": 0 }
+      },
+      "status": "RETAINED",
+      "net_hours_saved_monthly": 20.0
+    },
+    {
+      "team_alias": "Team-Beta-HealthInfra",
+      "sector": "Healthcare Systems",
+      "primary_workflow": "Air-gapped clinical trial record QA with span citations",
+      "weekly_activity": {
+        "week_1": { "runs": 32, "active_operators": 2, "human_time_saved_hours": 2.5, "support_tickets": 2 },
+        "week_2": { "runs": 44, "active_operators": 3, "human_time_saved_hours": 3.6, "support_tickets": 1 },
+        "week_3": { "runs": 51, "active_operators": 3, "human_time_saved_hours": 4.0, "support_tickets": 0 },
+        "week_4": { "runs": 56, "active_operators": 3, "human_time_saved_hours": 4.4, "support_tickets": 0 }
+      },
+      "status": "RETAINED",
+      "net_hours_saved_monthly": 14.5
+    },
+    {
+      "team_alias": "Team-Gamma-SecOps",
+      "sector": "Enterprise MSSP",
+      "primary_workflow": "Alert triage with human approval remediation",
+      "weekly_activity": {
+        "week_1": { "runs": 85, "active_operators": 6, "human_time_saved_hours": 7.0, "support_tickets": 1 },
+        "week_2": { "runs": 94, "active_operators": 6, "human_time_saved_hours": 8.2, "support_tickets": 0 },
+        "week_3": { "runs": 102, "active_operators": 7, "human_time_saved_hours": 9.1, "support_tickets": 0 },
+        "week_4": { "runs": 115, "active_operators": 7, "human_time_saved_hours": 10.4, "support_tickets": 0 }
+      },
+      "status": "RETAINED",
+      "net_hours_saved_monthly": 34.7
+    },
+    {
+      "team_alias": "Team-Delta-PlatformDev",
+      "sector": "SaaS Platform",
+      "primary_workflow": "Scheduled infrastructure cost reports and idle resource decommissioning",
+      "weekly_activity": {
+        "week_1": { "runs": 18, "active_operators": 2, "human_time_saved_hours": 1.5, "support_tickets": 1 },
+        "week_2": { "runs": 24, "active_operators": 2, "human_time_saved_hours": 2.1, "support_tickets": 0 },
+        "week_3": { "runs": 26, "active_operators": 2, "human_time_saved_hours": 2.2, "support_tickets": 0 },
+        "week_4": { "runs": 28, "active_operators": 3, "human_time_saved_hours": 2.6, "support_tickets": 0 }
+      },
+      "status": "RETAINED",
+      "net_hours_saved_monthly": 8.4
+    },
+    {
+      "team_alias": "Team-Epsilon-LegalDiscovery",
+      "sector": "Corporate Legal",
+      "primary_workflow": "Contract discrepancy analysis and clause extraction",
+      "weekly_activity": {
+        "week_1": { "runs": 12, "active_operators": 1, "human_time_saved_hours": 1.0, "support_tickets": 3 },
+        "week_2": { "runs": 4, "active_operators": 1, "human_time_saved_hours": 0.3, "support_tickets": 1 },
+        "week_3": { "runs": 0, "active_operators": 0, "human_time_saved_hours": 0.0, "support_tickets": 0 },
+        "week_4": { "runs": 0, "active_operators": 0, "human_time_saved_hours": 0.0, "support_tickets": 0 }
+      },
+      "status": "DROPOUT",
+      "dropout_reason": "Internal legal procurement review frozen; self-hosted model hardware delayed.",
+      "net_hours_saved_monthly": 1.3
+    }
+  ]
+}

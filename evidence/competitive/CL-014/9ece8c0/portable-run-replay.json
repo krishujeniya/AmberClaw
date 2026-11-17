@@ -1,0 +1,254 @@
+{
+  "schema_version": "2026.1.0",
+  "run_id": "run_incident_remediation_409",
+  "tenant_id": "tenant_secops_prod",
+  "workflow_name": "security_incident_remediation",
+  "final_status": "failed",
+  "started_at": "2026-11-09T08:15:00Z",
+  "ended_at": "2026-11-09T08:18:00Z",
+  "total_steps": 4,
+  "events": [
+    {
+      "timestamp": "2026-11-09T08:15:00Z",
+      "event_type": "run_started",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": null,
+      "step_id": null,
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "43aa6e5ce56a6d70",
+      "status": "ok",
+      "error": null,
+      "payload": {
+        "workflow_name": "security_incident_remediation",
+        "initial_input": {
+          "hostname": "prod-api-eu-01",
+          "incident_id": "INC-8891"
+        }
+      }
+    },
+    {
+      "timestamp": "2026-11-09T08:15:00Z",
+      "event_type": "step_started",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": 0,
+      "step_id": "step_inv_01",
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "7ee4c5c97f5aec0c",
+      "status": "ok",
+      "error": null,
+      "payload": {
+        "action_type": "inventory_lookup",
+        "tool_name": "asset_inventory_api",
+        "idempotency_key": "ik_asset_409",
+        "args": {
+          "hostname": "prod-api-eu-01"
+        },
+        "is_side_effect": false
+      }
+    },
+    {
+      "timestamp": "2026-11-09T08:15:00Z",
+      "event_type": "step_completed",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": 0,
+      "step_id": "step_inv_01",
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "7ee4c5c97f5aec0c",
+      "status": "ok",
+      "error": null,
+      "payload": {
+        "result": {
+          "ip": "10.100.4.12",
+          "status": "compromised"
+        },
+        "compensation_action": null
+      }
+    },
+    {
+      "timestamp": "2026-11-09T08:16:00Z",
+      "event_type": "step_started",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": 1,
+      "step_id": "step_iso_02",
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "3eea8c11cdb3b11c",
+      "status": "ok",
+      "error": null,
+      "payload": {
+        "action_type": "network_isolation",
+        "tool_name": "firewall_manager",
+        "idempotency_key": "ik_fw_409",
+        "args": {
+          "ip": "10.100.4.12",
+          "action": "quarantine"
+        },
+        "is_side_effect": true
+      }
+    },
+    {
+      "timestamp": "2026-11-09T08:16:00Z",
+      "event_type": "approval_requested",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": 1,
+      "step_id": "step_iso_02",
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "2cef28f5fa3c801f",
+      "status": "pending",
+      "error": null,
+      "payload": {
+        "approval_ticket_id": "ticket_sec_appr_9921"
+      }
+    },
+    {
+      "timestamp": "2026-11-09T08:16:00Z",
+      "event_type": "step_completed",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": 1,
+      "step_id": "step_iso_02",
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "3eea8c11cdb3b11c",
+      "status": "ok",
+      "error": null,
+      "payload": {
+        "result": {
+          "quarantine_rule_id": "rule_sec_8871"
+        },
+        "compensation_action": "release_quarantine"
+      }
+    },
+    {
+      "timestamp": "2026-11-09T08:17:00Z",
+      "event_type": "step_started",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": 2,
+      "step_id": "step_kms_03",
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "429f3eae686d3329",
+      "status": "ok",
+      "error": null,
+      "payload": {
+        "action_type": "rotate_credentials",
+        "tool_name": "vault_credential_manager",
+        "idempotency_key": "ik_vault_409",
+        "args": {
+          "secret_path": "prod/api/db_password",
+          "token": "Bearer [REDACTED]"
+        },
+        "is_side_effect": false
+      }
+    },
+    {
+      "timestamp": "2026-11-09T08:17:00Z",
+      "event_type": "retry_attempted",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": 2,
+      "step_id": "step_kms_03",
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "f88105c26277670f",
+      "status": "retry",
+      "error": "HTTP 503 Service Unavailable",
+      "payload": {
+        "step_index": 2,
+        "attempt": 1,
+        "timestamp": "2026-11-09T08:17:00Z",
+        "error": "HTTP 503 Service Unavailable",
+        "backoff_s": 1.5
+      }
+    },
+    {
+      "timestamp": "2026-11-09T08:17:00Z",
+      "event_type": "step_failed",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": 2,
+      "step_id": "step_kms_03",
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "429f3eae686d3329",
+      "status": "error",
+      "error": "HTTP 503 Vault KMS cluster quorum lost during rotation handshake",
+      "payload": {
+        "result": null,
+        "compensation_action": null
+      }
+    },
+    {
+      "timestamp": "2026-11-09T08:18:00Z",
+      "event_type": "step_started",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": 3,
+      "step_id": "step_comp_04",
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "b866fc7ffd918b91",
+      "status": "ok",
+      "error": null,
+      "payload": {
+        "action_type": "release_quarantine",
+        "tool_name": "firewall_manager",
+        "idempotency_key": "ik_comp_fw_409",
+        "args": {
+          "rule_id": "rule_sec_8871"
+        },
+        "is_side_effect": false
+      }
+    },
+    {
+      "timestamp": "2026-11-09T08:18:00Z",
+      "event_type": "step_compensated",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": 3,
+      "step_id": "step_comp_04",
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "b866fc7ffd918b91",
+      "status": "ok",
+      "error": null,
+      "payload": {
+        "result": {
+          "status": "quarantine_released"
+        },
+        "compensation_action": null
+      }
+    },
+    {
+      "timestamp": "2026-11-09T08:18:00Z",
+      "event_type": "run_failed",
+      "run_id": "run_incident_remediation_409",
+      "tenant_id": "tenant_secops_prod",
+      "step_index": null,
+      "step_id": null,
+      "trace_id": "7f8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
+      "span_id": "0f04066fa5d25916",
+      "status": "error",
+      "error": null,
+      "payload": {
+        "final_status": "failed"
+      }
+    }
+  ],
+  "correlation_metrics": {
+    "total_timeline_events": 12.0,
+    "run_id_correlation_rate": 1.0,
+    "tenant_id_correlation_rate": 1.0,
+    "trace_id_correlation_rate": 1.0,
+    "step_id_correlation_rate": 1.0
+  },
+  "reconstruction_summary": {
+    "root_cause": "HTTP 503 Vault KMS cluster quorum lost during rotation handshake",
+    "failed_step_index": 2,
+    "failed_tool_name": "vault_credential_manager",
+    "compensations_triggered": [
+      "release_quarantine"
+    ],
+    "is_recoverable": true
+  },
+  "checksum_sha256": "baa77bb90a6c52a567f355553dec2531eb624244bd6ad2716602f6aabad055ab"
+}

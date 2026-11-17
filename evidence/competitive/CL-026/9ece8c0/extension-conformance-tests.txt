@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.13, pytest-9.0.3, pluggy-1.6.0 -- /home/ai/Documents/projects/Freelance/AmberClaw/.venv/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /home/ai/Documents/projects/Freelance/AmberClaw
+configfile: pyproject.toml
+plugins: cov-7.1.0, asyncio-1.3.0, langsmith-0.7.33, hypothesis-6.155.1, anyio-4.14.2
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 4 items
+
+tests/unit/plugins/test_extension_conformance.py::test_extension_manifest_parsing_and_capability_validation PASSED [ 25%]
+tests/unit/plugins/test_extension_conformance.py::test_extension_lifecycle_install_update_revoke PASSED [ 50%]
+tests/unit/plugins/test_extension_conformance.py::test_unreviewed_automatic_tool_execution_denied_for_extensions PASSED [ 75%]
+tests/unit/plugins/test_plugins.py::test_plugin_discovery_and_execution PASSED [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.11/site-packages/langgraph/cache/base/__init__.py:8
+  /home/ai/Documents/projects/Freelance/AmberClaw/.venv/lib/python3.11/site-packages/langgraph/cache/base/__init__.py:8: LangChainPendingDeprecationWarning: The default value of `allowed_objects` will change in a future version. Pass an explicit value (e.g., allowed_objects='messages' or allowed_objects='core') to suppress this warning.
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+.venv/lib/python3.11/site-packages/google/api_core/_python_version_support.py:273
+  /home/ai/Documents/projects/Freelance/AmberClaw/.venv/lib/python3.11/site-packages/google/api_core/_python_version_support.py:273: FutureWarning: You are using a Python version (3.11.13) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2027-10-24). Please upgrade to the latest Python version, or at least Python 3.12, to continue receiving updates for google.api_core past that date.
+    warnings.warn(message, FutureWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================== 4 passed, 2 warnings in 230.71s (0:03:50) ===================

@@ -1,0 +1,28 @@
+{
+  "milestone": "CL-015",
+  "evaluated_at": "2026-11-09T09:27:00+05:30",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "tenant_id": "benchmark_tenant",
+  "declared_spend_cap_usd": 10.0,
+  "settlement_allowance_usd": 0.5,
+  "realized_total_spend_usd": 3.096,
+  "total_tokens_consumed": 44040,
+  "task_breakdown": {
+    "total_runs_evaluated": 120,
+    "successful_runs": 108,
+    "failed_runs": 12,
+    "first_attempt_success_rate": 0.9
+  },
+  "cost_accounting": {
+    "successful_runs_spend_usd": 2.694,
+    "failed_attempts_spend_usd": 0.402,
+    "unaccounted_leakage_usd": 0.0,
+    "cost_per_successful_task_usd": 0.028667
+  },
+  "overspend_containment": {
+    "cap_breaches_allowed": 0,
+    "cap_breaches_observed": 0,
+    "in_flight_settlement_contained": true
+  },
+  "status": "PASS"
+}

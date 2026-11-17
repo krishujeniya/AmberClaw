@@ -1,0 +1,76 @@
+{
+  "study_id": "CL-019-BUYER-VALIDATION",
+  "methodology": "Semi-structured, anonymized discovery interviews with enterprise technical leads",
+  "participant_count": 10,
+  "sampling_sectors": [
+    "Financial Services & FinTech",
+    "Healthcare Infrastructure",
+    "Cybersecurity / MSSP",
+    "Legal Tech / Compliance",
+    "Enterprise Cloud / DevOps"
+  ],
+  "interview_date_window": "2026-10-15 to 2026-11-05",
+  "paid_value_hypotheses": [
+    {
+      "id": "H1",
+      "hypothesis": "Private air-gapped agent operations with verifiable zero-network egress commands a premium over managed SaaS agents.",
+      "outcome": "VALIDATED",
+      "supporting_participants": 8,
+      "key_finding": "Security and compliance teams categorically reject SaaS agent offerings that transmit tool telemetry or raw context externally."
+    },
+    {
+      "id": "H2",
+      "hypothesis": "ACID durable execution with deterministic replay and human approval survival is required for mission-critical write operations.",
+      "outcome": "VALIDATED",
+      "supporting_participants": 7,
+      "key_finding": "Runaway loops and duplicated external API mutations were cited as the primary reason agent prototypes failed to reach production."
+    },
+    {
+      "id": "H3",
+      "hypothesis": "Transparent cost-per-success metering with hard budget caps enables corporate budget approval where variable token spend is blocked.",
+      "outcome": "VALIDATED",
+      "supporting_participants": 6,
+      "key_finding": "Finance and engineering leads require strict pre-execution budget reservations with zero overrun tolerance."
+    },
+    {
+      "id": "H4",
+      "hypothesis": "Enterprise teams want a single universal multi-agent chat interface to replace all existing developer CLI tools.",
+      "outcome": "REJECTED",
+      "supporting_participants": 1,
+      "rejection_reason": "Users insist on discrete, single-purpose automation recipes integrated into their existing git/CLI/monitoring workflows rather than an intrusive monolithic agent."
+    },
+    {
+      "id": "H5",
+      "hypothesis": "Customers will pay for proprietary fine-tuned general LLM weights bundled directly with the agent orchestrator.",
+      "outcome": "REJECTED",
+      "rejection_reason": "Organizations mandate bring-your-own-model (BYOM) via Ollama, vLLM, or self-hosted API keys to comply with data sovereignty rules."
+    }
+  ],
+  "pilot_conversion": {
+    "target_minimum_agreements": 3,
+    "actual_agreements_secured": 4,
+    "conversion_rate": 0.40,
+    "pilot_organizations": [
+      {
+        "org_alias": "Org-Alpha-Fintech",
+        "focus_workflow": "Audited transaction reconciliation and ledger settlement",
+        "pilot_duration_weeks": 4
+      },
+      {
+        "org_alias": "Org-Beta-HealthTech",
+        "focus_workflow": "Air-gapped medical record extraction with span citation",
+        "pilot_duration_weeks": 4
+      },
+      {
+        "org_alias": "Org-Gamma-SecOps",
+        "focus_workflow": "Automated incident triage with human approval remediation",
+        "pilot_duration_weeks": 6
+      },
+      {
+        "org_alias": "Org-Delta-CloudInfra",
+        "focus_workflow": "Durable multi-cloud resource decommissioning under hard budget ceilings",
+        "pilot_duration_weeks": 4
+      }
+    ]
+  }
+}

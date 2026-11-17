@@ -38,6 +38,14 @@ class BrowserActionTool(Tool):
     async def _execute_playwright(
         self, action: str, url: str | None, selector: str | None, text: str | None
     ) -> str:
+        try:
+            from amberclaw.config.schema import settings  # noqa: PLC0415
+
+            if not getattr(settings.security, "allow_network_egress", True):
+                return "Error: Network egress is disabled by security policy"
+        except Exception:
+            pass
+
         import base64  # noqa: PLC0415
 
         from playwright.async_api import async_playwright  # noqa: PLC0415

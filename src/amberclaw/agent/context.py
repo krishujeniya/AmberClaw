@@ -31,7 +31,19 @@ class ContextBuilder:
 
     def build_system_prompt(self, skill_names: list[str] | None = None) -> str:
         """Build the system prompt from identity, bootstrap files, memory, and skills."""
-        parts = [self._get_identity()]
+        try:
+            from amberclaw.config.schema import (  # noqa: PLC0415
+                settings,
+            )
+
+            configured_prompt = getattr(settings.agents.defaults, "system_prompt", None)
+            cfg_skills = getattr(settings, "skills", []) or []
+        except Exception:
+            configured_prompt = None
+            cfg_skills = []
+
+        identity = configured_prompt or self._get_identity()
+        parts = [identity]
 
         bootstrap = self._load_bootstrap_files()
         if bootstrap:
@@ -42,7 +54,9 @@ class ContextBuilder:
             parts.append(f"# Memory\n\n{memory}")
 
         always_skills = list(
-            dict.fromkeys([*self.skills.get_always_skills(), *(skill_names or [])])
+            dict.fromkeys(
+                [*self.skills.get_always_skills(), *cfg_skills, *(skill_names or [])]
+            )
         )
         if always_skills:
             always_content = self.skills.load_skills_for_context(always_skills)

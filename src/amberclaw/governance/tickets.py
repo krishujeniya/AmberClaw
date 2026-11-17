@@ -20,6 +20,8 @@ class TicketStatus(StrEnum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
 
 
 class Ticket(BaseModel):
@@ -29,7 +31,12 @@ class Ticket(BaseModel):
     priority: TicketPriority = TicketPriority.MEDIUM
     status: TicketStatus = TicketStatus.PENDING
     context: dict[str, Any] = Field(default_factory=dict)
+    destination: str = "local"
+    scope: str = "tool:execute"
+    estimated_cost_usd: float = 0.0
+    args_hash: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime | None = None
     resolved_at: datetime | None = None
     reviewer_id: str | None = None
 

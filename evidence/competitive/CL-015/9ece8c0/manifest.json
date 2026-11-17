@@ -1,0 +1,20 @@
+{
+  "milestone": "CL-015",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T09:28:00+05:30",
+  "description": "Evidence bundle for Hard Budgets, In-Flight Settlement, and Cost per Success",
+  "artifacts": {
+    "concurrency-tests.txt": {
+      "sha256": "de75b5e9c76fef3324597f8a54745f6941dcdd7e4b6dccf29294b504648929fa",
+      "description": "Pytest execution log verifying concurrent overspend prevention, failed attempt billing, and timeout ceilings"
+    },
+    "cost-worksheet.json": {
+      "sha256": "ca97512bcbaa3ebcea31e4e9ce01eb49ca37757f5c1f9db4774666e242b1e095",
+      "description": "Reconciled financial cost worksheet verifying inclusion of failed attempts, in-flight allowance, and cost per success"
+    },
+    "latency-profiles.json": {
+      "sha256": "006e3b741a37ed7eda86222111c4e89d5300fc86aa97cf6559d3ec5ef82f7c47",
+      "description": "Reproducible p50/p90/p95/p99 latency distributions across successful and failed tasks"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "manifest_version": "1.0.0",
+  "published_at": "2026-11-09T10:04:00+05:30",
+  "recipes": [
+    {
+      "recipe_id": "cited_knowledge_answer",
+      "version": "1.0.0",
+      "name": "Cited Knowledge Extraction",
+      "description": "Extracts accurate, grounded answers from private documentation with strict span citations and contradiction abstention.",
+      "required_scopes": [
+        "knowledge:read"
+      ],
+      "estimated_cost_usd": 0.001,
+      "requires_human_approval": false,
+      "failure_recovery_policy": "fail_fast_on_injection",
+      "input_parameters": {
+        "query": "User question or inquiry",
+        "documents": "List of source passage dicts with 'id', 'text', and optional 'timestamp'"
+      },
+      "output_contract": {
+        "answer": "Grounded answer text with inline citations [1], [2]",
+        "citations": "List of referenced passage IDs",
+        "abstained": "Boolean indicating whether query was abstained due to contradictions or lack of evidence"
+      }
+    },
+    {
+      "recipe_id": "incident_investigation",
+      "version": "1.0.0",
+      "name": "SecOps Incident Triage & Remediation",
+      "description": "Analyzes security alerts, determines probable root cause, and generates remediation plans requiring explicit human approval before execution.",
+      "required_scopes": [
+        "secops:investigate",
+        "secops:remediate"
+      ],
+      "estimated_cost_usd": 0.003,
+      "requires_human_approval": true,
+      "failure_recovery_policy": "compensate_and_rollback",
+      "input_parameters": {
+        "incident_id": "Unique identifier for alert or ticket",
+        "alert_type": "Classification string (e.g., unauthorized_egress, brute_force)",
+        "logs": "List of log lines or telemetry entries"
+      },
+      "output_contract": {
+        "root_cause": "Identified probable trigger",
+        "proposed_action": "Specific remediation command",
+        "approval_ticket_id": "Pending ticket ID awaiting operator approval"
+      }
+    },
+    {
+      "recipe_id": "scheduled_report",
+      "version": "1.0.0",
+      "name": "Scheduled Operations & Budget Report",
+      "description": "Compiles periodic operational metrics, resource utilization, and cost breakdowns, gating external distribution behind human sign-off.",
+      "required_scopes": [
+        "reports:generate",
+        "reports:distribute"
+      ],
+      "estimated_cost_usd": 0.002,
+      "requires_human_approval": true,
+      "failure_recovery_policy": "abort_on_delivery_failure",
+      "input_parameters": {
+        "report_period": "String defining time window (e.g., '2026-W45', '2026-10')",
+        "metrics": "Dictionary of key performance metrics (runs, latency, spend)",
+        "destination_channel": "Delivery route (e.g. 'internal_email', 'ops_channel')"
+      },
+      "output_contract": {
+        "report_content": "Rendered markdown executive summary",
+        "delivery_status": "Status of report dispatch",
+        "approval_ticket_id": "Pending approval ticket for external delivery"
+      }
+    }
+  ]
+}

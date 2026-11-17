@@ -1,0 +1,29 @@
+{
+  "task_id": "CL-009",
+  "title": "Safe HTTP and stream failures",
+  "revision": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp_utc": "2026-11-08T18:16:20Z",
+  "environment": {
+    "os": "Linux 6.6.137+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.6.137-1+rpt1 (2026-02-10) aarch64",
+    "python": "3.11.13",
+    "pytest": "9.0.3",
+    "fastapi": "0.135.1"
+  },
+  "deliverables": [
+    "src/amberclaw/api/errors.py",
+    "src/amberclaw/services/chat_service.py",
+    "tests/unit/api/test_canary_error_safety.py",
+    "evidence/competitive/CL-009/9ece8c0/canary-tests.txt"
+  ],
+  "verification": {
+    "command": "uv run pytest -v tests/unit/api/test_canary_error_safety.py",
+    "exit_code": 0,
+    "tests_passed": 3,
+    "tests_failed": 0,
+    "assertions": [
+      "HTTP 500 responses return generic bounded error detail without leaking provider keys, bearer tokens, or host paths",
+      "SSE stream failures emit STREAM_ERROR event frame without propagating provider exception details to clients",
+      "Client 4xx exceptions sanitize Bearer tokens and filesystem paths before responding"
+    ]
+  }
+}

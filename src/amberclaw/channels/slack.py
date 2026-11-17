@@ -217,6 +217,13 @@ class SlackChannel(BaseChannel):
 
         text, media_paths = await self._download_attachments(event, text)
 
+        event_id = (
+            event.get("event_id")
+            or event.get("client_msg_id")
+            or payload.get("event_id")
+            or req.envelope_id
+        )
+
         try:
             await self._handle_message(
                 sender_id=sender_id,
@@ -224,6 +231,7 @@ class SlackChannel(BaseChannel):
                 content=text,
                 media=media_paths,
                 metadata={
+                    "event_id": event_id,
                     "slack": {
                         "event": event,
                         "thread_ts": thread_ts,

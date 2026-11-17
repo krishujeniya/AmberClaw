@@ -1,5 +1,6 @@
 """Standardized API Error Envelopes and Exception Handlers."""
 
+import re
 import uuid
 from typing import Any
 
@@ -10,6 +11,14 @@ from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException
 
 from amberclaw.security.secret_scanner import SecretScanner
+
+def sanitize_client_detail(detail: str) -> str:
+    """Sanitize client-facing error strings, redacting bearer tokens, credentials, and paths."""
+    redacted = SecretScanner.redact_text(detail)
+    redacted = re.sub(r"Bearer\s+[A-Za-z0-9_\-\.]{8,}", "Bearer [REDACTED]", redacted, flags=re.IGNORECASE)
+    redacted = re.sub(r"((?:token|key|password|secret|apikey)\s*[=:]\s*['\"]?)[^\s'\",&]+", r"\1[REDACTED]", redacted, flags=re.IGNORECASE)
+    redacted = re.sub(r"/(?:home|root|etc|var|Users|private)/[^\s'\",]+", "[REDACTED_PATH]", redacted)
+    return redacted
 
 
 class APIErrorDetail(BaseModel):
@@ -44,7 +53,16 @@ async def http_exception_handler(request: Request, exc: Exception) -> JSONRespon
     elif exc.status_code == status.HTTP_404_NOT_FOUND:
         code = "NOT_FOUND"
 
-    safe_detail = SecretScanner.redact_text(str(exc.detail))
+    if exc.status_code >= status.HTTP_500_INTERNAL_SERVER_ERROR:
+        # Bounded generic message for 5xx errors: log actual error internally with redaction
+        logger.error(
+            "HTTP 500 error for {}: {}",
+            request_id,
+            sanitize_client_detail(str(exc.detail)),
+        )
+        safe_detail = "An internal server error occurred while processing the request."
+    else:
+        safe_detail = sanitize_client_detail(str(exc.detail))
 
     envelope = APIErrorEnvelope(
         error=APIErrorDetail(
@@ -65,7 +83,7 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     request_id = getattr(
         request.state, "correlation_id", f"req_{uuid.uuid4().hex[:12]}"
     )
-    logger.error("Unhandled {} for request {}", type(exc).__name__, request_id)
+    logger.error("Unhandled {} for request {}: {}", type(exc).__name__, request_id, sanitize_client_detail(str(exc)))
 
     envelope = APIErrorEnvelope(
         error=APIErrorDetail(

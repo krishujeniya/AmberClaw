@@ -14,12 +14,37 @@ def _resolve_path(
     path: str,
     workspace: Path | None = None,
     allowed_dir: Path | None = None,
+    restricted_paths: list[str] | None = None,
 ) -> Path:
-    """Resolve path against workspace (if relative) and enforce directory restriction."""
+    """Resolve path against workspace (if relative), enforce directory restriction and restricted paths."""
     p = Path(path).expanduser()
     if not p.is_absolute() and workspace and isinstance(workspace, Path):
         p = workspace / p
     resolved = p.resolve()
+
+    # Enforce restricted paths from parameter or runtime settings
+    if restricted_paths is None:
+        try:
+            from amberclaw.config.schema import (  # noqa: PLC0415
+                settings,
+            )
+
+            restricted_paths = getattr(settings.security, "restricted_paths", None)
+        except Exception:
+            restricted_paths = None
+
+    if restricted_paths:
+        for rp in restricted_paths:
+            try:
+                rp_resolved = Path(rp).expanduser().resolve()
+                if resolved == rp_resolved or rp_resolved in resolved.parents:
+                    raise PermissionError(
+                        f"Access to restricted path '{path}' is forbidden by security policy"
+                    )
+            except PermissionError:
+                raise
+            except Exception:
+                continue
 
     enforced_dir = allowed_dir or workspace
     if enforced_dir and isinstance(enforced_dir, Path):
@@ -58,15 +83,21 @@ class ReadFileTool(PydanticTool):
         return ReadFileArgs
 
     def __init__(
-        self, workspace: Path | None = None, allowed_dir: Path | None = None
+        self,
+        workspace: Path | None = None,
+        allowed_dir: Path | None = None,
+        restricted_paths: list[str] | None = None,
     ) -> None:
         super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
+        self._restricted_paths = restricted_paths
 
     async def run(self, args: ReadFileArgs) -> str:
         try:
-            file_path = _resolve_path(args.path, self._workspace, self._allowed_dir)
+            file_path = _resolve_path(
+                args.path, self._workspace, self._allowed_dir, self._restricted_paths
+            )
             if not file_path.exists():
                 return f"Error: File not found: {args.path}"
             if not file_path.is_file():
@@ -118,15 +149,21 @@ class WriteFileTool(PydanticTool):
         return WriteFileArgs
 
     def __init__(
-        self, workspace: Path | None = None, allowed_dir: Path | None = None
+        self,
+        workspace: Path | None = None,
+        allowed_dir: Path | None = None,
+        restricted_paths: list[str] | None = None,
     ) -> None:
         super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
+        self._restricted_paths = restricted_paths
 
     async def run(self, args: WriteFileArgs) -> str:
         try:
-            file_path = _resolve_path(args.path, self._workspace, self._allowed_dir)
+            file_path = _resolve_path(
+                args.path, self._workspace, self._allowed_dir, self._restricted_paths
+            )
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_text(args.content, encoding="utf-8")
             return f"Successfully wrote {len(args.content)} bytes to {file_path}"
@@ -160,15 +197,21 @@ class EditFileTool(PydanticTool):
         return EditFileArgs
 
     def __init__(
-        self, workspace: Path | None = None, allowed_dir: Path | None = None
+        self,
+        workspace: Path | None = None,
+        allowed_dir: Path | None = None,
+        restricted_paths: list[str] | None = None,
     ) -> None:
         super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
+        self._restricted_paths = restricted_paths
 
     async def run(self, args: EditFileArgs) -> str:
         try:
-            file_path = _resolve_path(args.path, self._workspace, self._allowed_dir)
+            file_path = _resolve_path(
+                args.path, self._workspace, self._allowed_dir, self._restricted_paths
+            )
             if not file_path.exists():
                 return f"Error: File not found: {args.path}"
 
@@ -242,15 +285,21 @@ class ListDirTool(PydanticTool):
         return ListDirArgs
 
     def __init__(
-        self, workspace: Path | None = None, allowed_dir: Path | None = None
+        self,
+        workspace: Path | None = None,
+        allowed_dir: Path | None = None,
+        restricted_paths: list[str] | None = None,
     ) -> None:
         super().__init__()
         self._workspace = workspace
         self._allowed_dir = allowed_dir
+        self._restricted_paths = restricted_paths
 
     async def run(self, args: ListDirArgs) -> str:
         try:
-            dir_path = _resolve_path(args.path, self._workspace, self._allowed_dir)
+            dir_path = _resolve_path(
+                args.path, self._workspace, self._allowed_dir, self._restricted_paths
+            )
             if not dir_path.exists():
                 return f"Error: Directory not found: {args.path}"
             if not dir_path.is_dir():

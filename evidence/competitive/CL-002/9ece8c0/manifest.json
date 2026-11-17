@@ -1,0 +1,36 @@
+{
+  "task_id": "CL-002",
+  "title": "Current Dependency Risk and Optional-Package Plan",
+  "status": "VERIFIED",
+  "timestamp_utc": "2026-11-08T18:05:00Z",
+  "git_revision": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "os": "Linux 6.8.0 x86_64",
+  "python_version": "3.11.13",
+  "observations_addressed": [
+    "A08",
+    "A11"
+  ],
+  "audit_results": {
+    "total_packages": 315,
+    "packages_with_advisories": 13,
+    "total_advisories": 45,
+    "unmitigated_reachable_critical_high": 0,
+    "raw_audit_artifact": "pip-audit-raw.json",
+    "reachability_artifact": "advisory-reachability.json"
+  },
+  "sbom_generation": {
+    "cyclonedx_artifact": "amberclaw.cyclonedx.json",
+    "spdx_artifact": "amberclaw.spdx.json",
+    "license_policy_check": "PASS (0 prohibited licenses across 315 packages)"
+  },
+  "optional_package_plan": {
+    "artifact": "optional-package-plan.md",
+    "target_extras": [
+      "amberclaw[data]",
+      "amberclaw[channels]",
+      "amberclaw[storage]",
+      "amberclaw[sandboxes]",
+      "amberclaw[all]"
+    ]
+  }
+}

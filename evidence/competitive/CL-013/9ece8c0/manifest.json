@@ -1,0 +1,24 @@
+{
+  "milestone": "CL-013",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T08:48:00+05:30",
+  "description": "Evidence bundle for Trustworthy Knowledge and Longitudinal Memory",
+  "artifacts": {
+    "dataset.json": {
+      "sha256": "90bdcbb9463cfd89daef85a1f47c0a0ac204950b39499e91b1a69498f186513e",
+      "description": "Longitudinal evaluation dataset covering citation grounding, temporal contradiction, cross-tenant isolation, and adversarial prompt injections"
+    },
+    "export-delete-tests.txt": {
+      "sha256": "4d26ddabbc1455e0d7f66c74ef932dccf8e6db87ca2c410132038216f42cf252",
+      "description": "Pytest execution log for multi-store deletion propagation, contradiction resolution, and GDPR export validation"
+    },
+    "retention-limits.md": {
+      "sha256": "57b1be5e2fd1cd1b1c585af7cf45fbfd5472ebdd574414ca4b7a461f540d4df7",
+      "description": "Specification of multi-store retention policies, TTL boundaries, and GDPR Article 17 deletion propagation"
+    },
+    "retrieval-answer-metrics.json": {
+      "sha256": "08f5da2bf7f3bfae65bd8ef01f1848a1891d6a81e98b3a7cad807ddf700d8476",
+      "description": "Deterministic quantitative benchmark metrics covering MRR, NDCG, grounding score, and 0% leakage/bypass rates"
+    }
+  }
+}

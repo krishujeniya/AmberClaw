@@ -1,0 +1,24 @@
+{
+  "milestone": "CL-014",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T09:25:00+05:30",
+  "description": "Evidence bundle for Explain Every Run, Correlation Propagation, and Redaction",
+  "artifacts": {
+    "trace-completeness-tests.txt": {
+      "sha256": "85f04049e9e8ce45d529e536c7850196be681ef47089869236e6f77f3d9c2981",
+      "description": "Pytest execution log verifying 10/10 tracing and correlation propagation tests passed"
+    },
+    "redaction-checks.json": {
+      "sha256": "81694f4019cabbd114254b9bc46472bf6c285fc4a7cc751b87d698c7859839d2",
+      "description": "Redaction audit verifying 0 canary tokens, passwords, or API keys leaked, and 100% correlation rate"
+    },
+    "portable-run-replay.json": {
+      "sha256": "487a8ea6170decbb94a525f86642c81f929fd5da5ddf9ea8f569035b8beb2eeb",
+      "description": "Standard portable replay fixture of reconstructed incident run with SHA-256 integrity digest"
+    },
+    "operator-drill-postmortem.md": {
+      "sha256": "acb6a31cc958f009046d5e39afa52b578fb21847c8ce8d7d16986922a9cb9014",
+      "description": "Actionable operator drill report detailing failure point, error diagnostics, and timeline post-mortem"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "milestone": "CL-018",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T09:51:00+05:30",
+  "description": "Evidence bundle for Supported Deployment, Backup and Restore",
+  "artifacts": {
+    "target-smoke-restore-rollback.log": {
+      "sha256": "1c5fce01c0dbc45228ea178aea513b2c88a8c069d1e1196dbd3b1a98ef44b528",
+      "description": "Automated smoke, restore, worker restart, and session persistence test execution log"
+    },
+    "deployment-specification.md": {
+      "sha256": "3eb653568c537d3598e0e3421f9ea691d8a6c4d26f32d89ecfff29b6228e1e0b",
+      "description": "Specification for private deployment topologies, SLA targets, availability denominator, and failover guarantees"
+    },
+    "dr-drill-rpo-rto-report.json": {
+      "sha256": "16f4629f4fe6e42f772c5ab7fab2bfb17294ccee04f16bc2a5281c90adf57693",
+      "description": "Machine-readable DR drill measurement validating RPO <= 15m and RTO <= 30m"
+    }
+  }
+}

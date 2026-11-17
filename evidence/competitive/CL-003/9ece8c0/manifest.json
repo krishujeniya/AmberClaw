@@ -1,0 +1,56 @@
+{
+  "task_id": "CL-003",
+  "title": "Freeze Segment, Task Set, and Measurement Contract",
+  "status": "VERIFIED",
+  "timestamp_utc": "2026-11-08T18:15:00Z",
+  "git_revision": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "observations_addressed": [
+    "A04"
+  ],
+  "benchmark_protocol": {
+    "artifact": "benchmark_protocol.md",
+    "target_segment": "Private, auditable automation runtime for small developer and operations teams",
+    "workflows": [
+      "knowledge_qa",
+      "incident_remediation",
+      "scheduled_report"
+    ]
+  },
+  "task_distribution": {
+    "manifest_artifact": "tasks_manifest.json",
+    "total_tasks": 120,
+    "dev_split": 60,
+    "held_out_split": 60,
+    "workflows": {
+      "knowledge_qa": 40,
+      "incident_remediation": 40,
+      "scheduled_report": 40
+    },
+    "leakage_defense": "Distinct source_group identifiers partitioned between dev and held_out subsets."
+  },
+  "adversarial_suite": {
+    "manifest_artifact": "adversarial_manifest.json",
+    "total_cases": 100,
+    "categories": {
+      "PATH_TRAVERSAL": 20,
+      "NETWORK_EGRESS": 20,
+      "PROMPT_INJECTION": 20,
+      "CROSS_TENANT": 20,
+      "UNAPPROVED_DESTRUCTION": 20
+    }
+  },
+  "graders_and_tests": {
+    "grader_module": "benchmarks/graders/eval_graders.py",
+    "unit_test_suite": "tests/unit/evals/test_benchmark_graders.py",
+    "unit_test_results_artifact": "grader-test-results.txt",
+    "unit_test_status": "PASS (9/9 passed in 1.60s)"
+  },
+  "mock_baseline_run": {
+    "runner_script": "benchmarks/run_mock_baseline.py",
+    "run_artifact": "mock-run-baseline.json",
+    "operational_pass_rate": 1.0,
+    "adversarial_block_rate": 1.0,
+    "prohibited_actions_executed": 0,
+    "paid_calls_incurred": 0.00
+  }
+}

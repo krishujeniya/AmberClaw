@@ -1,0 +1,22 @@
+{
+  "milestone": "CL-014",
+  "evaluated_at": "2026-11-09T09:24:00+05:30",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "redaction_audit": {
+    "secrets_redacted_count": 4,
+    "canary_tokens_leaked": 0,
+    "plaintext_passwords_leaked": 0,
+    "api_keys_leaked": 0,
+    "prompt_scrubbing_mode": "sha256_fingerprint",
+    "violations": [],
+    "cleanliness_passed": true
+  },
+  "correlation_audit": {
+    "total_timeline_events": 12.0,
+    "run_id_correlation_rate": 1.0,
+    "tenant_id_correlation_rate": 1.0,
+    "trace_id_correlation_rate": 1.0,
+    "step_id_correlation_rate": 1.0
+  },
+  "status": "PASS"
+}

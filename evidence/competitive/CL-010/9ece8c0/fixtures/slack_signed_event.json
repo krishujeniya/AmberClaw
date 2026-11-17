@@ -1,0 +1,24 @@
+{
+  "request_type": "slack_events_api",
+  "timestamp": "1731110400",
+  "signature": "v0=a89b78e3dc18e762cfa0303ec3a08991d74659fbc417c46c37435f3dfd2a0230",
+  "envelope_id": "env_slack_987123",
+  "payload": {
+    "token": "verification_token_sample",
+    "team_id": "T01234567",
+    "api_app_id": "A01234567",
+    "event": {
+      "type": "message",
+      "user": "U12345678",
+      "text": "run ops audit check",
+      "ts": "1731110400.000200",
+      "channel": "C12345678",
+      "event_ts": "1731110400.000200",
+      "channel_type": "channel",
+      "client_msg_id": "cmid_4a8d-b82e-9901"
+    },
+    "type": "event_callback",
+    "event_id": "Ev08912AB",
+    "event_time": 1731110400
+  }
+}

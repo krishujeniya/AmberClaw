@@ -49,6 +49,15 @@ class TicketResolveRequest(BaseModel):
     )
 
 
+class TicketCancelRequest(BaseModel):
+    """Payload to cancel an outstanding governance ticket."""
+
+    reason: str = Field(
+        default="Cancelled by requester",
+        description="Reason or rationale for cancellation",
+    )
+
+
 @router.get("", response_model=list[Ticket])
 async def list_tickets(
     status_filter: TicketStatus | None = Query(None, alias="status"),
@@ -160,4 +169,29 @@ async def resolve_ticket(
         "ticket_id": ticket_id,
         "resolution": request.status,
         "message": f"Ticket {ticket_id} resolved as {request.status}.",
+    }
+
+
+@router.post("/{ticket_id}/cancel")
+async def cancel_ticket(
+    ticket_id: str, request: TicketCancelRequest | None = None
+) -> dict[str, Any]:
+    """Cancel a pending ticket in governance system and approval manager."""
+    reason = request.reason if request else "Cancelled by requester"
+    approval_manager = ToolApprovalManager.get_instance()
+    cancelled = approval_manager.cancel_ticket(ticket_id=ticket_id, reason=reason)
+    resolved_ticket = tickets.resolve_ticket(
+        ticket_id=ticket_id,
+        status=TicketStatus.CANCELLED,
+    )
+    if not resolved_ticket and not cancelled:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ticket {ticket_id} not found or cannot be cancelled.",
+        )
+    return {
+        "status": "success",
+        "ticket_id": ticket_id,
+        "cancelled": True,
+        "message": f"Ticket {ticket_id} has been cancelled.",
     }

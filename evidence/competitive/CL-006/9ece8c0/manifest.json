@@ -1,0 +1,30 @@
+{
+  "task_id": "CL-006",
+  "title": "Attest containment and fail closed",
+  "revision": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp_utc": "2026-11-08T18:35:10Z",
+  "environment": {
+    "os": "Linux 6.6.137+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.6.137-1+rpt1 (2026-02-10) aarch64",
+    "python": "3.11.13",
+    "pytest": "9.0.3"
+  },
+  "deliverables": [
+    "src/amberclaw/security/sandbox.py",
+    "tests/unit/security/test_sandbox_containment.py",
+    "evidence/competitive/CL-006/9ece8c0/threat-model.md",
+    "evidence/competitive/CL-006/9ece8c0/containment-tests.txt"
+  ],
+  "verification": {
+    "command": "uv run pytest -v tests/unit/security/test_sandbox_containment.py",
+    "exit_code": 0,
+    "tests_passed": 11,
+    "tests_failed": 0,
+    "assertions": [
+      "Non-destructive probe_containment_capabilities produces structured machine-verifiable attestation of OS, kernel, arch, and active controls",
+      "Strict mode fail-closed behavior verified: refuses execution when namespaces, Landlock LSM, or Seccomp syscall filters fail or are unsupported",
+      "Degraded mode explicitly records kernel limitations in attestation object without silent uncontained execution",
+      "Path traversal, symlink injection, and zip-slip attacks rejected by ephemeral sandbox and DecompressionGuard",
+      "Private loopback, link-local, cloud metadata IP ranges, and host container sockets blocked by HostSocketAndMetadataFilter"
+    ]
+  }
+}

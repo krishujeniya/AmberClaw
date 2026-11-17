@@ -1,0 +1,29 @@
+{
+  "item_id": "CL-010",
+  "task": "Replace channel self-mocks with real adapter contracts",
+  "git_revision": "9ece8c0",
+  "recorded_at_utc": "2026-11-09T02:27:30Z",
+  "status": "VERIFIED",
+  "exit_code": 0,
+  "artifacts": [
+    "fixtures/slack_signed_event.json",
+    "fixtures/telegram_update_fixture.json",
+    "fixtures/dingtalk_stream_fixture.json",
+    "adapter-contract-tests.txt",
+    "real-service-smoke-report.md"
+  ],
+  "verification_command": "uv run pytest -v tests/unit/channels/test_real_adapter_contracts.py",
+  "summary": {
+    "total_tests": 6,
+    "passed": 6,
+    "failed": 0,
+    "adapters_exercised": [
+      "slack",
+      "telegram",
+      "dingtalk"
+    ],
+    "deduplication_verified": true,
+    "reconnect_backoff_verified": true,
+    "rate_limit_backoff_verified": true
+  }
+}

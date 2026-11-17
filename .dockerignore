@@ -1,0 +1,47 @@
+# Version Control
+.git/
+.gitignore
+.github/
+
+# Python caches and virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Testing and linters
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.hypothesis/
+
+# Documentation and temporary directories
+docs/
+docs-site/
+mkdocs.yml
+assets/
+examples/
+benchmarks/
+evidence/
+.planning/
+
+# Local sensitive files & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store

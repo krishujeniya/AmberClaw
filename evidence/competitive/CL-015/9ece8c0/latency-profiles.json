@@ -1,0 +1,24 @@
+{
+  "milestone": "CL-015",
+  "evaluated_at": "2026-11-09T09:27:00+05:30",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "aggregate": {
+    "p50_ms": 244.0,
+    "p90_ms": 380.0,
+    "p95_ms": 440.0,
+    "p99_ms": 500.0,
+    "max_ms": 515.0
+  },
+  "successful_tasks": {
+    "count": 108,
+    "p50_ms": 236.0,
+    "p95_ms": 292.0,
+    "max_ms": 292.0
+  },
+  "failed_tasks": {
+    "count": 12,
+    "p50_ms": 440.0,
+    "p95_ms": 515.0,
+    "max_ms": 515.0
+  }
+}

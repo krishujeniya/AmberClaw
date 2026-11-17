@@ -26,32 +26,15 @@ _RUNTIME_CHANNELS = (
 def _unsupported_runtime_settings(blueprint: BlueprintSchema) -> list[str]:
     """Report requested fields without a canonical runtime consumer."""
     errors = []
-    reasons = {
-        "system_prompt": "the main agent prompt has no blueprint override binding",
-        "memory_nudge_enabled": "AgentLoop does not consume a configurable nudge toggle",
-    }
-    for field, reason in reasons.items():
-        if field in blueprint.agent.model_fields_set:
-            errors.append(f"agent.{field}: unsupported; {reason}.")
-    if "security" in blueprint.model_fields_set:
-        reasons = {
-            "sandbox_type": "no blueprint backend selection reaches tool execution",
-            "allow_network_egress": "no blueprint network policy reaches host and sandbox egress enforcement",
-            "restricted_paths": "no blueprint denied-path policy reaches filesystem and execution tools",
-            "require_human_approval_for_destructive": "no blueprint approval policy guards destructive tool dispatch",
-        }
-        fields = sorted(blueprint.security.model_fields_set)
-        errors.extend(
-            f"security.{field}: unsupported; {reasons[field]}." for field in fields
-        )
-        if not fields:
+    if (
+        "security" in blueprint.model_fields_set
+        and "sandbox_type" in blueprint.security.model_fields_set
+    ):
+        valid_sandboxes = {"docker", "local", "wasm", "modal"}
+        if blueprint.security.sandbox_type not in valid_sandboxes:
             errors.append(
-                "security: unsupported; runtime policy application is not implemented."
+                f"security.sandbox_type: unsupported sandbox '{blueprint.security.sandbox_type}'. Allowed: {sorted(valid_sandboxes)}"
             )
-    if "skills" in blueprint.model_fields_set:
-        errors.append(
-            "skills: unsupported; no configured skill selection is passed to the agent prompt."
-        )
     return errors
 
 
@@ -141,6 +124,33 @@ class BlueprintApplier:
             applied.agents.defaults.temperature = blueprint.agent.temperature
         if "max_turns" in requested:
             applied.agents.defaults.max_tool_iterations = blueprint.agent.max_turns
+        if "system_prompt" in requested:
+            applied.agents.defaults.system_prompt = blueprint.agent.system_prompt
+        if "memory_nudge_enabled" in requested:
+            applied.agents.defaults.memory_nudge_enabled = (
+                blueprint.agent.memory_nudge_enabled
+            )
+
+        if "security" in blueprint.model_fields_set:
+            sec_req = blueprint.security.model_fields_set
+            if "sandbox_type" in sec_req:
+                applied.security.sandbox_type = blueprint.security.sandbox_type
+            if "allow_network_egress" in sec_req:
+                applied.security.allow_network_egress = (
+                    blueprint.security.allow_network_egress
+                )
+            if "restricted_paths" in sec_req:
+                applied.security.restricted_paths = list(
+                    blueprint.security.restricted_paths
+                )
+            if "require_human_approval_for_destructive" in sec_req:
+                applied.security.require_human_approval_for_destructive = (
+                    blueprint.security.require_human_approval_for_destructive
+                )
+
+        if "skills" in blueprint.model_fields_set:
+            applied.skills = list(blueprint.skills)
+
         data = applied.model_dump()
         if "channels" in blueprint.model_fields_set:
             for name in _RUNTIME_CHANNELS:

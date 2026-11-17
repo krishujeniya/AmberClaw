@@ -82,6 +82,8 @@ class AmberClawDingTalkHandler(CallbackHandler):  # type: ignore[misc]  # option
                 content,
             )
 
+            msg_id = getattr(chatbot_msg, "message_id", None) or message.data.get("msgId")
+
             # Forward to AmberClaw via _on_message (non-blocking).
             # Store reference to prevent GC before task completes.
             task = asyncio.create_task(
@@ -91,6 +93,7 @@ class AmberClawDingTalkHandler(CallbackHandler):  # type: ignore[misc]  # option
                     sender_name,
                     conversation_type,
                     conversation_id,
+                    message_id=msg_id,
                 ),
             )
             self.channel._background_tasks.add(task)
@@ -515,11 +518,12 @@ class DingTalkChannel(BaseChannel):
         sender_name: str,
         conversation_type: str | None = None,
         conversation_id: str | None = None,
+        message_id: str | None = None,
     ) -> None:
         """Handle incoming message (called by AmberClawDingTalkHandler).
 
         Delegates to BaseChannel._handle_message() which enforces allow_from
-        permission checks before publishing to the bus.
+        permission checks and deduplication before publishing to the bus.
         """
         try:
             logger.info("DingTalk inbound: {} from {}", content, sender_name)
@@ -530,6 +534,7 @@ class DingTalkChannel(BaseChannel):
                 chat_id=chat_id,
                 content=str(content),
                 metadata={
+                    "message_id": message_id,
                     "sender_name": sender_name,
                     "platform": "dingtalk",
                     "conversation_type": conversation_type,

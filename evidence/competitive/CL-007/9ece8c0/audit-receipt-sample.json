@@ -1,0 +1,19 @@
+{
+  "receipt_version": "1.0.0",
+  "actor": "sec-ops-lead",
+  "tenant": "enterprise_prod",
+  "action": "tool.approval_resolved",
+  "resource_type": "governance_ticket",
+  "resource_id": "tick_7b92f01a88c2",
+  "outcome": "success",
+  "timestamp_utc": "2026-11-08T18:38:00.123456+00:00",
+  "correlation_id": "corr_4a89e02319bf",
+  "integrity_proof": "a93e1b7f94d0c1e82845341270bca5789134b22c81d23ef7682910fa3456bc91",
+  "metadata": {
+    "approved": true,
+    "reviewer": "sec-ops-lead",
+    "tool_name": "write_file",
+    "target_path": "/var/app/config.json",
+    "credentials": "[REDACTED_SECRET]"
+  }
+}

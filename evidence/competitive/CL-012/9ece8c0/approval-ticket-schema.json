@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ApprovalTicket",
+  "description": "Immutable governance ticket for human-in-the-loop tool execution",
+  "type": "object",
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "description": "Unique governance ticket identifier (e.g. tick_4189bd472a84)"
+    },
+    "actor": {
+      "type": "string",
+      "description": "Authenticated requesting agent or user identifier"
+    },
+    "tenant_id": {
+      "type": "string",
+      "default": "default",
+      "description": "Tenant boundary partition identifier"
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Exact registered tool name to be executed"
+    },
+    "action_type": {
+      "type": "string",
+      "default": "tool_execution",
+      "description": "Classification of requested action"
+    },
+    "action_version": {
+      "type": "string",
+      "default": "1.0.0",
+      "description": "Semantic version of the target tool schema"
+    },
+    "args": {
+      "type": "object",
+      "description": "Exact JSON parameter payload provided for invocation"
+    },
+    "args_hash": {
+      "type": "string",
+      "description": "SHA-256 hash over canonical arguments preventing tampering"
+    },
+    "destination": {
+      "type": "string",
+      "description": "Target endpoint, file path, database, or shell context"
+    },
+    "scope": {
+      "type": "string",
+      "description": "Least-privilege operational capability scope (e.g. fs:write:/path, net:egress:host, shell:cmd)"
+    },
+    "estimated_cost_usd": {
+      "type": "number",
+      "description": "Upper-bound financial cost estimate in USD"
+    },
+    "risk_level": {
+      "type": "string",
+      "enum": ["read_only", "low", "medium", "high", "critical"],
+      "description": "Assessed operational risk tier"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending_approval", "approved", "rejected", "expired", "cancelled"],
+      "description": "Current resolution status of the ticket"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Creation timestamp in UTC"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Expiration timestamp in UTC after which ticket cannot be resolved or executed"
+    },
+    "resolved_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Resolution timestamp in UTC"
+    },
+    "reviewer_id": {
+      "type": ["string", "null"],
+      "description": "Identifier of the human operator who reviewed the ticket"
+    },
+    "notes": {
+      "type": ["string", "null"],
+      "description": "Reviewer notes or justification"
+    },
+    "consumed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Single-use flag to prevent replay attacks"
+    },
+    "consumed_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Timestamp when execution consumed the approved ticket"
+    },
+    "consumed_by": {
+      "type": ["string", "null"],
+      "description": "Agent identifier that consumed the ticket"
+    }
+  },
+  "required": [
+    "ticket_id",
+    "actor",
+    "tool_name",
+    "args_hash",
+    "destination",
+    "scope",
+    "estimated_cost_usd",
+    "risk_level",
+    "status",
+    "created_at",
+    "expires_at",
+    "consumed"
+  ]
+}

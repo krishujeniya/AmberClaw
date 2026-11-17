@@ -1,0 +1,40 @@
+{
+  "task_id": "CL-005",
+  "title": "Make blueprint policy enforceable",
+  "revision": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp_utc": "2026-11-08T18:28:00Z",
+  "environment": {
+    "os": "Linux 6.6.137+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.6.137-1+rpt1 (2026-02-10) aarch64",
+    "python": "3.11.13",
+    "pytest": "9.0.3"
+  },
+  "deliverables": [
+    "src/amberclaw/config/schema.py",
+    "src/amberclaw/blueprints/applier.py",
+    "src/amberclaw/agent/tools/filesystem.py",
+    "src/amberclaw/agent/tools/shell.py",
+    "src/amberclaw/agent/tools/web.py",
+    "src/amberclaw/agent/tools/gui.py",
+    "src/amberclaw/agent/tools/registry.py",
+    "src/amberclaw/security/approval.py",
+    "src/amberclaw/agent/context.py",
+    "src/amberclaw/agent/loop.py",
+    "tests/unit/blueprints/test_runtime_application.py",
+    "evidence/competitive/CL-005/9ece8c0/field-consumer-map.md",
+    "evidence/competitive/CL-005/9ece8c0/policy-enforcement-tests.txt"
+  ],
+  "verification": {
+    "command": "uv run pytest -v tests/unit/blueprints/test_runtime_application.py",
+    "exit_code": 0,
+    "tests_passed": 17,
+    "tests_failed": 0,
+    "assertions": [
+      "All 4 built-in presets (default, developer, minimal, paranoid) successfully apply to Config without error",
+      "Restricted paths policy denies read_file, write_file, edit_file, list_dir, and exec attempts against forbidden paths",
+      "Network egress policy blocks web_search, web_fetch, browser_action, and shell network commands when disabled",
+      "Destructive tool policy enforces HITL approval tickets for write_file, edit_file, and exec when required, and permits execution upon resolution",
+      "Developer preset allows direct execution of destructive tools without tickets",
+      "Explicit unsupported or invalid blueprint settings fail closed atomically without mutating target configuration"
+    ]
+  }
+}

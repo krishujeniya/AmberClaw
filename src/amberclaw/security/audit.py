@@ -5,10 +5,13 @@ Provides structured, PII/secret-scrubbed, cryptographically verifiable event log
 for all agent execution, authorization, secret access, and governance operations.
 """
 
+import contextlib
 import hashlib
 import hmac
 import json
+import os
 import re
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Optional
@@ -91,6 +94,38 @@ class AuditEvent(BaseModel):
     )
 
 
+@contextlib.contextmanager
+def _audit_file_lock(lock_path: Path):
+    """Cross-process advisory lock for serialized audit transactions."""
+    lock_file = open(lock_path, "a+", encoding="utf-8")
+    try:
+        if sys.platform != "win32":
+            import fcntl  # noqa: PLC0415
+
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        if sys.platform != "win32":
+            import fcntl  # noqa: PLC0415
+
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        lock_file.close()
+
+
+class AuditAnchorReceipt(BaseModel):
+    """Cryptographic external anchor receipt attesting to chain state up to a fixed index."""
+
+    anchor_index: int
+    anchor_hash: str
+    record_count: int
+    timestamp_utc: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    anchor_id: str = Field(
+        default_factory=lambda: hashlib.sha256(
+            datetime.now(UTC).isoformat().encode()
+        ).hexdigest()[:16]
+    )
+
+
 class SecurityAuditLogger:
     """Structured event audit logger with tamper-evident SHA-256 hash chaining."""
 
@@ -100,6 +135,7 @@ class SecurityAuditLogger:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / "audit.jsonl"
+        self.lock_file = self.log_dir / ".audit.lock"
 
     @classmethod
     def get_logger(cls, log_dir: str | Path = "logs") -> "SecurityAuditLogger":
@@ -165,46 +201,49 @@ class SecurityAuditLogger:
         else:
             action_name = action
             clean_metadata = redact_secrets(metadata or {})
-        last_index, previous_hash = self._get_last_entry()
-        next_index = last_index + 1
-        timestamp = datetime.now(UTC).isoformat()
+        with _audit_file_lock(self.lock_file):
+            last_index, previous_hash = self._get_last_entry()
+            next_index = last_index + 1
+            timestamp = datetime.now(UTC).isoformat()
 
-        details_str = json.dumps(
-            {
-                "tenant": tenant,
-                "resource_type": resource_type,
-                "resource_id": resource_id,
-                "outcome": outcome,
-                "correlation_id": correlation_id,
-                "metadata": clean_metadata,
-            },
-            sort_keys=True,
-        )
+            details_str = json.dumps(
+                {
+                    "tenant": tenant,
+                    "resource_type": resource_type,
+                    "resource_id": resource_id,
+                    "outcome": outcome,
+                    "correlation_id": correlation_id,
+                    "metadata": clean_metadata,
+                },
+                sort_keys=True,
+            )
 
-        proof = self._calculate_hash(
-            next_index, timestamp, actor, action_name, details_str, previous_hash
-        )
+            proof = self._calculate_hash(
+                next_index, timestamp, actor, action_name, details_str, previous_hash
+            )
 
-        event = AuditEvent(
-            actor=actor,
-            tenant=tenant,
-            action=action_name,
-            resource_type=resource_type,
-            resource_id=resource_id,
-            outcome=outcome,
-            timestamp_utc=timestamp,
-            correlation_id=correlation_id,
-            integrity_proof=proof,
-            metadata=clean_metadata,
-        )
+            event = AuditEvent(
+                actor=actor,
+                tenant=tenant,
+                action=action_name,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                outcome=outcome,
+                timestamp_utc=timestamp,
+                correlation_id=correlation_id,
+                integrity_proof=proof,
+                metadata=clean_metadata,
+            )
 
-        log_payload = event.model_dump()
-        log_payload["index"] = next_index
-        log_payload["previous_hash"] = previous_hash
-        log_payload["hash"] = proof
+            log_payload = event.model_dump()
+            log_payload["index"] = next_index
+            log_payload["previous_hash"] = previous_hash
+            log_payload["hash"] = proof
 
-        with open(self.log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(log_payload) + "\n")
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(log_payload) + "\n")
+                f.flush()
+                os.fsync(f.fileno())
 
         logger.debug(
             "Security audit log entry created: actor={} action={} outcome={} index={}",
@@ -215,7 +254,59 @@ class SecurityAuditLogger:
         )
         return event
 
-    def verify_integrity(self, target_file: Path | None = None) -> bool:
+    def create_anchor_receipt(self) -> AuditAnchorReceipt:
+        """Create a cryptographic receipt of current log state to detect truncation."""
+        last_index, last_hash = self._get_last_entry()
+        receipt = AuditAnchorReceipt(
+            anchor_index=last_index,
+            anchor_hash=last_hash,
+            record_count=last_index + 1 if last_index >= 0 else 0,
+        )
+        anchor_file = self.log_dir / "audit_anchor.json"
+        anchor_file.write_text(receipt.model_dump_json(indent=2), encoding="utf-8")
+        return receipt
+
+    def export_event_receipt(self, event: AuditEvent) -> dict[str, Any]:
+        """Export a portable, redacted cryptographic receipt for a specific event."""
+        return {
+            "receipt_version": "1.0.0",
+            "actor": event.actor,
+            "tenant": event.tenant,
+            "action": event.action,
+            "resource_type": event.resource_type,
+            "resource_id": event.resource_id,
+            "outcome": event.outcome,
+            "timestamp_utc": event.timestamp_utc,
+            "correlation_id": event.correlation_id,
+            "integrity_proof": event.integrity_proof,
+            "metadata": redact_secrets(event.metadata),
+        }
+
+    def verify_receipt(self, receipt: dict[str, Any]) -> bool:
+        """Verify an exported receipt matches an entry in the local tamper-evident log."""
+        if not self.log_file.exists():
+            return False
+        proof = receipt.get("integrity_proof")
+        if not proof:
+            return False
+        with open(self.log_file, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                data = json.loads(line)
+                if hmac.compare_digest(
+                    str(data.get("integrity_proof", data.get("hash", ""))),
+                    str(proof),
+                ):
+                    return True
+        return False
+
+    def verify_integrity(
+        self,
+        target_file: Path | None = None,
+        expected_anchor: AuditAnchorReceipt | None = None,
+    ) -> bool:
         """Verify the cryptographic integrity of the security audit log file."""
         log_file = target_file or self.log_file
         if not log_file.exists():
@@ -224,6 +315,8 @@ class SecurityAuditLogger:
         try:
             expected_prev_hash = "0" * 64
             expected_index = 0
+            last_seen_hash = "0" * 64
+            last_seen_index = -1
 
             with open(log_file, encoding="utf-8") as f:
                 for line_num, line in enumerate(f, 1):
@@ -285,8 +378,28 @@ class SecurityAuditLogger:
                         )
                         return False
 
+                    last_seen_hash = current_hash
+                    last_seen_index = idx
                     expected_prev_hash = current_hash
                     expected_index += 1
+
+            if expected_anchor is not None:
+                if last_seen_index != expected_anchor.anchor_index:
+                    logger.error(
+                        "Audit log truncation detected: expected anchor index {}, got {}",
+                        expected_anchor.anchor_index,
+                        last_seen_index,
+                    )
+                    return False
+                if not hmac.compare_digest(
+                    str(last_seen_hash), str(expected_anchor.anchor_hash)
+                ):
+                    logger.error(
+                        "Audit log anchor hash mismatch: expected {}, got {}",
+                        expected_anchor.anchor_hash,
+                        last_seen_hash,
+                    )
+                    return False
 
             return True
         except Exception as e:

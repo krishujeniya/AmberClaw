@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.13, pytest-9.0.3, pluggy-1.6.0 -- /home/ai/Documents/projects/Freelance/AmberClaw/.venv/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /home/ai/Documents/projects/Freelance/AmberClaw
+configfile: pyproject.toml
+plugins: cov-7.1.0, asyncio-1.3.0, langsmith-0.7.33, hypothesis-6.155.1, anyio-4.14.2
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 17 items
+
+tests/unit/blueprints/test_runtime_application.py::test_supported_settings_map_to_consumed_runtime_fields_without_mutation PASSED [  5%]
+tests/unit/blueprints/test_runtime_application.py::test_omitted_settings_leave_existing_configuration_unchanged PASSED [ 11%]
+tests/unit/blueprints/test_runtime_application.py::test_model_only_patch_preserves_other_agent_settings PASSED [ 17%]
+tests/unit/blueprints/test_runtime_application.py::test_full_presets_apply_to_config_successfully[default] PASSED [ 23%]
+tests/unit/blueprints/test_runtime_application.py::test_full_presets_apply_to_config_successfully[developer] PASSED [ 29%]
+tests/unit/blueprints/test_runtime_application.py::test_full_presets_apply_to_config_successfully[minimal] PASSED [ 35%]
+tests/unit/blueprints/test_runtime_application.py::test_full_presets_apply_to_config_successfully[paranoid] PASSED [ 41%]
+tests/unit/blueprints/test_runtime_application.py::test_explicit_unsupported_settings_are_not_silently_discarded PASSED [ 47%]
+tests/unit/blueprints/test_runtime_application.py::test_unknown_channel_is_reported_without_mutating_input PASSED [ 52%]
+tests/unit/blueprints/test_runtime_application.py::test_explicit_empty_channels_disables_channels_and_preserves_credentials PASSED [ 58%]
+tests/unit/blueprints/test_runtime_application.py::test_cli_persists_only_canonical_supported_patch PASSED [ 64%]
+tests/unit/blueprints/test_runtime_application.py::test_cli_checks_capabilities_before_loading_config_or_migrating_secrets PASSED [ 70%]
+tests/unit/blueprints/test_runtime_application.py::test_runtime_enforces_blueprint_restricted_paths PASSED [ 76%]
+tests/unit/blueprints/test_runtime_application.py::test_runtime_enforces_blueprint_network_egress PASSED [ 82%]
+tests/unit/blueprints/test_runtime_application.py::test_runtime_enforces_blueprint_destructive_approval PASSED [ 88%]
+tests/unit/blueprints/test_runtime_application.py::test_cli_rejects_invalid_application_report_before_saving PASSED [ 94%]
+tests/unit/blueprints/test_runtime_application.py::test_semantically_invalid_blueprint_returns_errors_without_application PASSED [100%]
+
+======================== 17 passed, 1 warning in 48.30s ========================

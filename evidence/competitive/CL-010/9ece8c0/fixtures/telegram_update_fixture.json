@@ -1,0 +1,19 @@
+{
+  "update_id": 987654321,
+  "message": {
+    "message_id": 44321,
+    "from": {
+      "id": 11223344,
+      "is_bot": false,
+      "first_name": "DevSec",
+      "username": "devsec_ops"
+    },
+    "chat": {
+      "id": -100123456789,
+      "title": "Incident Operations Room",
+      "type": "supergroup"
+    },
+    "date": 1731110410,
+    "text": "investigate latency anomaly on pod-8"
+  }
+}

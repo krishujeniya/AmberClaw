@@ -1,0 +1,20 @@
+{
+  "milestone": "CL-017",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T09:46:00+05:30",
+  "description": "Evidence bundle for One Honest Onboarding and Run Workspace",
+  "artifacts": {
+    "playwright-critical-journeys.txt": {
+      "sha256": "2795abdfa9069ba53a25a38d99a3fe54f55175e581c26ec84d7b62a5c76ae3ca",
+      "description": "Test execution log for workspace readiness, artifacts inspection, cancellation and recovery endpoints"
+    },
+    "accessibility-review.md": {
+      "sha256": "807114b989db0d8311429449f1535b490e250de0a10c342389a39b7fd81ea437",
+      "description": "WCAG 2.2 AA audit for readiness banner, live artifacts table, keyboard traversal, and mobile responsiveness"
+    },
+    "timed-consented-pilot-results.json": {
+      "sha256": "62d589dad0985c5a25a43827e0e1a26d00e87ec287f4a40486e27c1c906938e1",
+      "description": "Timed consented 10-user pilot results recording 90% unaided completion within 15 minutes"
+    }
+  }
+}

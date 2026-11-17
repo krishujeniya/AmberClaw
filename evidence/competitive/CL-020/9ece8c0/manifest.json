@@ -1,0 +1,20 @@
+{
+  "milestone": "CL-020",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T09:55:00+05:30",
+  "description": "Evidence bundle for Typed tool/protocol contracts and selective migration",
+  "artifacts": {
+    "contract-tests.txt": {
+      "sha256": "5ab6741544c668a2b00633f09db8e707806fbd4843f75a9de2db9e7760796d9e",
+      "description": "Test execution log for typed contracts, scope enforcement, malformed output handling, and migration round-trip"
+    },
+    "migration-example.json": {
+      "sha256": "e27ff786f1548b77d238b44c799e1f83459749de31a3baf63df4f3e40f3045b0",
+      "description": "LangGraph migration schema demonstration showing preserved scopes, durable step mappings, and quarantined nodes"
+    },
+    "protocol-compatibility-and-license.md": {
+      "sha256": "86dc4c178954123ddc55c442153300a338d246489d9bf4129ebfa13da0294195",
+      "description": "Protocol compatibility matrix for MCP, A2A, and LangGraph alongside dependency license review"
+    }
+  }
+}

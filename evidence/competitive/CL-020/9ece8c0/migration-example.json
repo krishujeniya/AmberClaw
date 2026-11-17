@@ -1,0 +1,78 @@
+{
+  "source_framework": "LangGraph",
+  "source_schema_version": "0.2.1",
+  "migration_timestamp": "2026-11-09T09:54:00+05:30",
+  "migration_summary": {
+    "total_nodes_scanned": 5,
+    "imported_steps_count": 4,
+    "unsupported_nodes_count": 1,
+    "is_fully_supported": false
+  },
+  "quarantined_unsupported_nodes": [
+    {
+      "node_id": "untrusted_dynamic_script",
+      "type": "dynamic_eval_python",
+      "reason": "Node type 'dynamic_eval_python' is not supported in private deterministic mode without manual review."
+    }
+  ],
+  "imported_durable_steps": [
+    {
+      "step_id": "fetch_transactions",
+      "node_type": "tool_step",
+      "tool_name": "db_fetch_transactions",
+      "required_scopes": [
+        "finance:read",
+        "tenant:isolated"
+      ],
+      "idempotent": true,
+      "next_steps": [
+        "reconcile_totals"
+      ],
+      "metadata": {
+        "timeout_seconds": 30
+      }
+    },
+    {
+      "step_id": "reconcile_totals",
+      "node_type": "transformation",
+      "tool_name": "compute_discrepancies",
+      "required_scopes": [
+        "compute:execute"
+      ],
+      "idempotent": true,
+      "next_steps": [
+        "operator_approval"
+      ],
+      "metadata": {}
+    },
+    {
+      "step_id": "operator_approval",
+      "node_type": "human_approval_gate",
+      "tool_name": "secops_ticket_approver",
+      "required_scopes": [
+        "approval:grant"
+      ],
+      "idempotent": true,
+      "next_steps": [
+        "archive_summary"
+      ],
+      "metadata": {
+        "escalation_policy": "page_on_call"
+      }
+    },
+    {
+      "step_id": "archive_summary",
+      "node_type": "terminal",
+      "tool_name": null,
+      "required_scopes": [],
+      "idempotent": true,
+      "next_steps": [],
+      "metadata": {}
+    }
+  ],
+  "fidelity_check": {
+    "round_trip_export_verified": true,
+    "scope_leakage_detected": false,
+    "auth_boundary_preserved": true
+  }
+}

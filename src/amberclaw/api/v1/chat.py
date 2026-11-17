@@ -1,19 +1,12 @@
-from collections.abc import AsyncGenerator
-from pathlib import Path
-
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from amberclaw.api.stream.protocol import done_frame, error_frame, token_frame
+from amberclaw.api.deps import get_chat_service
 from amberclaw.api.stream.sse import create_sse_response
-from amberclaw.providers.litellm_client import LLMMessage, LLMRouter
-from amberclaw.schemas.agent import AgentProfile
-from amberclaw.storage.persistence import JSONStateStore
+from amberclaw.services.chat_service import ChatService
 
 router = APIRouter()
-llm_router = LLMRouter()
-agent_store = JSONStateStore(Path("data/agents.json"), AgentProfile)
 
 
 class ChatStreamRequest(BaseModel):
@@ -22,6 +15,7 @@ class ChatStreamRequest(BaseModel):
     model: str | None = None
     system_prompt: str | None = None
     temperature: float = 0.7
+    raw_completion: bool = False
 
 
 class ChatMessageRequest(BaseModel):
@@ -30,6 +24,7 @@ class ChatMessageRequest(BaseModel):
     model: str | None = None
     system_prompt: str | None = None
     temperature: float = 0.7
+    raw_completion: bool = False
 
 
 class ChatMessageResponse(BaseModel):
@@ -39,80 +34,50 @@ class ChatMessageResponse(BaseModel):
 
 
 @router.post("", response_model=ChatMessageResponse)
-async def chat_completion(request: ChatMessageRequest) -> ChatMessageResponse:
-    """Synchronous chat completion."""
-    model_name = request.model or "gpt-4o"
-    system_content = request.system_prompt or "You are AmberClaw AI Assistant."
-
-    if request.agent_id:
-        agent = agent_store.get(request.agent_id)
-        if not agent:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Agent '{request.agent_id}' not found.",
-            )
-        model_name = request.model or agent.model_name
-        system_content = f"You are {agent.name}. {agent.role}"
-
-    messages = [
-        LLMMessage(role="system", content=system_content),
-        LLMMessage(role="user", content=request.message),
-    ]
-
+async def chat_completion(
+    request: ChatMessageRequest,
+    chat_service: ChatService = Depends(get_chat_service),
+) -> ChatMessageResponse:
+    """Synchronous chat completion routing through canonical runtime or model completion."""
     try:
-        reply = await llm_router.generate(
-            messages=messages,
-            model=model_name,
+        reply, model_name = await chat_service.generate_response(
+            message=request.message,
+            agent_id=request.agent_id,
+            model=request.model,
+            system_prompt=request.system_prompt,
             temperature=request.temperature,
+            raw_completion=request.raw_completion,
         )
         return ChatMessageResponse(
             reply=reply,
             model=model_name,
             agent_id=request.agent_id,
         )
-    except Exception as e:
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        ) from e
+            detail=str(exc),
+        ) from exc
 
 
 @router.post("/stream")
-async def chat_stream(request: ChatStreamRequest) -> StreamingResponse:
+async def chat_stream(
+    request: ChatStreamRequest,
+    chat_service: ChatService = Depends(get_chat_service),
+) -> StreamingResponse:
     """Server-Sent Events (SSE) streaming chat endpoint emitting token and terminal frames."""
-    model_name = request.model or "gpt-4o"
-    system_content = request.system_prompt or "You are AmberClaw AI Assistant."
-
-    if request.agent_id:
-        agent = agent_store.get(request.agent_id)
-        if not agent:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Agent '{request.agent_id}' not found.",
-            )
-        model_name = request.model or agent.model_name
-        system_content = f"You are {agent.name}. {agent.role}"
-
-    messages = [
-        LLMMessage(role="system", content=system_content),
-        LLMMessage(role="user", content=request.message),
-    ]
-
-    async def _event_generator() -> AsyncGenerator[str, None]:
-        chunk_index = 0
-        try:
-            async for chunk in llm_router.generate_stream(
-                messages=messages,
-                model=model_name,
-                temperature=request.temperature,
-            ):
-                frame = token_frame(content=chunk, index=chunk_index)
-                yield frame.to_sse()
-                chunk_index += 1
-
-            # Emit final completion frame
-            yield done_frame(total_tokens=chunk_index).to_sse()
-        except Exception as err:
-            yield error_frame(error_message=str(err)).to_sse()
-
-    return create_sse_response(_event_generator())
+    return create_sse_response(
+        chat_service.stream_response(
+            message=request.message,
+            agent_id=request.agent_id,
+            model=request.model,
+            system_prompt=request.system_prompt,
+            temperature=request.temperature,
+            raw_completion=request.raw_completion,
+        )
+    )

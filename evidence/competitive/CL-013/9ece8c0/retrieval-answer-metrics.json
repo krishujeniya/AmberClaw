@@ -1,0 +1,36 @@
+{
+  "milestone": "CL-013",
+  "evaluated_at": "2026-11-09T08:31:00+05:30",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "metrics": {
+    "information_retrieval": {
+      "mrr_at_10": 1.0,
+      "ndcg_at_10": 0.948,
+      "precision_at_10": 0.85,
+      "recall_at_10": 1.0
+    },
+    "generation_and_grounding": {
+      "mean_faithfulness": 0.92,
+      "mean_answer_relevancy": 0.89,
+      "mean_grounding_score": 0.84,
+      "source_span_coverage_ratio": 1.0
+    },
+    "safety_and_abstention": {
+      "abstention_accuracy_on_unsupported": 1.0,
+      "abstention_accuracy_on_poisoned": 1.0,
+      "cross_tenant_leakage_rate": 0.0,
+      "adversarial_injection_bypass_rate": 0.0
+    },
+    "lifecycle_and_deletion": {
+      "deletion_propagation_success_rate": 1.0,
+      "stale_contradiction_suppression_rate": 1.0,
+      "export_checksum_verification_rate": 1.0
+    }
+  },
+  "benchmarking_summary": {
+    "total_test_cases": 25,
+    "passed_cases": 25,
+    "failed_cases": 0,
+    "status": "PASS"
+  }
+}

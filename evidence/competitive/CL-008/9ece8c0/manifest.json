@@ -1,0 +1,26 @@
+{
+  "item_id": "CL-008",
+  "task": "End-to-end tenant identity and authorization",
+  "git_revision": "9ece8c0",
+  "recorded_at_utc": "2026-11-09T00:30:00Z",
+  "status": "VERIFIED",
+  "exit_code": 0,
+  "artifacts": [
+    "permission-matrix.md",
+    "tenant-isolation-tests.txt"
+  ],
+  "verification_command": "uv run pytest -v tests/unit/api/test_tenant_isolation_e2e.py",
+  "summary": {
+    "total_tests": 6,
+    "passed": 6,
+    "failed": 0,
+    "features_verified": [
+      "two_tenant_agent_lifecycle_and_chat_isolation",
+      "caller_supplied_tenant_escalation_denied",
+      "two_tenant_memory_and_gdpr_isolation",
+      "session_revocation_enforced",
+      "unauthorized_tool_dispatch_denied",
+      "concurrent_worker_tenant_isolation"
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "task_id": "CL-007",
+  "title": "Audit concurrency, truncation and receipts",
+  "revision": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp_utc": "2026-11-08T18:38:40Z",
+  "environment": {
+    "os": "Linux 6.6.137+rpt-rpi-2712 #1 SMP PREEMPT Debian 1:6.6.137-1+rpt1 (2026-02-10) aarch64",
+    "python": "3.11.13",
+    "pytest": "9.0.3"
+  },
+  "deliverables": [
+    "src/amberclaw/security/audit.py",
+    "docs/adr/0006-audit-integrity-concurrency-anchoring.md",
+    "tests/unit/security/test_audit_integrity.py",
+    "evidence/competitive/CL-007/9ece8c0/adr-0006.md",
+    "evidence/competitive/CL-007/9ece8c0/audit-receipt-sample.json",
+    "evidence/competitive/CL-007/9ece8c0/audit-integrity-tests.txt"
+  ],
+  "verification": {
+    "command": "uv run pytest -v tests/unit/security/test_audit_integrity.py",
+    "exit_code": 0,
+    "tests_passed": 6,
+    "tests_failed": 0,
+    "assertions": [
+      "Concurrent workers serialized via cross-process file lock without chain forking or dropped entries",
+      "Payload edits, record deletions, and record reordering deterministically detected by verify_integrity",
+      "Tail truncation deterministically detected when verified against external AuditAnchorReceipt",
+      "Portable cryptographic event receipts generated with credentials redacted and verified against local audit chain"
+    ]
+  }
+}

@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.13, pytest-9.0.3, pluggy-1.6.0 -- /home/ai/Documents/projects/Freelance/AmberClaw/.venv/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /home/ai/Documents/projects/Freelance/AmberClaw
+configfile: pyproject.toml
+plugins: cov-7.1.0, asyncio-1.3.0, langsmith-0.7.33, hypothesis-6.155.1, anyio-4.14.2
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 11 items
+
+tests/unit/security/test_sandbox_containment.py::test_probe_containment_capabilities PASSED [  9%]
+tests/unit/security/test_sandbox_containment.py::test_strict_mode_refuses_execution_when_namespace_fails PASSED [ 18%]
+tests/unit/security/test_sandbox_containment.py::test_strict_mode_refuses_execution_when_landlock_fails PASSED [ 27%]
+tests/unit/security/test_sandbox_containment.py::test_degraded_mode_records_landlock_limitation_without_raising PASSED [ 36%]
+tests/unit/security/test_sandbox_containment.py::test_strict_mode_refuses_execution_when_seccomp_fails PASSED [ 45%]
+tests/unit/security/test_sandbox_containment.py::test_strict_mode_refuses_execution_on_non_linux PASSED [ 54%]
+tests/unit/security/test_sandbox_containment.py::test_codesandbox_attest_containment_method PASSED [ 63%]
+tests/unit/security/test_sandbox_containment.py::test_host_socket_and_metadata_filter_containment_probes PASSED [ 72%]
+tests/unit/security/test_sandbox_containment.py::test_ephemeral_filesystem_path_traversal_denied PASSED [ 81%]
+tests/unit/security/test_sandbox_containment.py::test_decompression_guard_rejects_zip_slip_and_bombs PASSED [ 90%]
+tests/unit/security/test_sandbox_containment.py::test_automated_sandbox_escape_runner PASSED [100%]
+
+============================= 11 passed in 36.08s ==============================

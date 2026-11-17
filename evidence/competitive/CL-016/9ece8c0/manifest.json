@@ -1,0 +1,20 @@
+{
+  "milestone": "CL-016",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "timestamp": "2026-11-09T09:31:00+05:30",
+  "description": "Evidence bundle for Minimal Install and Measured Resource Usage",
+  "artifacts": {
+    "cold-start-rss-benchmark.json": {
+      "sha256": "0bbcc83b16ae93585eeee695143458270fdf82e4f2291f15cf6beaea3271b925",
+      "description": "Reproducible cold-start import latency and process RSS measurements showing 56.5% memory reduction"
+    },
+    "dependency-manifest.json": {
+      "sha256": "8615e844dfa9be60c98aa2206d897a491d6d8ea4d0ba25d49a3bad1a9b8a37e2",
+      "description": "Inventory of 33 base packages and modular optional extras (data, channels, storage, sandboxes)"
+    },
+    "install-matrix.md": {
+      "sha256": "8e4f109bed06c8881908846e0bca4967f24f3b8e5d52207b436b37ea03857b01",
+      "description": "Installation matrix and documentation of graceful fallbacks for minimal environments"
+    }
+  }
+}

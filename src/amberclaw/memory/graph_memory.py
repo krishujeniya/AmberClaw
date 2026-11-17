@@ -237,3 +237,32 @@ class TemporalGraphMemory:
             return None
         history: list[dict[str, Any]] = self.graph.nodes[node_id].get("history", [])
         return history
+
+    def delete_entity(self, name: str) -> bool:
+        """Delete an entity node and all connected edges from the knowledge graph."""
+        node_id = name.lower().replace(" ", "_")
+        if self.graph.has_node(node_id):
+            self.graph.remove_node(node_id)
+            self.save()
+            return True
+        return False
+
+    def delete_relationship(
+        self, source_name: str, target_name: str, relation: str | None = None
+    ) -> int:
+        """Delete specific or all relationships between two entities."""
+        source_id = source_name.lower().replace(" ", "_")
+        target_id = target_name.lower().replace(" ", "_")
+        if not self.graph.has_node(source_id) or not self.graph.has_node(target_id):
+            return 0
+        removed = 0
+        edges_to_remove = []
+        for u, v, key, data in self.graph.edges([source_id], keys=True, data=True):
+            if v == target_id and (relation is None or data.get("relation") == relation):
+                edges_to_remove.append((u, v, key))
+        for u, v, key in edges_to_remove:
+            self.graph.remove_edge(u, v, key=key)
+            removed += 1
+        if removed:
+            self.save()
+        return removed

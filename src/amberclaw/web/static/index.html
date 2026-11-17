@@ -413,6 +413,35 @@
                 </form>
                 <p id="auth-status" role="status" aria-live="polite">Sign in to view private dashboard data.</p>
             </section>
+
+            <!-- Onboarding & Workspace Readiness Banner -->
+            <section class="metric-card" id="readiness-panel" aria-labelledby="readiness-title" style="display: none; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2 id="readiness-title" style="margin: 0; font-size: 1.1rem;">System Readiness &amp; Onboarding</h2>
+                    <span id="readiness-badge" class="badge">Checking...</span>
+                </div>
+                <p id="readiness-summary" style="color: var(--text-secondary); margin: 0.5rem 0; font-size: 0.875rem;">
+                    Real environment inspection, missing credentials audit, and local model requirements.
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
+                    <div style="background: rgba(0,0,0,0.25); padding: 0.75rem; border-radius: var(--radius-md);">
+                        <strong style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Configured Providers</strong>
+                        <div id="readiness-providers" style="font-size: 0.9rem; margin-top: 0.25rem;">None</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.25); padding: 0.75rem; border-radius: var(--radius-md);">
+                        <strong style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Missing Credentials</strong>
+                        <div id="readiness-missing" style="font-size: 0.9rem; margin-top: 0.25rem; color: var(--warning);">None</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.25); padding: 0.75rem; border-radius: var(--radius-md);">
+                        <strong style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Local Model (Ollama/vLLM)</strong>
+                        <div id="readiness-local-model" style="font-size: 0.9rem; margin-top: 0.25rem;">Offline</div>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Requires &gt;=8GB RAM for 7B/8B Q4</small>
+                    </div>
+                </div>
+                <div id="readiness-recs-container" style="margin-top: 0.75rem; font-size: 0.85rem; background: rgba(59, 130, 246, 0.1); border-left: 3px solid var(--accent); padding: 0.5rem 0.75rem; border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+                    <ul id="readiness-recommendations" style="margin: 0; padding-left: 1.25rem;"></ul>
+                </div>
+            </section>
             <!-- 1. Chat Tab -->
             <div id="chat-tab" class="tab-content active">
                 <div class="chat-container">
@@ -427,6 +456,30 @@
                         <button id="send-btn" class="primary" data-i18n="send_btn">Send</button>
                         <button id="cancel-btn" class="danger" style="display: none;" data-i18n="cancel_btn">Cancel</button>
                     </div>
+                </div>
+
+                <!-- Live Workspace Artifacts & Run Control -->
+                <div class="metric-card" id="workspace-artifacts-section" style="margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <h3 style="margin: 0;">Live Workspace Artifacts &amp; Run Controls</h3>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" id="btn-cancel-active-run" class="danger" style="padding: 4px 10px; font-size: 0.8rem;">Cancel Active Run</button>
+                            <button type="button" id="btn-recover-last-run" class="primary" style="padding: 4px 10px; font-size: 0.8rem;">Recover Interrupted Run</button>
+                        </div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>File Name</th>
+                                <th>Relative Path</th>
+                                <th>Size</th>
+                                <th>Last Modified</th>
+                            </tr>
+                        </thead>
+                        <tbody id="artifacts-table-body">
+                            <tr><td colspan="4">No generated artifacts in workspace.</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -502,12 +555,16 @@
                         <thead>
                             <tr>
                                 <th>Ticket ID</th>
+                                <th>Actor</th>
                                 <th>Requested Action</th>
+                                <th>Destination</th>
+                                <th>Scope &amp; Cost</th>
+                                <th>Expiry</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="governance-table-body"><tr><td colspan="5">No data source is connected for this view.</td></tr></tbody>
+                        <tbody id="governance-table-body"><tr><td colspan="8">No data source is connected for this view.</td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -554,16 +611,44 @@
         </main>
     </div>
 
-    <!-- Tool Approval Modal Dialog (Compliant with modern web guidance) -->
-    <dialog id="approval-dialog" aria-labelledby="dialog-title" closedby="any">
-        <h2 id="dialog-title">Approval details</h2>
-        <p id="dialog-desc">Approvals are read only in this dashboard.</p>
-        <div style="background: rgba(0,0,0,0.3); padding: 0.75rem; border-radius: var(--radius-md); font-family: monospace;" id="dialog-tool-details">
-            No approval selected.
+    <!-- Tool Approval Modal Dialog (Compliant with modern web guidance and WCAG 2.2 AA) -->
+    <dialog id="approval-dialog" role="dialog" aria-labelledby="dialog-title" aria-describedby="dialog-desc" closedby="any">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h2 id="dialog-title" style="margin: 0;">Review Human Approval Request</h2>
+            <span id="dialog-status-badge" class="badge">PENDING</span>
         </div>
-        <form method="dialog" class="dialog-actions">
-            <button value="cancel" autofocus>Close</button>
-        </form>
+        <p id="dialog-desc" style="color: var(--text-secondary); margin-top: 0; font-size: 0.875rem;">
+            Inspect actor, action, exact parameters, target destination, scope, and cost before approving or rejecting execution.
+        </p>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; font-size: 0.85rem; margin-bottom: 0.75rem; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: var(--radius-md);">
+            <div><strong>Ticket ID:</strong> <code id="dialog-ticket-id">-</code></div>
+            <div><strong>Actor:</strong> <span id="dialog-actor">-</span></div>
+            <div><strong>Tool / Action:</strong> <strong id="dialog-tool-name">-</strong></div>
+            <div><strong>Destination:</strong> <code id="dialog-destination">-</code></div>
+            <div><strong>Scope:</strong> <span id="dialog-scope">-</span></div>
+            <div><strong>Estimated Cost:</strong> <span id="dialog-cost">-</span></div>
+            <div style="grid-column: span 2;"><strong>Expires At:</strong> <span id="dialog-expiry">-</span></div>
+        </div>
+
+        <div style="margin-bottom: 0.75rem;">
+            <strong style="font-size: 0.85rem;">Tamper-Evident SHA-256 Arguments Hash:</strong>
+            <div id="dialog-args-hash" style="font-family: monospace; font-size: 0.75rem; word-break: break-all; color: var(--text-secondary); background: rgba(0,0,0,0.3); padding: 0.4rem 0.6rem; border-radius: var(--radius-md); margin-top: 0.25rem;">-</div>
+        </div>
+
+        <div style="margin-bottom: 0.75rem;">
+            <strong style="font-size: 0.85rem;">Exact Invocation Arguments:</strong>
+            <pre id="dialog-tool-details" style="background: rgba(0,0,0,0.4); padding: 0.75rem; border-radius: var(--radius-md); font-family: monospace; font-size: 0.8rem; max-height: 160px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; margin-top: 0.25rem;" tabindex="0" aria-label="Tool arguments JSON">No approval selected.</pre>
+        </div>
+
+        <div id="dialog-alert-region" role="alert" aria-live="polite" style="font-size: 0.85rem; min-height: 1.25rem; font-weight: 500;"></div>
+
+        <div class="dialog-actions">
+            <button type="button" class="primary" id="btn-approve-ticket" aria-label="Approve action execution">Approve</button>
+            <button type="button" class="danger" id="btn-reject-ticket" aria-label="Deny action execution">Deny</button>
+            <button type="button" id="btn-cancel-ticket" aria-label="Cancel approval request">Cancel</button>
+            <button type="button" id="btn-close-ticket" autofocus aria-label="Close dialog">Close</button>
+        </div>
     </dialog>
 
     <!-- Client-side SPA Application Logic & Localization Dictionary -->
@@ -861,6 +946,70 @@
             }
         }
 
+        function fillGovernanceRows(tickets) {
+            const body = document.getElementById('governance-table-body');
+            body.replaceChildren();
+            if (!tickets || tickets.length === 0) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 8;
+                td.textContent = 'No records available from a connected source.';
+                tr.appendChild(td);
+                body.appendChild(tr);
+                return;
+            }
+            tickets.forEach(t => {
+                const tr = document.createElement('tr');
+
+                const tdId = document.createElement('td');
+                const codeId = document.createElement('code');
+                codeId.textContent = t.ticket_id;
+                tdId.appendChild(codeId);
+                tr.appendChild(tdId);
+
+                const tdActor = document.createElement('td');
+                tdActor.textContent = t.actor || 'agent';
+                tr.appendChild(tdActor);
+
+                const tdAction = document.createElement('td');
+                tdAction.textContent = t.tool_name || t.action || 'Unknown';
+                tr.appendChild(tdAction);
+
+                const tdDest = document.createElement('td');
+                const codeDest = document.createElement('code');
+                codeDest.textContent = t.destination || 'local';
+                tdDest.appendChild(codeDest);
+                tr.appendChild(tdDest);
+
+                const tdScope = document.createElement('td');
+                const cost = t.estimated_cost_usd != null ? '$' + Number(t.estimated_cost_usd).toFixed(4) : '$0.00';
+                tdScope.textContent = `${t.scope || 'tool'} (${cost})`;
+                tr.appendChild(tdScope);
+
+                const tdExpiry = document.createElement('td');
+                tdExpiry.textContent = t.expires_at ? new Date(t.expires_at).toLocaleTimeString() : 'None';
+                tr.appendChild(tdExpiry);
+
+                const tdStatus = document.createElement('td');
+                const badge = document.createElement('span');
+                badge.className = 'badge';
+                badge.textContent = (t.status || 'pending').toUpperCase();
+                tdStatus.appendChild(badge);
+                tr.appendChild(tdStatus);
+
+                const tdReview = document.createElement('td');
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.textContent = 'Review';
+                btn.setAttribute('aria-label', `Review ticket ${t.ticket_id}`);
+                btn.addEventListener('click', () => openApprovalModal(t, btn));
+                tdReview.appendChild(btn);
+                tr.appendChild(tdReview);
+
+                body.appendChild(tr);
+            });
+        }
+
         async function readDashboard(path) {
             const response = await fetch(path);
             if (response.status === 401) {
@@ -873,22 +1022,70 @@
 
         async function loadDashboard() {
             try {
-                const [summary, sessions, tickets, usage, audit] = await Promise.all([
+                const [summary, sessions, tickets, usage, audit, readiness, artifacts] = await Promise.all([
                     readDashboard('/api/dashboard/summary'), readDashboard('/api/sessions'),
-                    readDashboard('/api/governance/tickets'), readDashboard('/api/metrics/usage'),
-                    readDashboard('/api/audit/logs')
+                    readDashboard('/api/governance/tickets?detail=true'), readDashboard('/api/metrics/usage'),
+                    readDashboard('/api/audit/logs'),
+                    readDashboard('/api/workspace/readiness').catch(() => null),
+                    readDashboard('/api/workspace/artifacts').catch(() => [])
                 ]);
                 runtimeConfigured = summary.status === 'configured';
                 runtimeState.textContent = runtimeConfigured ? 'Agent runtime configured' : 'Agent runtime unavailable';
                 setSessionState(true);
                 document.getElementById('session-count').textContent = sessions.length ? sessions.length : 'No records available';
                 fillRows('sessions-table-body', sessions.map(s => [s.key ?? s.session_id, s.created_at, s.updated_at]), 3);
-                fillRows('governance-table-body', tickets.map(t => [t.ticket_id, t.action, t.status, 'Read only']), 4);
+                fillGovernanceRows(tickets);
                 fillRows('audit-table-body', audit.map(a => [a.action, a.actor, a.resource, a.outcome, a.hash]), 5);
                 document.getElementById('total-tokens').textContent = usage.total_tokens ?? 'Unavailable';
                 document.getElementById('estimated-spend').textContent = usage.estimated_spend_usd == null ? 'Unavailable' : '$' + usage.estimated_spend_usd.toFixed(2);
                 document.getElementById('budget-cap').textContent = usage.budget_cap_usd == null ? 'Budget cap unavailable' : 'Budget cap: $' + usage.budget_cap_usd.toFixed(2);
                 document.getElementById('p95-latency').textContent = usage.p95_latency_ms == null ? 'Unavailable' : usage.p95_latency_ms + 'ms';
+
+                if (readiness) {
+                    const rPanel = document.getElementById('readiness-panel');
+                    if (rPanel) rPanel.style.display = 'block';
+                    const rBadge = document.getElementById('readiness-badge');
+                    if (rBadge) {
+                        rBadge.textContent = readiness.status.toUpperCase();
+                        rBadge.className = 'badge ' + (readiness.status.startsWith('ready') ? 'success' : 'warning');
+                    }
+                    const provEl = document.getElementById('readiness-providers');
+                    if (provEl) provEl.textContent = readiness.configured_providers.length ? readiness.configured_providers.join(', ') : 'None detected';
+                    const missEl = document.getElementById('readiness-missing');
+                    if (missEl) missEl.textContent = readiness.missing_credentials.length ? readiness.missing_credentials.join(', ') : 'None missing';
+                    const locEl = document.getElementById('readiness-local-model');
+                    if (locEl) {
+                        locEl.textContent = readiness.local_model_status.toUpperCase();
+                        locEl.style.color = readiness.local_model_status === 'available' ? 'var(--success)' : 'var(--text-muted)';
+                    }
+                    const recsUl = document.getElementById('readiness-recommendations');
+                    if (recsUl) {
+                        recsUl.innerHTML = '';
+                        (readiness.recommendations || []).forEach(r => {
+                            const li = document.createElement('li');
+                            li.textContent = r;
+                            recsUl.appendChild(li);
+                        });
+                    }
+                }
+
+                if (artifacts) {
+                    const artTbody = document.getElementById('artifacts-table-body');
+                    if (artTbody) {
+                        if (!artifacts.length) {
+                            artTbody.innerHTML = '<tr><td colspan="4">No generated artifacts in workspace.</td></tr>';
+                        } else {
+                            artTbody.innerHTML = artifacts.map(a => `
+                                <tr>
+                                    <td><code>${escapeHtml(a.name)}</code></td>
+                                    <td><small>${escapeHtml(a.path)}</small></td>
+                                    <td>${a.size_bytes} B</td>
+                                    <td>${new Date(a.modified_at).toLocaleTimeString()}</td>
+                                </tr>
+                            `).join('');
+                        }
+                    }
+                }
             } catch (error) {
                 authStatus.textContent = error.message;
                 authPanel.hidden = false;
@@ -934,14 +1131,116 @@
             if (response.ok) return loadDashboard();
         }).catch(() => { authStatus.textContent = 'Unable to reach the dashboard. Try again.'; });
 
-        // Dialog Modal Logic (Native <dialog>)
+        // Dialog Modal Logic (Native <dialog> with Accessible Keyboard & Focus Management)
         const approvalDialog = document.getElementById('approval-dialog');
-        function openApprovalModal(ticketId, actionDesc) {
-            document.getElementById('dialog-tool-details').innerText = `Ticket: ${ticketId}\nAction: ${actionDesc}`;
+        const btnApprove = document.getElementById('btn-approve-ticket');
+        const btnReject = document.getElementById('btn-reject-ticket');
+        const btnCancel = document.getElementById('btn-cancel-ticket');
+        const btnClose = document.getElementById('btn-close-ticket');
+        const alertRegion = document.getElementById('dialog-alert-region');
+        let currentReviewTicket = null;
+        let lastTriggerButton = null;
+
+        function openApprovalModal(ticket, triggerBtn) {
+            currentReviewTicket = ticket;
+            lastTriggerButton = triggerBtn || document.activeElement;
+
+            document.getElementById('dialog-ticket-id').textContent = ticket.ticket_id;
+            document.getElementById('dialog-actor').textContent = ticket.actor || 'agent';
+            document.getElementById('dialog-tool-name').textContent = ticket.tool_name || ticket.action || 'Unknown';
+            document.getElementById('dialog-destination').textContent = ticket.destination || 'local';
+            document.getElementById('dialog-scope').textContent = ticket.scope || 'tool:execute';
+            document.getElementById('dialog-cost').textContent = ticket.estimated_cost_usd != null ? '$' + Number(ticket.estimated_cost_usd).toFixed(4) : '$0.0000';
+            document.getElementById('dialog-expiry').textContent = ticket.expires_at ? new Date(ticket.expires_at).toLocaleString() : 'None';
+            document.getElementById('dialog-status-badge').textContent = (ticket.status || 'pending').toUpperCase();
+            document.getElementById('dialog-args-hash').textContent = ticket.args_hash || 'Uncomputed';
+            document.getElementById('dialog-tool-details').textContent = JSON.stringify(ticket.arguments || ticket.args || {}, null, 2);
+            alertRegion.textContent = '';
+            alertRegion.style.color = '';
+
+            const isPending = ticket.status === 'pending' || ticket.status === 'pending_approval';
+            btnApprove.disabled = !isPending;
+            btnReject.disabled = !isPending;
+            btnCancel.disabled = !isPending;
+
             approvalDialog.showModal();
+            if (isPending) {
+                btnApprove.focus();
+            } else {
+                btnClose.focus();
+            }
         }
 
-        // Modern Web Guidance: Graceful light dismiss fallback when closedby not supported
+        async function submitTicketResolution(actionStatus) {
+            if (!currentReviewTicket) return;
+            btnApprove.disabled = true;
+            btnReject.disabled = true;
+            btnCancel.disabled = true;
+            alertRegion.textContent = 'Submitting resolution…';
+            try {
+                const response = await fetch(`/api/governance/tickets/${encodeURIComponent(currentReviewTicket.ticket_id)}/resolve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: actionStatus, reviewer_id: 'dashboard_operator' })
+                });
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Failed to resolve ticket');
+                }
+                alertRegion.style.color = 'var(--success)';
+                alertRegion.textContent = `Ticket ${actionStatus === 'approved' ? 'approved' : 'denied'} successfully.`;
+                document.getElementById('dialog-status-badge').textContent = actionStatus.toUpperCase();
+                await loadDashboard();
+            } catch (err) {
+                alertRegion.style.color = 'var(--danger)';
+                alertRegion.textContent = err.message;
+                btnApprove.disabled = false;
+                btnReject.disabled = false;
+                btnCancel.disabled = false;
+            }
+        }
+
+        async function submitTicketCancellation() {
+            if (!currentReviewTicket) return;
+            btnApprove.disabled = true;
+            btnReject.disabled = true;
+            btnCancel.disabled = true;
+            alertRegion.textContent = 'Cancelling ticket…';
+            try {
+                const response = await fetch(`/api/governance/tickets/${encodeURIComponent(currentReviewTicket.ticket_id)}/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reason: 'Operator cancelled via dashboard' })
+                });
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Failed to cancel ticket');
+                }
+                alertRegion.style.color = 'var(--warning)';
+                alertRegion.textContent = 'Ticket cancelled successfully.';
+                document.getElementById('dialog-status-badge').textContent = 'CANCELLED';
+                await loadDashboard();
+            } catch (err) {
+                alertRegion.style.color = 'var(--danger)';
+                alertRegion.textContent = err.message;
+                btnApprove.disabled = false;
+                btnReject.disabled = false;
+                btnCancel.disabled = false;
+            }
+        }
+
+        btnApprove.addEventListener('click', () => submitTicketResolution('approved'));
+        btnReject.addEventListener('click', () => submitTicketResolution('rejected'));
+        btnCancel.addEventListener('click', submitTicketCancellation);
+        btnClose.addEventListener('click', () => approvalDialog.close());
+
+        approvalDialog.addEventListener('close', () => {
+            if (lastTriggerButton && typeof lastTriggerButton.focus === 'function') {
+                lastTriggerButton.focus();
+            }
+        });
+
+        // Graceful light dismiss fallback when closedby not supported
         if (!('closedBy' in HTMLDialogElement.prototype)) {
             const outside = (e, d) => {
                 const r = d.getBoundingClientRect();

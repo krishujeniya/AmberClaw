@@ -1,0 +1,35 @@
+{
+  "milestone": "CL-016",
+  "evaluated_at": "2026-11-09T09:31:00+05:30",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "hardware_environment": {
+    "os": "Linux x86_64",
+    "kernel": "6.6.137+rpt-rpi-2712",
+    "total_host_ram_mb": 3379.2,
+    "python_version": "3.11.13"
+  },
+  "benchmarks": {
+    "base_runtime": {
+      "profile": "minimal_core",
+      "package_count": 33,
+      "import_cold_start_ms": 2861.25,
+      "process_rss_mb": 83.82,
+      "description": "Core runtime with FastAPI, SQLite, LiteLLM, OpenTelemetry, Landlock"
+    },
+    "full_runtime_with_optional": {
+      "profile": "complete_extras",
+      "package_count": 52,
+      "import_cold_start_ms": 21114.79,
+      "process_rss_mb": 192.55,
+      "description": "Includes pandas, matplotlib, seaborn, h2o, chromadb, telegram, matrix"
+    },
+    "delta_savings": {
+      "cold_start_latency_reduction_ms": 18253.54,
+      "cold_start_latency_reduction_percent": 86.4,
+      "rss_memory_reduction_mb": 108.73,
+      "rss_memory_reduction_percent": 56.5
+    }
+  },
+  "memory_conflation_disclaimer": "All measurements reflect application host process memory (RSS) only. LLM inference parameters and GPU/VRAM allocations are excluded to avoid inference-memory conflation.",
+  "status": "PASS"
+}

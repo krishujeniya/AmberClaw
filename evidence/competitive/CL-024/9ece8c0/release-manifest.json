@@ -1,0 +1,31 @@
+{
+  "release_version": "2026.0.1",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "build_date": "2026-11-09T10:12:00+05:30",
+  "package_name": "amberclaw",
+  "build_artifacts": [
+    {
+      "filename": "amberclaw-2026.0.1-py3-none-any.whl",
+      "path": "dist/amberclaw-2026.0.1-py3-none-any.whl",
+      "sha256": "c3e976493e00717989fac3f4a128937172f5ee23fd4c94dc054bfeab5d2f5e48",
+      "size_bytes": 458920,
+      "format": "wheel"
+    }
+  ],
+  "sbom_summary": {
+    "total_dependencies": 33,
+    "license_distribution": {
+      "MIT": 28,
+      "Apache-2.0": 4,
+      "BSD-3-Clause": 1
+    },
+    "copyleft_dependencies": 0,
+    "security_advisories": 0
+  },
+  "quality_and_security_gates": {
+    "secret_scanner_findings": 0,
+    "unit_and_contract_tests_passed": true,
+    "upgrade_and_rollback_tested": true,
+    "containment_sandbox_verified": true
+  }
+}

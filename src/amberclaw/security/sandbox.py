@@ -22,7 +22,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from types import TracebackType
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -122,50 +122,196 @@ def apply_seccomp_filters() -> bool:
     )
 
 
-def apply_sandbox_to_current_process(
-    workspace_path: str | Path, block_execve: bool = False
-) -> None:
-    """Applies all sandbox constraints to the current process."""
+class SandboxContainmentError(PermissionError):
+    """Raised when sandbox containment constraints cannot be established in strict mode."""
+
+
+class ContainmentAttestation(BaseModel):
+    """Machine-verifiable attestation of kernel containment controls."""
+
+    os: str = Field(default_factory=platform.system)
+    kernel: str = Field(default_factory=platform.release)
+    arch: str = Field(default_factory=platform.machine)
+    strict: bool = False
+    namespaces_active: bool = False
+    rlimits_active: bool = False
+    capabilities_dropped: bool = False
+    landlock_active: bool = False
+    seccomp_active: bool = False
+    fully_contained: bool = False
+    limitations: list[str] = Field(default_factory=list)
+
+
+def probe_containment_capabilities() -> ContainmentAttestation:
+    """Non-destructively probes the host environment for kernel containment support."""
+    att = ContainmentAttestation(strict=False)
     if platform.system() != "Linux":
-        return
+        att.limitations.append(
+            f"Operating system '{platform.system()}' does not support Linux kernel containment"
+        )
+        return att
+
+    # Probe Landlock without restricting self
+    try:
+        from amberclaw.security.landlock import (  # noqa: PLC0415
+            ACCESS_FS_ALL,
+            SYS_LANDLOCK_CREATE_RULESET,
+            LandlockRulesetAttr,
+        )
+
+        libc = ctypes.CDLL(None)
+        attr = LandlockRulesetAttr()
+        attr.handled_access_fs = ACCESS_FS_ALL
+        ruleset_fd = libc.syscall(
+            SYS_LANDLOCK_CREATE_RULESET,
+            ctypes.byref(attr),
+            ctypes.sizeof(attr),
+            0,
+        )
+        if ruleset_fd >= 0:
+            os.close(ruleset_fd)
+            att.landlock_active = True
+        else:
+            att.limitations.append(
+                "Landlock LSM ruleset creation is not supported by current kernel"
+            )
+    except Exception as e:
+        att.limitations.append(f"Landlock probe failed: {e}")
+
+    # Check Seccomp support
+    arch = platform.machine()
+    if arch in ("x86_64", "aarch64", "arm64"):
+        att.seccomp_active = True
+    else:
+        att.limitations.append(
+            f"Seccomp BPF filters not configured for architecture '{arch}'"
+        )
+
+    att.rlimits_active = True
+    att.fully_contained = att.landlock_active and att.seccomp_active
+    return att
+
+
+def apply_sandbox_to_current_process(
+    workspace_path: str | Path,
+    block_execve: bool = False,
+    strict: bool = False,
+) -> ContainmentAttestation:
+    """Applies kernel containment constraints to the current process and returns an attestation.
+
+    In strict mode, failure to apply any required control raises SandboxContainmentError
+    to prevent executing code in an uncontained state.
+    In degraded mode, unapplied controls are recorded in limitations without failing.
+    """
+    attestation = ContainmentAttestation(strict=strict)
+
+    if platform.system() != "Linux":
+        msg = f"Operating system '{platform.system()}' does not support Linux kernel containment"
+        attestation.limitations.append(msg)
+        if strict:
+            raise SandboxContainmentError(msg)
+        return attestation
+
+    try:
+        libc = ctypes.CDLL(None)
+    except Exception as e:
+        msg = f"Failed to load system C library: {e}"
+        attestation.limitations.append(msg)
+        if strict:
+            raise SandboxContainmentError(msg) from e
+        return attestation
 
     # 1. Namespaces (unshare)
-    with contextlib.suppress(Exception):
-        libc = ctypes.CDLL(None)
-        # Unshare user namespace first to obtain privileges to unshare other namespaces
-        libc.unshare(CLONE_NEWUSER)
-        # Unshare network (no internet), mount, IPC, and UTS
-        libc.unshare(CLONE_NEWNET | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS)
+    try:
+        res_user = libc.unshare(CLONE_NEWUSER)
+        res_other = libc.unshare(
+            CLONE_NEWNET | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWUTS
+        )
+        if res_user == 0 and res_other == 0:
+            attestation.namespaces_active = True
+        else:
+            msg = "Namespace isolation (CLONE_NEWUSER/CLONE_NEWNET) unavailable or refused by host"
+            attestation.limitations.append(msg)
+            if strict:
+                raise SandboxContainmentError(msg)
+    except SandboxContainmentError:
+        raise
+    except Exception as e:
+        msg = f"Namespace unshare error: {e}"
+        attestation.limitations.append(msg)
+        if strict:
+            raise SandboxContainmentError(msg) from e
 
     # 2. Resource Limits (setrlimit)
-    with contextlib.suppress(Exception):
-        # Limit memory (512MB)
-        resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
-        # Limit CPU time (30s)
+    try:
+        resource.setrlimit(
+            resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024)
+        )
         resource.setrlimit(resource.RLIMIT_CPU, (30, 30))
-        # Limit process count (max 10 threads/processes)
         resource.setrlimit(resource.RLIMIT_NPROC, (10, 10))
-        # Limit file size created (10MB)
-        resource.setrlimit(resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024))
+        resource.setrlimit(
+            resource.RLIMIT_FSIZE, (10 * 1024 * 1024, 10 * 1024 * 1024)
+        )
+        attestation.rlimits_active = True
+    except Exception as e:
+        msg = f"Resource limit application failed: {e}"
+        attestation.limitations.append(msg)
+        if strict:
+            raise SandboxContainmentError(msg) from e
 
     # 3. Drop capabilities
-    with contextlib.suppress(Exception):
-        # PR_CAPBSET_DROP is 24
+    try:
+        dropped = True
         for cap in range(64):
-            libc.prctl(24, cap, 0, 0, 0)
+            if libc.prctl(24, cap, 0, 0, 0) < 0:
+                dropped = False
+        attestation.capabilities_dropped = dropped
+    except Exception as e:
+        attestation.limitations.append(f"Capability dropping error: {e}")
 
     # 4. Landlock LSM
     try:
         from amberclaw.security.landlock import apply_sandbox  # noqa: PLC0415
 
-        apply_sandbox(workspace_path)
+        if apply_sandbox(workspace_path):
+            attestation.landlock_active = True
+        else:
+            msg = "Landlock LSM filesystem containment is not supported by current kernel or environment"
+            attestation.limitations.append(msg)
+            if strict:
+                raise SandboxContainmentError(msg)
+    except SandboxContainmentError:
+        raise
     except Exception as e:
-        logger.debug("Landlock setup skipped: %s", e)
+        msg = f"Landlock setup failed: {e}"
+        attestation.limitations.append(msg)
+        if strict:
+            raise SandboxContainmentError(msg) from e
 
     # 5. Seccomp (execve, ptrace)
     if block_execve:
-        with contextlib.suppress(Exception):
-            apply_seccomp_filters()
+        try:
+            if apply_seccomp_filters():
+                attestation.seccomp_active = True
+            else:
+                msg = "Seccomp filter enforcement failed or is unsupported on this architecture"
+                attestation.limitations.append(msg)
+                if strict:
+                    raise SandboxContainmentError(msg)
+        except SandboxContainmentError:
+            raise
+        except Exception as e:
+            msg = f"Seccomp filter error: {e}"
+            attestation.limitations.append(msg)
+            if strict:
+                raise SandboxContainmentError(msg) from e
+
+    attestation.fully_contained = (
+        attestation.landlock_active
+        and (not block_execve or attestation.seccomp_active)
+        and attestation.rlimits_active
+    )
+    return attestation
 
 
 class CodeSandbox:
@@ -179,10 +325,12 @@ class CodeSandbox:
         use_docker: bool = True,
         default_timeout_sec: int = 30,
         workspace: str | Path | None = None,
+        strict: bool = False,
     ) -> None:
         self.use_docker = use_docker
         self.default_timeout_sec = default_timeout_sec
         self.workspace = Path(workspace or Path.cwd()).resolve()
+        self.strict = strict
         self._docker_backend = None
         self._cleanup_task: asyncio.Task[None] | None = None
         if self.use_docker:
@@ -260,10 +408,13 @@ import os
 
 sys.path.insert(0, {str(parent_dir)!r})
 
-from amberclaw.security.sandbox import apply_sandbox_to_current_process
+from amberclaw.security.sandbox import apply_sandbox_to_current_process, SandboxContainmentError
 
-# Initialize sandbox constraints
-apply_sandbox_to_current_process({str(self.workspace)!r}, block_execve=True)
+try:
+    apply_sandbox_to_current_process({str(self.workspace)!r}, block_execve=True, strict={self.strict!r})
+except SandboxContainmentError as ex:
+    sys.stderr.write(f"SandboxContainmentError: {{ex}}\\n")
+    sys.exit(126)
 
 # Run the user code
 with open({str(code_file)!r}, "r") as f:
@@ -361,7 +512,9 @@ exec(user_code, globals_dict)
 
         # Local Sandboxing Fallback (preexec_fn sandboxing)
         def _preexec() -> None:
-            apply_sandbox_to_current_process(self.workspace, block_execve=False)
+            apply_sandbox_to_current_process(
+                self.workspace, block_execve=False, strict=self.strict
+            )
 
         start_time = asyncio.get_event_loop().time()
         try:
@@ -403,6 +556,10 @@ exec(user_code, globals_dict)
             return ExecutionResult(
                 stdout="", stderr=str(e), exit_code=1, execution_time_ms=0.0
             )
+
+    def attest_containment(self) -> ContainmentAttestation:
+        """Inspect and return current host containment attestation without mutating process state."""
+        return probe_containment_capabilities()
 
     def __del__(self) -> None:
         if self.use_docker and self._docker_backend:

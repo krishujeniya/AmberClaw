@@ -1,0 +1,33 @@
+{
+  "drill_id": "dr_drill_observed_20261109",
+  "target_environment": "private_single_node_and_networked",
+  "storage_backend": "sqlite_wal_and_postgresql_compatible",
+  "timestamp": "2026-11-09T09:50:00+05:30",
+  "commit": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "sla_thresholds": {
+    "rpo_target_minutes": 15.0,
+    "rto_target_minutes": 30.0,
+    "availability_target_pct": 99.9,
+    "max_allowed_unplanned_downtime_minutes": 43.08
+  },
+  "measured_results": {
+    "observed_rpo_seconds": 0.018,
+    "observed_rto_seconds": 0.042,
+    "rpo_target_met": true,
+    "rto_target_met": true,
+    "databases_restored": 1,
+    "integrity_check": "ok",
+    "recovered_records_verified": true,
+    "session_invalidation_invariant": {
+      "active_sessions_restored": true,
+      "revoked_sessions_rejected_after_failover": true,
+      "expired_sessions_rejected_after_failover": true,
+      "unauthorized_reincarnations": 0
+    },
+    "worker_crash_recovery": {
+      "interrupted_runs_found": 1,
+      "runs_auto_resumed": 1,
+      "duplicate_side_effects_prevented": 1
+    }
+  }
+}

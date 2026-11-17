@@ -1,0 +1,32 @@
+{
+  "task_id": "CL-004",
+  "title": "One Runtime for User Entry Points",
+  "status": "VERIFIED",
+  "timestamp_utc": "2026-11-08T18:25:00Z",
+  "git_revision": "9ece8c02f4ce31178bed489ca07f26af29d6d735",
+  "observations_addressed": [
+    "A03"
+  ],
+  "architecture_decision_record": "docs/adr/0005-unified-canonical-agent-runtime-routing.md",
+  "implementation_changes": [
+    {
+      "file": "src/amberclaw/services/chat_service.py",
+      "description": "Added ChatRuntime protocol definition and runtime injection; routes generate_response and stream_response through runtime.process_direct when bound."
+    },
+    {
+      "file": "src/amberclaw/api/v1/chat.py",
+      "description": "Refactored chat endpoints to use ChatService via FastAPI dependency injection, supporting unified runtime routing and versioned raw_completion parameter."
+    }
+  ],
+  "contract_and_parity_tests": {
+    "test_file": "tests/unit/api/test_unified_runtime_routing.py",
+    "test_count": 4,
+    "status": "PASS (4/4 passed)",
+    "coverage_areas": [
+      "API synchronous chat routing to runtime.process_direct",
+      "API SSE streaming with token and done frames",
+      "Explicit raw_completion bypass fallback",
+      "Execution parity across API, CLI, and Dashboard"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "milestone": "CL-026",
+  "commit": "9ece8c0",
+  "generated_at": "2026-11-09T10:24:00+05:30",
+  "files": {
+    "extension-conformance-tests.txt": "4cfe8784aaef57b8df9e98134ca35ac713af3206ecff2fdd3692e1537e548f43",
+    "extension-contract-and-manifest-spec.md": "aa3a983d8a149dfafdfa5d896581ad30e988dd8b69c0170932be97a1f8d59d04",
+    "developer-usability-study.json": "9928100bf3e211a446d4f39a7951e213dc5cdb7910d1d197d43d4a23356e34d0",
+    "maintainer-governance-process.md": "ca482a89af685b3c1625be6a4fa2970de7451e600868c2c512357bd43f1b940c"
+  }
+}

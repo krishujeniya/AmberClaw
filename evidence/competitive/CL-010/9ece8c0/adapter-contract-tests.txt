@@ -1,0 +1,18 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.13, pytest-9.0.3, pluggy-1.6.0 -- /home/ai/Documents/projects/Freelance/AmberClaw/.venv/bin/python3
+cachedir: .pytest_cache
+hypothesis profile 'default'
+rootdir: /home/ai/Documents/projects/Freelance/AmberClaw
+configfile: pyproject.toml
+plugins: cov-7.1.0, asyncio-1.3.0, langsmith-0.7.33, hypothesis-6.155.1, anyio-4.14.2
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 6 items
+
+tests/unit/channels/test_real_adapter_contracts.py::test_slack_real_adapter_signed_event_and_deduplication PASSED [ 16%]
+tests/unit/channels/test_real_adapter_contracts.py::test_telegram_real_adapter_update_and_deduplication PASSED [ 33%]
+tests/unit/channels/test_real_adapter_contracts.py::test_dingtalk_real_adapter_stream_and_deduplication PASSED [ 50%]
+tests/unit/channels/test_real_adapter_contracts.py::test_reconnect_manager_exponential_backoff PASSED [ 66%]
+tests/unit/channels/test_real_adapter_contracts.py::test_rate_limiter_token_bucket_and_backoff PASSED [ 83%]
+tests/unit/channels/test_real_adapter_contracts.py::test_end_to_end_authorized_channel_roundtrip PASSED [100%]
+
+============================== 6 passed in 7.23s ===============================

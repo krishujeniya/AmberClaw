@@ -105,6 +105,14 @@ class WebSearchTool(PydanticTool):
         return os.environ.get(env_map.get(provider, ""), "")
 
     async def run(self, args: WebSearchArgs) -> str:
+        try:
+            from amberclaw.config.schema import settings  # noqa: PLC0415
+
+            if not getattr(settings.security, "allow_network_egress", True):
+                return "Error: Network egress is disabled by security policy"
+        except Exception:
+            pass
+
         provider = args.provider
         if not provider:
             # Detect first available key
@@ -228,6 +236,20 @@ class WebFetchTool(PydanticTool):
         self.proxy = proxy
 
     async def run(self, args: WebFetchArgs) -> str:
+        try:
+            from amberclaw.config.schema import settings  # noqa: PLC0415
+
+            if not getattr(settings.security, "allow_network_egress", True):
+                return json.dumps(
+                    {
+                        "error": "Network egress is disabled by security policy",
+                        "url": args.url,
+                    },
+                    ensure_ascii=False,
+                )
+        except Exception:
+            pass
+
         from readability import (  # noqa: PLC0415 - load the optional runtime dependency only for this operation
             Document,
         )
