@@ -8,6 +8,7 @@ on:
       - main
     paths:
       - 'src/**'
+      - 'Dockerfile'
       - 'deploy/docker/Dockerfile'
       - 'pyproject.toml'
       - 'uv.lock'
@@ -55,7 +56,7 @@ jobs:
         uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
         with:
           context: .
-          file: ./deploy/docker/Dockerfile
+          file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
