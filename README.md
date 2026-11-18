@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/amberclaw-logo.png" alt="AmberClaw Logo" width="180" />
+</p>
+
 # AmberClaw AI OS
 
 [![Version](https://img.shields.io/badge/version-2026.0.1-blue.svg)](pyproject.toml)
