@@ -43,6 +43,7 @@ dependencies = [
     "authlib>=1.9.1",
     "pyjwt[crypto]>=2.15.1",
     "redis>=5.0.0",
+    "oauth-cli-kit>=0.1.0",
 ]
 
 [project.optional-dependencies]
