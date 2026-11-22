@@ -86,3 +86,10 @@ deploy/docker/data/
 Thumbs.db.amberclaw_old/
 site/
 docs/site/
+
+# Cloudflare & Secret Guardrails
+.env.*.local
+!.env.example
+.dev.vars
+.wrangler/
+.vercel/
