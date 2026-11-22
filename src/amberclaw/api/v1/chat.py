@@ -7,6 +7,7 @@ from amberclaw.api.stream.sse import create_sse_response
 from amberclaw.services.chat_service import ChatService
 
 router = APIRouter()
+llm_router = get_chat_service().llm_router
 
 
 class ChatStreamRequest(BaseModel):

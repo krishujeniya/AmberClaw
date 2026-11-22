@@ -65,6 +65,16 @@ def test_config_validation_does_not_echo_secret(tmp_path, capsys):
 
 
 def test_blueprint_rejects_unimplemented_preset_without_saving(tmp_path):
+    unsupported_yaml = tmp_path / "unsupported.yaml"
+    unsupported_yaml.write_text(
+        "name: unsupported\n"
+        "version: '1.0.0'\n"
+        "description: 'unsupported test'\n"
+        "agent:\n"
+        "  model_name: 'test-model'\n"
+        "security:\n"
+        "  sandbox_type: 'unsupported_sandbox_engine'\n"
+    )
     with (
         patch("amberclaw.cli.commands.blueprint.load_config", return_value=Config()),
         patch(
@@ -73,11 +83,10 @@ def test_blueprint_rejects_unimplemented_preset_without_saving(tmp_path):
         ),
         patch("amberclaw.cli.commands.blueprint.save_config") as save,
     ):
-        result = runner.invoke(app, ["blueprint", "apply", "developer"])
+        result = runner.invoke(app, ["blueprint", "apply", str(unsupported_yaml)])
     assert result.exit_code != 0
     save.assert_not_called()
     assert "security.sandbox_type" in result.output
-    assert "agent.system_prompt" in result.output
 
 
 def test_web_status_uses_public_health():

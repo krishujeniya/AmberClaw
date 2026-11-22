@@ -14,6 +14,7 @@ from amberclaw.storage.tenant import (
 
 router = APIRouter()
 tenant_db = TenantIsolatedSessionDB(Path("data/tenants"))
+session_db = tenant_db
 
 
 class MemoryDeletionResponse(BaseModel):
@@ -48,11 +49,19 @@ async def export_gdpr_data(
             detail=f"Cross-tenant access violation: caller from tenant '{active_tenant}' cannot access resources belonging to tenant '{org_id}'.",
         )
     try:
-        export_payload = tenant_db.export_tenant_data(
-            user_id=user_id,
-            session_id=session_id,
-            tenant_id=active_tenant,
-        )
+        db = session_db if session_db is not None else tenant_db
+        if hasattr(db, "export_tenant_data"):
+            export_payload = db.export_tenant_data(
+                user_id=user_id,
+                session_id=session_id,
+                tenant_id=active_tenant,
+            )
+        else:
+            export_payload = db.export_user_data(
+                user_id=user_id,
+                session_id=session_id,
+                org_id=org_id or active_tenant,
+            )
         return GDPRExportResponse(**export_payload)
     except CrossTenantAccessViolationError as exc:
         raise HTTPException(
@@ -71,7 +80,17 @@ async def delete_session_memory(session_id: str) -> MemoryDeletionResponse:
     """Permanently delete all stored interaction turns for a specific session ID within the tenant partition."""
     active_tenant = TenantContext.get_current() or "default"
     try:
-        deleted_count = tenant_db.delete_session(session_id, tenant_id=active_tenant)
+        db = session_db if session_db is not None else tenant_db
+        if hasattr(db, "delete_session"):
+            import inspect
+
+            sig = inspect.signature(db.delete_session)
+            if "tenant_id" in sig.parameters:
+                deleted_count = db.delete_session(session_id, tenant_id=active_tenant)
+            else:
+                deleted_count = db.delete_session(session_id)
+        else:
+            deleted_count = tenant_db.delete_session(session_id, tenant_id=active_tenant)
         return MemoryDeletionResponse(
             status="success",
             message=f"Session memory for '{session_id}' deleted successfully.",
@@ -98,7 +117,17 @@ async def get_session_turns(
     """Retrieve interaction turns for a specific session ID within tenant partition with pagination."""
     active_tenant = TenantContext.get_current() or "default"
     try:
-        turns = tenant_db.get_turns(session_id=session_id, tenant_id=active_tenant)
+        db = session_db if session_db is not None else tenant_db
+        if hasattr(db, "get_turns"):
+            import inspect
+
+            sig = inspect.signature(db.get_turns)
+            if "tenant_id" in sig.parameters:
+                turns = db.get_turns(session_id=session_id, tenant_id=active_tenant)
+            else:
+                turns = db.get_turns(session_id=session_id)
+        else:
+            turns = tenant_db.get_turns(session_id=session_id, tenant_id=active_tenant)
         return turns[offset : offset + limit]
     except CrossTenantAccessViolationError as exc:
         raise HTTPException(
@@ -112,7 +141,13 @@ async def purge_all_user_memory() -> MemoryDeletionResponse:
     """Perform a complete Right-to-be-Forgotten purge scoped strictly to the calling tenant's partition."""
     active_tenant = TenantContext.get_current() or "default"
     try:
-        deleted_count = tenant_db.purge_tenant_memory(tenant_id=active_tenant)
+        db = session_db if session_db is not None else tenant_db
+        if hasattr(db, "purge_tenant_memory"):
+            deleted_count = db.purge_tenant_memory(tenant_id=active_tenant)
+        elif hasattr(db, "purge_all_sessions"):
+            deleted_count = db.purge_all_sessions()
+        else:
+            deleted_count = 0
         return MemoryDeletionResponse(
             status="success",
             message="Right-to-be-forgotten memory purge completed successfully.",

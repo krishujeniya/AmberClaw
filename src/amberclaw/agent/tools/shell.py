@@ -184,7 +184,7 @@ class ExecTool(PydanticTool):
                     for rp in restricted:
                         rp_p = Path(rp).expanduser().resolve()
                         if p == rp_p or rp_p in p.parents:
-                            return f"Error: Command blocked by security policy (access to restricted path '{raw}')"
+                            return f"Error: Command blocked by safety guard (access to restricted path '{raw}')"
                 except Exception:
                     continue
 
