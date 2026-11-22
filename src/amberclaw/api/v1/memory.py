@@ -14,7 +14,7 @@ from amberclaw.storage.tenant import (
 
 router = APIRouter()
 tenant_db = TenantIsolatedSessionDB(Path("data/tenants"))
-session_db = tenant_db
+session_db = None
 
 
 class MemoryDeletionResponse(BaseModel):
@@ -60,7 +60,7 @@ async def export_gdpr_data(
             export_payload = db.export_user_data(
                 user_id=user_id,
                 session_id=session_id,
-                org_id=org_id or active_tenant,
+                org_id=org_id,
             )
         return GDPRExportResponse(**export_payload)
     except CrossTenantAccessViolationError as exc:
