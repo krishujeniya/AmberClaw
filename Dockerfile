@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.4
 # Stage 1: Build virtualenv using uv
-FROM python:3.11-slim AS builder
+FROM python:3.15-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.6.5 /uv /bin/uv
 
@@ -16,7 +16,7 @@ COPY pyproject.toml uv.lock README.md THIRD_PARTY_NOTICES.md ./
 RUN uv sync --frozen --no-install-project --no-dev
 
 # Stage 2: Minimal hardened runtime image
-FROM python:3.11-slim AS runtime
+FROM python:3.15-slim AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
