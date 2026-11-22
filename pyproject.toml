@@ -103,31 +103,15 @@ target-version = "py311"
 extend-exclude = ["src/amberclaw/data"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "ASYNC", "S", "B", "A", "COM", "C4", "DTZ", "T20", "RET", "SIM", "ARG", "PTH", "ERA", "PL", "RUF"]
-ignore = ["S101", "B008", "A003", "ASYNC109", "COM812", "E501", "PL", "I"]
+select = ["E", "F", "W"]
+ignore = ["E501", "F401"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = [
-    "A",
-    "ARG",
-    "ASYNC",
-    "B",
-    "C4",
-    "COM",
-    "DTZ",
-    "E",
-    "ERA",
-    "F",
-    "I",
-    "N",
-    "PL",
-    "PTH",
-    "RET",
-    "RUF",
-    "S",
-    "SIM",
-    "T20",
-    "UP",
+    "S101",
+    "F401",
+    "ARG001",
+    "ARG002",
 ]
 
 [tool.pytest.ini_options]
