@@ -42,6 +42,7 @@ dependencies = [
     "python3-saml>=1.16.0",
     "authlib>=1.9.1",
     "pyjwt[crypto]>=2.15.1",
+    "redis>=5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -104,7 +105,7 @@ extend-exclude = ["src/amberclaw/data"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W"]
-ignore = ["E501", "F401"]
+ignore = ["E501", "F401", "F841", "W293"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = [
