@@ -72,6 +72,13 @@ regexTarget = "secret"
 regexes = ["(?s)^sk\\-proj\\-testkey987654321$"]
 
 [[rules.allowlists]]
+description = "Explicit synthetic marker in trace redaction unit test"
+condition = "AND"
+paths = ["^tests/unit/observability/test_explainable_runs_and_redaction\\.py$"]
+regexTarget = "secret"
+regexes = ["(?s)^sk\\-test12345678901234567890123456789012345678901234$"]
+
+[[rules.allowlists]]
 description = "Synthetic entropy detector probe in scanner test"
 condition = "AND"
 paths = ["^tests/unit/security/test_advanced_secret_scanning\\.py$"]
