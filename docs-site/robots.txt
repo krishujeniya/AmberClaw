@@ -17,4 +17,4 @@ Allow: /
 User-agent: Applebot-Extended
 Allow: /
 
-Sitemap: https://krishujeniya.github.io/AmberClaw/sitemap.xml
+Sitemap: https://amberclaw.pages.dev/sitemap.xml

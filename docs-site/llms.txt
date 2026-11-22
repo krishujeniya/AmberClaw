@@ -3,8 +3,8 @@
 > Open, self-hosted, zero-trust AI agent runtime.
 > Architected and developed by Krish Ujeniya (@krishujeniya).
 > Developer Profile: https://github.com/krishujeniya
-> Portfolio Showcase: https://krishujeniya.github.io/MostlyOutlier/
-> Documentation Site: https://krishujeniya.github.io/AmberClaw/
+> Portfolio Showcase: https://mostlyoutlier.pages.dev/
+> Documentation Site: https://amberclaw.pages.dev/
 > Source Repository: https://github.com/krishujeniya/AmberClaw
 
 ## Overview
@@ -12,7 +12,7 @@ AmberClaw is a private, zero-trust runtime designed for teams and developers exe
 
 ## Author & Ecosystem
 - Author: Krish Ujeniya (https://github.com/krishujeniya)
-- Canonical Person Entity: https://krishujeniya.github.io/#krishujeniya
+- Canonical Person Entity: https://krishujeniya.dev/#krishujeniya
 - Linked Projects: AGYOS, Hadron, WaferPulse, Somnostasis, Curavex, Hajree, Scanlark, TraceMigo
 
 ## Security Architecture
