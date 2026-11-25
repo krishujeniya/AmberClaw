@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1 \
     UV_LINK_MODE=copy
 
 WORKDIR /app
-COPY backend/pyproject.toml backend/uv.lock ./
+COPY amberclaw/backend/pyproject.toml amberclaw/backend/uv.lock ./
 RUN uv sync --frozen --no-install-project --no-dev
 
 # ---------------------------------------------------
@@ -29,8 +29,8 @@ WORKDIR /sandbox
 COPY --from=builder --chown=sandbox:sandbox /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-COPY --chown=sandbox:sandbox backend/src/ ./src/
-COPY --chown=sandbox:sandbox backend/pyproject.toml ./
+COPY --chown=sandbox:sandbox amberclaw/backend/src/ ./src/
+COPY --chown=sandbox:sandbox amberclaw/backend/pyproject.toml ./
 
 USER 10002:10002
 

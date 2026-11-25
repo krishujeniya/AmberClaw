@@ -6,10 +6,10 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'backend/src/**'
-      - 'backend/pyproject.toml'
-      - 'backend/uv.lock'
-      - 'scripts/**'
+      - 'amberclaw/backend/src/**'
+      - 'amberclaw/backend/pyproject.toml'
+      - 'amberclaw/backend/uv.lock'
+      - 'amberclaw/scripts/**'
   workflow_dispatch:
 
 permissions:
@@ -40,10 +40,10 @@ jobs:
           fi
 
       - name: Install dependencies
-        run: uv --directory backend sync --frozen --all-extras --dev
+        run: uv --directory amberclaw/backend sync --frozen --all-extras --dev
 
       - name: Run Bandit (Code Scanning)
-        run: uv --directory backend run bandit -r src/ -lll
+        run: uv --directory amberclaw/backend run bandit -r src/ -lll
 
       - name: Secret scan (Gitleaks v8.30.1, redacted)
         env:
@@ -55,22 +55,22 @@ jobs:
           "$GOBIN/gitleaks" git --config=.github/.gitleaks.toml --redact=100 --no-banner -v
 
       - name: Verify No Unsafe Deserialization (Bandit B301, B302)
-        run: uv --directory backend run bandit -r src/ -t B301,B302
+        run: uv --directory amberclaw/backend run bandit -r src/ -t B301,B302
 
       - name: Check installed public dependencies (pip-audit)
         continue-on-error: true
         run: |
-          uv --directory backend pip freeze --exclude-editable > installed-public-requirements.txt
-          uv --directory backend run pip-audit --requirement ../installed-public-requirements.txt --no-deps --disable-pip --progress-spinner off
+          uv --directory amberclaw/backend pip freeze --exclude-editable > installed-public-requirements.txt
+          uv --directory amberclaw/backend run pip-audit --requirement ../../installed-public-requirements.txt --no-deps --disable-pip --progress-spinner off
 
       - name: License Policy Compliance Check
-        run: uv --directory backend run python ../scripts/check_licenses.py
+        run: uv --directory amberclaw/backend run python ../scripts/check_licenses.py
 
       - name: Entropy & Git History Secret Scan
-        run: uv --directory backend run amberclaw scan-secrets --entropy --git-history
+        run: uv --directory amberclaw/backend run amberclaw scan-secrets --entropy --git-history
 
       - name: Generate CycloneDX and SPDX SBOMs
-        run: uv --directory backend run python ../scripts/generate_sbom.py --out-dir dist
+        run: uv --directory amberclaw/backend run python ../scripts/generate_sbom.py --out-dir ../../dist
 
       - name: Upload SBOM Artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

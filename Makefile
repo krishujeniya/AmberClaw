@@ -1,7 +1,7 @@
 .PHONY: install dev check test build docker-build docker-up docker-down
 
 # Variables
-UV := uv --directory backend
+UV := uv --directory amberclaw/backend
 PYTHON := $(UV) run python
 PYTEST := $(UV) run pytest
 RUFF := $(UV) run ruff

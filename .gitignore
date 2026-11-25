@@ -77,6 +77,8 @@ logs/
 # Datasets and runtime artifacts (repo-root data/ only, not package modules)
 /data/*
 !/data/.keep
+/amberclaw/data/*
+!/amberclaw/data/.keep
 
 # Deployment
 deploy/docker/data/
