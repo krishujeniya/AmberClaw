@@ -4,9 +4,11 @@ from pathlib import Path
 
 import yaml
 
+REPO_ROOT = Path(__file__).resolve().parents[4]
+
 
 def test_docker_compose_prod_hardening():
-    compose_file = Path("deploy/docker/docker-compose.prod.yml")
+    compose_file = REPO_ROOT / "deploy/docker/docker-compose.prod.yml"
     assert compose_file.exists()
 
     content = yaml.safe_load(compose_file.read_text(encoding="utf-8"))
@@ -43,7 +45,7 @@ def test_docker_compose_prod_hardening():
 
 
 def test_docker_compose_airgapped_profile():
-    compose_file = Path("deploy/docker/docker-compose.airgapped.yml")
+    compose_file = REPO_ROOT / "deploy/docker/docker-compose.airgapped.yml"
     assert compose_file.exists()
 
     content = yaml.safe_load(compose_file.read_text(encoding="utf-8"))
@@ -78,7 +80,7 @@ def test_docker_compose_airgapped_profile():
 
 
 def test_dockerfile_gateway_security():
-    dockerfile = Path("deploy/docker/Dockerfile.gateway")
+    dockerfile = REPO_ROOT / "deploy/docker/Dockerfile.gateway"
     assert dockerfile.exists()
     content = dockerfile.read_text(encoding="utf-8")
 
@@ -90,9 +92,9 @@ def test_dockerfile_gateway_security():
 
 
 def test_helm_chart_security_and_values():
-    chart_file = Path("deploy/k8s/helm/Chart.yaml")
-    values_file = Path("deploy/k8s/helm/values.yaml")
-    deployment_template = Path("deploy/k8s/helm/templates/deployment.yaml")
+    chart_file = REPO_ROOT / "deploy/k8s/helm/Chart.yaml"
+    values_file = REPO_ROOT / "deploy/k8s/helm/values.yaml"
+    deployment_template = REPO_ROOT / "deploy/k8s/helm/templates/deployment.yaml"
 
     assert chart_file.exists()
     assert values_file.exists()
@@ -127,9 +129,9 @@ def test_helm_chart_security_and_values():
 
 
 def test_helm_pdb_and_external_secrets_templates():
-    pdb_file = Path("deploy/k8s/helm/templates/pdb.yaml")
-    ext_secret_file = Path("deploy/k8s/helm/templates/externalsecret.yaml")
-    schema_file = Path("deploy/k8s/helm/values.schema.json")
+    pdb_file = REPO_ROOT / "deploy/k8s/helm/templates/pdb.yaml"
+    ext_secret_file = REPO_ROOT / "deploy/k8s/helm/templates/externalsecret.yaml"
+    schema_file = REPO_ROOT / "deploy/k8s/helm/values.schema.json"
 
     assert pdb_file.exists()
     assert ext_secret_file.exists()

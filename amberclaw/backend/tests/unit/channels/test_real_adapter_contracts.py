@@ -31,7 +31,9 @@ from amberclaw.channels.slack import SlackChannel
 from amberclaw.channels.telegram import TelegramChannel
 from amberclaw.config.schema import DingTalkConfig, SlackConfig, TelegramConfig
 
-FIXTURES_DIR = Path("evidence/competitive/CL-010/9ece8c0/fixtures")
+FIXTURES_DIR = (
+    Path(__file__).resolve().parents[4] / "evidence/competitive/CL-010/9ece8c0/fixtures"
+)
 
 
 @pytest.fixture
