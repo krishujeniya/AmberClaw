@@ -8,6 +8,8 @@ docs_dir: .
 
 theme:
   name: material
+  logo: assets/amberclaw-logo.svg
+  favicon: assets/amberclaw-logo.svg
   palette:
     scheme: slate
     primary: deep orange

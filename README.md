@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/amberclaw-logo.png" alt="AmberClaw Logo" width="180" />
+  <img src="assets/amberclaw-logo.svg" alt="AmberClaw Logo" width="180" />
 </p>
 
 # AmberClaw AI OS
