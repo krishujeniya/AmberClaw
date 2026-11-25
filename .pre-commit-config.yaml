@@ -3,19 +3,19 @@ repos:
     hooks:
       - id: ruff-check
         name: Ruff (CI source and test boundary)
-        entry: uv run --frozen ruff check src/ tests/
+        entry: uv --directory backend run --frozen ruff check src/ tests/
         language: system
         pass_filenames: false
         types: [python]
       - id: ruff-format
         name: Ruff formatting check
-        entry: uv run --frozen ruff format --check src/ tests/
+        entry: uv --directory backend run --frozen ruff format --check src/ tests/
         language: system
         pass_filenames: false
         types: [python]
       - id: mypy
         name: Strict mypy (CI source boundary)
-        entry: uv run --frozen python -m mypy src/
+        entry: uv --directory backend run --frozen python -m mypy src/
         language: system
         pass_filenames: false
         types: [python]
@@ -23,4 +23,4 @@ repos:
     rev: v8.30.1
     hooks:
       - id: gitleaks
-        args: [--redact]
+        args: [--redact, --config=.github/.gitleaks.toml]

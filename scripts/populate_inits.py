@@ -17,4 +17,4 @@ def create_init_files(root_dir):
                 f.write(content)
 
 if __name__ == "__main__":
-    create_init_files("src/amberclaw")
+    create_init_files("backend/src/amberclaw")

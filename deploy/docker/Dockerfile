@@ -13,7 +13,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # Copy dependency files
-COPY pyproject.toml uv.lock README.md THIRD_PARTY_NOTICES.md ./
+COPY backend/pyproject.toml backend/uv.lock backend/README.md backend/THIRD_PARTY_NOTICES.md ./
 
 # Install dependencies into a virtual environment
 RUN uv sync --frozen --no-install-project --no-dev
@@ -41,8 +41,8 @@ COPY --from=builder --chown=amberclaw:amberclaw /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy the application code
-COPY --chown=amberclaw:amberclaw src/ ./src/
-COPY --chown=amberclaw:amberclaw pyproject.toml README.md THIRD_PARTY_NOTICES.md ./
+COPY --chown=amberclaw:amberclaw backend/src/ ./src/
+COPY --chown=amberclaw:amberclaw backend/pyproject.toml backend/README.md backend/THIRD_PARTY_NOTICES.md ./
 
 # Install the project itself (without reinstalling dependencies)
 RUN uv pip install -e . --no-deps

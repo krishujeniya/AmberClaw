@@ -8,7 +8,8 @@ from scripts import generate_sbom
 
 
 def test_sbom_uses_actual_project_version_and_valid_document_identity():
-    expected = tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"]
+    pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    expected = tomllib.loads(pyproject.read_text())["project"]["version"]
     packages = [{"name": "Some_Package", "version": "1.0+local", "license": "MIT"}]
     cdx = generate_sbom.generate_cyclonedx(packages)
     spdx = generate_sbom.generate_spdx(packages)

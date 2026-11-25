@@ -1,9 +1,10 @@
 .PHONY: install dev check test build docker-build docker-up docker-down
 
 # Variables
-PYTHON := uv run python
-PYTEST := uv run pytest
-RUFF := uv run ruff
+UV := uv --directory backend
+PYTHON := $(UV) run python
+PYTEST := $(UV) run pytest
+RUFF := $(UV) run ruff
 
 help:
 	@echo "AmberClaw AI OS Makefile"
@@ -20,13 +21,13 @@ help:
 	@echo "  make docker-down  Stop the full stack"
 
 install:
-	uv sync
+	$(UV) sync
 
 dev:
-	uv run amberclaw start --reload
+	$(UV) run amberclaw start --reload
 
 cli:
-	uv run amberclaw status
+	$(UV) run amberclaw status
 
 check:
 	$(RUFF) check src/ tests/

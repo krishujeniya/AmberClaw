@@ -6,12 +6,10 @@ on:
       - main
     paths:
       - 'docs/**'
-      - 'mkdocs.yml'
       - '.github/workflows/docs.yml'
   pull_request:
     paths:
       - 'docs/**'
-      - 'mkdocs.yml'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -33,7 +31,7 @@ jobs:
         uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a # v5.1.0
         
       - name: Install dependencies
-        run: uv sync --frozen --all-extras --dev
+        run: uv --directory backend sync --frozen --all-extras --dev
         
       - name: Build Docs
-        run: uv run mkdocs build --strict
+        run: uv --directory backend run mkdocs build --strict -f ../docs/mkdocs.yml

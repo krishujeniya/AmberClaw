@@ -10,7 +10,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
+COPY backend/pyproject.toml backend/uv.lock backend/README.md ./
 RUN uv sync --frozen --no-install-project --no-dev
 
 # ---------------------------------------------------
@@ -30,8 +30,8 @@ WORKDIR /app
 COPY --from=builder --chown=amberclaw:amberclaw /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH"
 
-COPY --chown=amberclaw:amberclaw src/ ./src/
-COPY --chown=amberclaw:amberclaw pyproject.toml ./
+COPY --chown=amberclaw:amberclaw backend/src/ ./src/
+COPY --chown=amberclaw:amberclaw backend/pyproject.toml backend/README.md ./
 
 RUN uv pip install -e . --no-deps
 

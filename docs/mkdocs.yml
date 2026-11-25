@@ -4,6 +4,8 @@ site_url: https://amberclaw.ai
 repo_url: https://github.com/krishujeniya/AmberClaw
 repo_name: krishujeniya/AmberClaw
 
+docs_dir: .
+
 theme:
   name: material
   palette:
@@ -20,22 +22,36 @@ theme:
 
 plugins:
   - search
-  - mkdocstrings:
-      default_handler: python
 
 nav:
   - Home: index.md
-  - Feature Matrix: ../FEATURE_MATRIX.md
+  - Feature Matrix: FEATURE_MATRIX.md
   - Getting Started:
     - Quickstart & Setup: setup.md
     - Windows Setup: windows-setup.md
     - Local Deployment: LOCAL.md
+    - Deployment Guide: DEPLOYMENT.md
   - Architecture & Security:
     - Zero-Trust Architecture: architecture.md
-    - Product Vision: ../.planning/PRODUCT_VISION.md
-    - Security Roadmap: ../.planning/SECURITY_ROADMAP.md
+    - Enterprise SSO: sso.md
+    - Architecture Decisions:
+      - Overview: adr/README.md
+      - ADR-0001 Bus Runtime Adapter: adr/0001-reuse-bus-runtime-for-orchestrator.md
+      - ADR-0002 Dashboard Service Bindings: adr/0002-private-dashboard-service-bindings.md
+      - ADR-0003 SSO Verification: adr/0003-verify-sso-before-issuing-access-tokens.md
+      - ADR-0004 Token Secrets & Credentials: adr/0004-require-explicit-token-secrets-and-admin-credentials.md
+      - ADR-0005 Unified Runtime Routing: adr/0005-unified-canonical-agent-runtime-routing.md
+      - ADR-0006 Audit Integrity & Concurrency: adr/0006-audit-integrity-concurrency-anchoring.md
+      - ADR-0007 Durable Runs & Side-Effect Safety: adr/0007-durable-runs-and-side-effect-safety.md
   - Guides:
+    - Stabilization Upgrade & Rollback: upgrade-stabilization.md
+    - Unreleased Stabilization Notes: release-notes-stabilization.md
     - Building Agent Skills: skills.md
     - Troubleshooting: troubleshooting.md
     - Ecosystem Comparisons: comparisons.md
+    - Competitive Research and Leadership Tracker: planning/competitive-leadership-tracker.md
+  - Runbooks:
+    - SLO Breach Response: runbooks/slo_breach_runbook.md
+    - Provider Outage Failover: runbooks/provider_outage_failover.md
+    - Disaster Recovery & Backup: runbooks/disaster_recovery_runbook.md
   - API Reference: api.md

@@ -5,7 +5,7 @@ def write(path, content):
     with open(path, 'w') as f:
         f.write(content.strip() + "\n")
 
-write("mkdocs.yml", """
+write("docs/mkdocs.yml", """
 site_name: AmberClaw Documentation
 theme:
   name: material

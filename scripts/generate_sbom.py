@@ -29,7 +29,7 @@ SCOPE = "Installed Python environment, including development tools and optional 
 
 
 def project_version() -> str:
-    manifest = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    manifest = Path(__file__).resolve().parents[1] / "backend" / "pyproject.toml"
     return str(
         tomllib.loads(manifest.read_text(encoding="utf-8"))["project"]["version"]
     )

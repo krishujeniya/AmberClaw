@@ -28,7 +28,9 @@ def validate_semver(version: str) -> bool:
     return bool(SEMVER_REGEX.match(cleaned))
 
 
-def get_project_version(pyproject_path: Path | str = "pyproject.toml") -> str:
+def get_project_version(
+    pyproject_path: Path | str = Path(__file__).resolve().parents[1] / "backend" / "pyproject.toml",
+) -> str:
     """Reads current project version from pyproject.toml."""
     content = Path(pyproject_path).read_text(encoding="utf-8")
     match = re.search(r'^version\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)

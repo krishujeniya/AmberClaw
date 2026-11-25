@@ -132,7 +132,7 @@ def test_run_cancellation_and_recovery_endpoints(auth_client, tmp_path):
 
 def test_dashboard_html_accessibility_and_onboarding_elements():
     """Verify HTML template contains semantic onboarding banners, ARIA attributes, and artifacts."""
-    html_path = Path("src/amberclaw/web/static/index.html")
+    html_path = Path(__file__).resolve().parents[3] / "src/amberclaw/web/static/index.html"
     assert html_path.exists()
     content = html_path.read_text(encoding="utf-8")
 

@@ -41,7 +41,7 @@ jobs:
           fi
 
       - name: Install dependencies
-        run: uv sync --frozen --all-extras --dev
+        run: uv --directory backend sync --frozen --all-extras --dev
 
       - name: Code Quality & Type Checks (make check)
         run: make check
@@ -72,14 +72,14 @@ jobs:
 
       - name: Test uv tool install
         run: |
-          uv tool install .
+          uv tool install ./backend
           amberclaw --help
 
       - name: Test pip install
         run: |
           python -m venv venv
           source venv/bin/activate
-          pip install .
+          pip install ./backend
           amberclaw --help
 
   build-artifacts:
@@ -97,7 +97,7 @@ jobs:
         uses: astral-sh/setup-uv@887a942a15af3a7626099df99e897a18d9e5ab3a # v5.1.0
 
       - name: Build Python distributions
-        run: uv build
+        run: uv build backend --out-dir dist
 
       - name: Upload Python distributions
         uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
