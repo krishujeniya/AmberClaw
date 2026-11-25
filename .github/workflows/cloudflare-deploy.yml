@@ -32,8 +32,25 @@ jobs:
             echo "::notice::Cloudflare credentials not configured in repo secrets. Skipping automated deployment."
           fi
 
-      - name: Deploy to Cloudflare
+      - name: Check edge worker presence
+        id: check-worker
+        run: |
+          if [ -f "edge/worker.ts" ]; then
+            echo "has_worker=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_worker=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy Docs Site to Cloudflare Pages
         if: steps.check-secrets.outputs.has_secrets == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy docs-site --project-name amberclaw --branch main
+
+      - name: Deploy Edge Worker to Cloudflare
+        if: steps.check-secrets.outputs.has_secrets == 'true' && steps.check-worker.outputs.has_worker == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

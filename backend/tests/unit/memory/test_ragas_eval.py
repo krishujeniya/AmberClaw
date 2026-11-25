@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 # Add scripts directory to path to import eval_rag
-scripts_dir = Path(__file__).parent.parent.parent.parent / "scripts"
+scripts_dir = Path(__file__).resolve().parents[4] / "scripts"
 sys.path.insert(0, str(scripts_dir))
 
 import eval_rag
