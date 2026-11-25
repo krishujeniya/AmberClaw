@@ -7,27 +7,130 @@
     <title>AmberClaw AI OS — Mission Control</title>
     <style>
         :root {
-            --bg-base: #090d16;
-            --bg-surface: #111827;
-            --bg-card: rgba(17, 24, 39, 0.85);
-            --bg-input: #1f2937;
-            --border: rgba(255, 255, 255, 0.12);
-            --text-primary: #f9fafb;
-            --text-secondary: #9ca3af;
-            --text-muted: #6b7280;
-            --accent: #3b82f6;
-            --accent-hover: #2563eb;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
+            /* Dark monochrome neutral tokens (default) */
+            --bg-base: #0a0a0a;
+            --bg-surface: #121212;
+            --bg-elevated: #1a1a1a;
+            --bg-card: rgba(18, 18, 18, 0.92);
+            --bg-input: #171717;
+            --bg-subtle: #1c1c1c;
+            --bg-hover: rgba(255, 255, 255, 0.06);
+            --bg-selected: #262626;
+            --bg-disabled: #141414;
+
+            --text-primary: #fafafa;
+            --text-secondary: #d4d4d4;
+            --text-muted: #a3a3a3;
+            --text-disabled: #737373;
+            --text-on-accent: #0a0a0a;
+
+            --border: #2e2e2e;
+            --border-strong: #737373;
+            --border-selected: #fafafa;
+            --border-disabled: #262626;
+
+            --focus-ring: #ffffff;
+            --focus-offset: 2px;
+            --accent: #f5f5f5;
+            --accent-hover: #d4d4d4;
+
+            --status-badge-bg: #1c1c1c;
+            --status-badge-border: #737373;
+            --status-badge-text: #fafafa;
+            --danger-bg: #1c1c1c;
+            --danger-border: #a3a3a3;
+            --danger-text: #fafafa;
+
+            --header-bg: rgba(18, 18, 18, 0.92);
+            --backdrop-scrim: rgba(0, 0, 0, 0.78);
+            --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.65);
+
             --radius-md: 8px;
             --radius-lg: 12px;
         }
 
+        @media (prefers-color-scheme: light) {
+            :root:not([data-theme="dark"]) {
+                --bg-base: #fafafa;
+                --bg-surface: #ffffff;
+                --bg-elevated: #f5f5f5;
+                --bg-card: rgba(255, 255, 255, 0.94);
+                --bg-input: #ffffff;
+                --bg-subtle: #f5f5f5;
+                --bg-hover: rgba(0, 0, 0, 0.05);
+                --bg-selected: #e5e5e5;
+                --bg-disabled: #f5f5f5;
+
+                --text-primary: #0a0a0a;
+                --text-secondary: #404040;
+                --text-muted: #525252;
+                --text-disabled: #737373;
+                --text-on-accent: #fafafa;
+
+                --border: #d4d4d4;
+                --border-strong: #737373;
+                --border-selected: #0a0a0a;
+                --border-disabled: #e5e5e5;
+
+                --focus-ring: #0a0a0a;
+                --accent: #171717;
+                --accent-hover: #404040;
+
+                --status-badge-bg: #f5f5f5;
+                --status-badge-border: #737373;
+                --status-badge-text: #0a0a0a;
+                --danger-bg: #f5f5f5;
+                --danger-border: #404040;
+                --danger-text: #0a0a0a;
+
+                --header-bg: rgba(255, 255, 255, 0.92);
+                --backdrop-scrim: rgba(10, 10, 10, 0.55);
+                --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.16);
+            }
+        }
+
+        [data-theme="light"] {
+            --bg-base: #fafafa;
+            --bg-surface: #ffffff;
+            --bg-elevated: #f5f5f5;
+            --bg-card: rgba(255, 255, 255, 0.94);
+            --bg-input: #ffffff;
+            --bg-subtle: #f5f5f5;
+            --bg-hover: rgba(0, 0, 0, 0.05);
+            --bg-selected: #e5e5e5;
+            --bg-disabled: #f5f5f5;
+
+            --text-primary: #0a0a0a;
+            --text-secondary: #404040;
+            --text-muted: #525252;
+            --text-disabled: #737373;
+            --text-on-accent: #fafafa;
+
+            --border: #d4d4d4;
+            --border-strong: #737373;
+            --border-selected: #0a0a0a;
+            --border-disabled: #e5e5e5;
+
+            --focus-ring: #0a0a0a;
+            --accent: #171717;
+            --accent-hover: #404040;
+
+            --status-badge-bg: #f5f5f5;
+            --status-badge-border: #737373;
+            --status-badge-text: #0a0a0a;
+            --danger-bg: #f5f5f5;
+            --danger-border: #404040;
+            --danger-text: #0a0a0a;
+
+            --header-bg: rgba(255, 255, 255, 0.92);
+            --backdrop-scrim: rgba(10, 10, 10, 0.55);
+            --shadow-modal: 0 20px 25px -5px rgba(0, 0, 0, 0.16);
+        }
+
         /* High contrast & WCAG 2.2 AA accessibility */
         :focus-visible {
-            outline: 2px solid var(--accent);
-            outline-offset: 2px;
+            outline: 2px solid var(--focus-ring);
+            outline-offset: var(--focus-offset);
         }
 
         .skip-link {
@@ -35,9 +138,10 @@
             top: -40px;
             left: 0;
             background: var(--accent);
-            color: #fff;
+            color: var(--text-on-accent);
             padding: 8px 16px;
             z-index: 100;
+            font-weight: 600;
             transition: top 0.2s;
         }
         .skip-link:focus { top: 0; }
@@ -53,7 +157,7 @@
         }
 
         header {
-            background: rgba(17, 24, 39, 0.9);
+            background: var(--header-bg);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid var(--border);
             padding: 0.75rem 1.5rem;
@@ -72,13 +176,13 @@
         }
         .brand h1 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
         .badge {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
+            background: var(--status-badge-bg);
+            color: var(--status-badge-text);
             padding: 0.2rem 0.6rem;
             border-radius: 9999px;
             font-size: 0.75rem;
             font-weight: 600;
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            border: 1px solid var(--status-badge-border);
         }
 
         .header-actions {
@@ -90,7 +194,7 @@
         select, button, input, textarea {
             background: var(--bg-input);
             color: var(--text-primary);
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-strong);
             border-radius: var(--radius-md);
             padding: 0.5rem 0.85rem;
             font-size: 0.875rem;
@@ -100,20 +204,23 @@
         button {
             cursor: pointer;
             font-weight: 500;
-            transition: background 0.15s ease;
+            transition: background 0.15s ease, border-color 0.15s ease;
         }
+        button:hover:not(:disabled) { background: var(--bg-hover); }
         button.primary {
             background: var(--accent);
             border-color: var(--accent);
-            color: #fff;
+            color: var(--text-on-accent);
+            font-weight: 600;
         }
-        button.primary:hover { background: var(--accent-hover); }
+        button.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
         button.danger {
-            background: rgba(239, 68, 68, 0.2);
-            border-color: var(--danger);
-            color: #fca5a5;
+            background: var(--danger-bg);
+            border: 1px solid var(--danger-border);
+            color: var(--danger-text);
+            font-weight: 600;
         }
-        button.danger:hover { background: rgba(239, 68, 68, 0.3); }
+        button.danger:hover:not(:disabled) { background: var(--bg-selected); border-color: var(--border-selected); }
 
         .layout-container {
             display: flex;
@@ -144,14 +251,15 @@
             width: 100%;
         }
         nav button:hover, nav button.active {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--bg-hover);
             color: var(--text-primary);
             border-color: var(--border);
         }
         nav button.active {
-            border-color: var(--accent);
-            background: rgba(59, 130, 246, 0.12);
-            color: #93c5fd;
+            border-color: var(--border-selected);
+            background: var(--bg-selected);
+            color: var(--text-primary);
+            font-weight: 600;
         }
 
         /* Main Workspace */
@@ -180,7 +288,7 @@
             backdrop-filter: blur(12px);
         }
         .metric-card h3 { margin: 0; font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
-        .metric-val { font-size: 2rem; font-weight: 700; margin: 0.5rem 0 0.25rem 0; color: #fff; }
+        .metric-val { font-size: 2rem; font-weight: 700; margin: 0.5rem 0 0.25rem 0; color: var(--text-primary); }
         .metric-sub { font-size: 0.75rem; color: var(--text-muted); }
 
         /* Chat Container */
@@ -215,7 +323,7 @@
         .msg.user {
             align-self: flex-end;
             background: var(--accent);
-            color: #fff;
+            color: var(--text-on-accent);
             border-bottom-right-radius: 2px;
         }
         .msg.assistant {
@@ -235,21 +343,21 @@
             padding: 0.2rem 0.5rem;
             min-height: 24px;
             font-size: 0.75rem;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
+            background: var(--bg-subtle);
+            border: 1px solid var(--border);
         }
 
         /* Tool Call Timeline */
         .tool-timeline {
             margin-top: 0.75rem;
-            border-left: 2px solid var(--accent);
+            border-left: 2px solid var(--border-strong);
             padding-left: 0.75rem;
             display: flex;
             flex-direction: column;
             gap: 0.4rem;
         }
         .tool-chip {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--bg-subtle);
             border: 1px solid var(--border);
             border-radius: var(--radius-md);
             padding: 0.4rem 0.6rem;
@@ -280,16 +388,16 @@
         dialog:modal {
             background: var(--bg-surface);
             color: var(--text-primary);
-            border: 1px solid var(--border);
+            border: 1px solid var(--border-strong);
             border-radius: var(--radius-lg);
             padding: 1.5rem;
             max-width: 500px;
             width: 90%;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            box-shadow: var(--shadow-modal);
             overscroll-behavior: contain;
         }
         dialog::backdrop {
-            background: rgba(0, 0, 0, 0.75);
+            background: var(--backdrop-scrim);
             backdrop-filter: blur(4px);
             overflow: hidden;
             overscroll-behavior: contain;
@@ -314,7 +422,7 @@
             border-bottom: 1px solid var(--border);
         }
         th {
-            background: rgba(255, 255, 255, 0.02);
+            background: var(--bg-subtle);
             color: var(--text-secondary);
             font-weight: 600;
         }
@@ -337,7 +445,19 @@
         #login-form input { min-width: 0; max-width: 100%; }
         .metric-card { overflow-x: auto; }
         .brand { flex-wrap: wrap; }
-        button:disabled { cursor: not-allowed; opacity: 0.6; }
+        button:disabled, input:disabled, select:disabled, textarea:disabled {
+            cursor: not-allowed;
+            background: var(--bg-disabled);
+            color: var(--text-disabled);
+            border-color: var(--border-disabled);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation: none !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
         @media (max-width: 768px) {
             header { flex-wrap: wrap; gap: 0.75rem; }
             .brand h1 { font-size: 1.05rem; }
@@ -424,21 +544,21 @@
                     Real environment inspection, missing credentials audit, and local model requirements.
                 </p>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem; margin-top: 0.75rem;">
-                    <div style="background: rgba(0,0,0,0.25); padding: 0.75rem; border-radius: var(--radius-md);">
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border); padding: 0.75rem; border-radius: var(--radius-md);">
                         <strong style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Configured Providers</strong>
                         <div id="readiness-providers" style="font-size: 0.9rem; margin-top: 0.25rem;">None</div>
                     </div>
-                    <div style="background: rgba(0,0,0,0.25); padding: 0.75rem; border-radius: var(--radius-md);">
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border); padding: 0.75rem; border-radius: var(--radius-md);">
                         <strong style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Missing Credentials</strong>
                         <div id="readiness-missing" style="font-size: 0.9rem; margin-top: 0.25rem; color: var(--warning);">None</div>
                     </div>
-                    <div style="background: rgba(0,0,0,0.25); padding: 0.75rem; border-radius: var(--radius-md);">
+                    <div style="background: var(--bg-subtle); border: 1px solid var(--border); padding: 0.75rem; border-radius: var(--radius-md);">
                         <strong style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Local Model (Ollama/vLLM)</strong>
                         <div id="readiness-local-model" style="font-size: 0.9rem; margin-top: 0.25rem;">Offline</div>
                         <small style="color: var(--text-muted); font-size: 0.75rem;">Requires &gt;=8GB RAM for 7B/8B Q4</small>
                     </div>
                 </div>
-                <div id="readiness-recs-container" style="margin-top: 0.75rem; font-size: 0.85rem; background: rgba(59, 130, 246, 0.1); border-left: 3px solid var(--accent); padding: 0.5rem 0.75rem; border-radius: 0 var(--radius-md) var(--radius-md) 0;">
+                <div id="readiness-recs-container" style="margin-top: 0.75rem; font-size: 0.85rem; background: var(--bg-selected); border-left: 3px solid var(--border-selected); padding: 0.5rem 0.75rem; border-radius: 0 var(--radius-md) var(--radius-md) 0;">
                     <ul id="readiness-recommendations" style="margin: 0; padding-left: 1.25rem;"></ul>
                 </div>
             </section>
@@ -621,7 +741,7 @@
             Inspect actor, action, exact parameters, target destination, scope, and cost before approving or rejecting execution.
         </p>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; font-size: 0.85rem; margin-bottom: 0.75rem; background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: var(--radius-md);">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; font-size: 0.85rem; margin-bottom: 0.75rem; background: var(--bg-subtle); border: 1px solid var(--border); padding: 0.75rem; border-radius: var(--radius-md);">
             <div><strong>Ticket ID:</strong> <code id="dialog-ticket-id">-</code></div>
             <div><strong>Actor:</strong> <span id="dialog-actor">-</span></div>
             <div><strong>Tool / Action:</strong> <strong id="dialog-tool-name">-</strong></div>
@@ -633,12 +753,12 @@
 
         <div style="margin-bottom: 0.75rem;">
             <strong style="font-size: 0.85rem;">Tamper-Evident SHA-256 Arguments Hash:</strong>
-            <div id="dialog-args-hash" style="font-family: monospace; font-size: 0.75rem; word-break: break-all; color: var(--text-secondary); background: rgba(0,0,0,0.3); padding: 0.4rem 0.6rem; border-radius: var(--radius-md); margin-top: 0.25rem;">-</div>
+            <div id="dialog-args-hash" style="font-family: monospace; font-size: 0.75rem; word-break: break-all; color: var(--text-secondary); background: var(--bg-input); border: 1px solid var(--border); padding: 0.4rem 0.6rem; border-radius: var(--radius-md); margin-top: 0.25rem;">-</div>
         </div>
 
         <div style="margin-bottom: 0.75rem;">
             <strong style="font-size: 0.85rem;">Exact Invocation Arguments:</strong>
-            <pre id="dialog-tool-details" style="background: rgba(0,0,0,0.4); padding: 0.75rem; border-radius: var(--radius-md); font-family: monospace; font-size: 0.8rem; max-height: 160px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; margin-top: 0.25rem;" tabindex="0" aria-label="Tool arguments JSON">No approval selected.</pre>
+            <pre id="dialog-tool-details" style="background: var(--bg-input); border: 1px solid var(--border); padding: 0.75rem; border-radius: var(--radius-md); font-family: monospace; font-size: 0.8rem; max-height: 160px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; margin-top: 0.25rem;" tabindex="0" aria-label="Tool arguments JSON">No approval selected.</pre>
         </div>
 
         <div id="dialog-alert-region" role="alert" aria-live="polite" style="font-size: 0.85rem; min-height: 1.25rem; font-weight: 500;"></div>

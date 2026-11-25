@@ -157,5 +157,31 @@ def test_dashboard_html_accessibility_and_onboarding_elements():
     assert 'aria-live="polite"' in content
 
 
+def test_dashboard_monochrome_tokens_and_reduced_motion():
+    """Verify monochrome neutral tokens cover light/dark surfaces, states, and reduced motion."""
+    html_path = (
+        Path(__file__).resolve().parents[3] / "src/amberclaw/web/static/index.html"
+    )
+    content = html_path.read_text(encoding="utf-8")
+
+    for token in (
+        "--bg-base",
+        "--bg-surface",
+        "--bg-selected",
+        "--bg-disabled",
+        "--text-primary",
+        "--text-muted",
+        "--text-disabled",
+        "--border",
+        "--border-strong",
+        "--border-selected",
+        "--focus-ring",
+    ):
+        assert token in content
+
+    assert "@media (prefers-color-scheme: light)" in content
+    assert "@media (prefers-reduced-motion: reduce)" in content
+
+
 if __name__ == "__main__":
     pytest.main(["-v", __file__])
