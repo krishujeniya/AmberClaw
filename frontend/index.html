@@ -173,7 +173,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible,[
 .logo-link:hover{color:var(--text-primary)}.logo-link img{display:block;width:38px;height:38px;object-fit:contain;border:1px solid var(--border);border-radius:8px}
 .logo-dot{color:var(--text-subtle)}.brand-suffix{border-left:1px solid var(--border-strong);padding-left:12px;margin-left:2px;text-transform:uppercase;letter-spacing:.13em;color:var(--text-subtle);font:650 10px var(--sans)}
 .header-nav{margin-left:auto;display:flex;align-items:center;gap:28px}.header-nav a{color:var(--text-muted);font-size:12px}.header-nav a:hover{color:var(--text-primary)}
-.header-actions{display:flex;align-items:center;gap:10px}
+.header-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
 .theme-toggle{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--border-strong);border-radius:999px;background:var(--grad-surface);color:var(--text-primary);transition:transform .2s var(--ease),border-color .2s,background .2s}
 .theme-toggle:hover{border-color:var(--border-selected);background:var(--grad-elevated);transform:translateY(-1px)}
 .theme-toggle svg{width:17px;height:17px}
@@ -325,17 +325,13 @@ tr:last-child td{border:0}th{background:var(--grad-elevated);color:var(--text-pr
 <a class="skip-link" href="#main">Skip to documentation</a>
 <div class="progress" id="progress" aria-hidden="true"></div>
 <header class="header"><div class="shell header-in">
-<a class="logo-link" href="#top" aria-label="AmberClaw documentation home"><img src="logo.svg" width="38" height="38" alt="AmberClaw logo"><span>amberclaw<span class="logo-dot">.</span></span><span class="brand-suffix">Documentation</span></a>
-<nav class="header-nav" aria-label="Primary"><a href="#overview">Overview</a><a href="#installation">Quickstart</a><a href="#architecture">Architecture</a><a href="#api">API reference</a></nav>
+<a class="logo-link" href="#top" aria-label="AmberClaw documentation home"><img src="logo.svg" width="38" height="38" alt="AmberClaw logo"><span>amberclaw</span></a>
 <div class="header-actions"><button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch color theme" title="Toggle black/white theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18Z" fill="currentColor" stroke="none"/></svg></button><a class="pill" href="https://github.com/krishujeniya/AmberClaw" target="_blank" rel="noopener noreferrer">View on GitHub <span aria-hidden="true">↗</span></a><button class="menu-toggle" id="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button></div>
 </div><nav class="mobile-nav" id="mobile-nav" aria-label="Mobile"><a href="#overview">Overview</a><a href="#installation">Quickstart</a><a href="#architecture">Architecture</a><a href="#security">Security</a><a href="#api">API reference</a><a href="https://github.com/krishujeniya/AmberClaw" target="_blank" rel="noopener noreferrer">GitHub ↗</a></nav></header>
 <section id="top" class="hero" aria-labelledby="hero-title"><div class="shell hero-inner">
 <div class="hero-copy">
-<div class="eyebrow hero-status">AmberClaw documentation</div>
 <h1 id="hero-title" class="hero-title serif">Run agents<br><em>on your terms.</em></h1>
 <p>Open, self-hosted runtime for AI workflows. Run models locally or hosted, execute sandboxed skills, and preserve full execution control.</p>
-<div class="hero-actions"><a href="#installation" class="pill primary">Get started <span aria-hidden="true">↗</span></a><a href="#architecture" class="pill">View architecture <span aria-hidden="true">↗</span></a></div>
-<div class="hero-caption"><span>Python 3.11+</span><span>Open source · MIT</span><span>Local &amp; cloud runtimes</span></div>
 </div>
 <div class="terminal" aria-label="AmberClaw quickstart install card">
 <div class="terminal-top">
@@ -344,11 +340,7 @@ tr:last-child td{border:0}th{background:var(--grad-elevated);color:var(--text-pr
 <button class="copy-pill copy-inline" type="button" data-cmd="curl -fsSL https://amberclaw.pages.dev/install.sh | sh" aria-label="Copy install command">Copy</button>
 </div>
 <pre><span class="comment"># Fast install via sh</span>
-<span class="prompt">$</span> curl -fsSL https://amberclaw.pages.dev/install.sh | sh
-
-<span class="comment"># Start the runtime</span>
-<span class="prompt">$</span> cd AmberClaw &amp;&amp; uv --directory amberclaw/backend run amberclaw agent</pre>
-<div class="terminal-foot">CLICK COPY TO RUN IN YOUR TERMINAL</div>
+<span class="prompt">$</span> curl -fsSL https://amberclaw.pages.dev/install.sh | sh</pre>
 </div>
 </div></section>
 <div class="value-strip"><div class="shell values">
@@ -356,7 +348,7 @@ tr:last-child td{border:0}th{background:var(--grad-elevated);color:var(--text-pr
 <div class="value"><span class="value-icon" aria-hidden="true">↗</span><div><strong>Flexible model routing</strong><p>Run hosted and local providers behind a single model abstraction.</p></div></div>
 <div class="value"><span class="value-icon" aria-hidden="true">∞</span><div><strong>Extensible execution</strong><p>Connect backends, skills and messaging channels as your setup grows.</p></div></div>
 </div></div>
-<main id="main" tabindex="-1"><div class="shell docs"><div class="docs-intro"><div><div class="eyebrow">Documentation · 2026.0.1</div><h2 class="serif">Start with the source.</h2></div><p>Commands and implementation notes taken from the repository. Use the sections below to install, configure, inspect, and operate AmberClaw.</p></div><div class="layout">
+<main id="main" tabindex="-1"><div class="shell docs"><div class="docs-intro"><div><h2 class="serif">Start with the source.</h2></div><p>Commands and implementation notes taken from the repository. Use the sections below to install, configure, inspect, and operate AmberClaw.</p></div><div class="layout">
 <aside class="sidebar" aria-label="Documentation navigation"><div class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><input id="search" type="search" autocomplete="off" placeholder="Search this guide..." aria-label="Search documentation"></div><output class="search-status" id="search-status" aria-live="polite">Browse all 14 sections</output><nav class="side-nav" aria-label="Sections">
 <div class="nav-heading">GET STARTED</div><a href="#overview" data-nav><span>Overview</span><small>01</small></a><a href="#installation" data-nav><span>Your first five minutes</span><small>02</small></a><a href="#configuration" data-nav><span>Configure what matters</span><small>03</small></a><div class="nav-heading">THE RUNTIME</div><a href="#architecture" data-nav><span>Architecture</span><small>04</small></a><a href="#security" data-nav><span>Security</span><small>05</small></a><a href="#models" data-nav><span>Bring the model you need</span><small>06</small></a><a href="#sandboxes" data-nav><span>Sandboxes</span><small>07</small></a><a href="#memory" data-nav><span>Keep the thread</span><small>08</small></a><a href="#channels" data-nav><span>Work across channels</span><small>09</small></a><div class="nav-heading">BUILD & OPERATE</div><a href="#api" data-nav><span>A gateway for your tools</span><small>10</small></a><a href="#skills" data-nav><span>Agent skills</span><small>11</small></a><a href="#offline" data-nav><span>Keep inference local</span><small>12</small></a><a href="#deployment" data-nav><span>Deployment</span><small>13</small></a><a href="#troubleshooting" data-nav><span>Troubleshooting</span><small>14</small></a></nav></aside>
 <div class="doc-main"><div class="empty" id="no-results" role="status">No matching sections. Try a different search or clear the field.</div>
