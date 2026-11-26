@@ -348,7 +348,6 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
     <a href="#installation">Quickstart</a>
     <a href="#architecture">Architecture</a>
     <a href="#security">Security</a>
-    <a href="#api">API reference</a>
     <a href="https://www.buymeacoffee.com/krishujeniya" target="_blank" rel="noopener noreferrer">Buy me a coffee ↗</a>
     <a href="https://github.com/krishujeniya/AmberClaw" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
   </nav>
@@ -412,12 +411,6 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
             <a href="#sandboxes" data-nav>Sandboxes</a>
             <a href="#memory" data-nav>Memory</a>
             <a href="#channels" data-nav>Channels</a>
-            <div class="nav-heading">Operate</div>
-            <a href="#api" data-nav>API Gateway</a>
-            <a href="#skills" data-nav>Skills</a>
-            <a href="#offline" data-nav>Local Inference</a>
-            <a href="#deployment" data-nav>Deployment</a>
-            <a href="#troubleshooting" data-nav>Troubleshooting</a>
           </nav>
         </aside>
 
@@ -519,61 +512,6 @@ AMBERCLAW_RATE_LIMIT=10
             <h3>Channels<a class="anchor" href="#channels" aria-label="Link to Channels">#</a></h3>
             <p class="lead">Connect agent workflows across messaging and enterprise platforms.</p>
             <div class="chips"><span>Telegram</span><span>Discord</span><span>Matrix</span><span>Email</span><span>Feishu / Lark</span><span>DingTalk</span><span>MoChat</span><span>WhatsApp</span><span>Slack</span></div>
-          </section>
-
-          <section class="doc-section" id="api" data-doc tabindex="-1">
-            <h3>API Gateway<a class="anchor" href="#api" aria-label="Link to API">#</a></h3>
-            <p class="lead">Authenticated FastAPI endpoints for chat, SSE streams (<code>token</code>, <code>thought</code>, <code>tool_call</code>, <code>done</code>, <code>error</code>), sessions, approvals, and metrics.</p>
-            <div class="code"><div class="code-head"><span>example · authenticated request</span><button class="copy" type="button">Copy code</button></div><pre><code>curl -X POST http://127.0.0.1:8000/api/v1/chat \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"message":"Analyze system load","model":"gpt-4o"}'</code></pre></div>
-            <div class="table-wrap"><table><thead><tr><th>Endpoint</th><th>Purpose</th></tr></thead><tbody><tr><td>POST /api/v1/auth/token</td><td>Issue an authentication token</td></tr><tr><td>GET /api/v1/auth/me</td><td>Inspect authenticated principal</td></tr><tr><td>POST /api/v1/chat</td><td>Chat completion</td></tr><tr><td>POST /api/v1/chat/stream</td><td>Server-Sent Events (SSE)</td></tr><tr><td>GET /api/v1/agents</td><td>List agent profiles</td></tr><tr><td>GET /api/v1/memory/sessions</td><td>List sessions</td></tr><tr><td>GET /api/v1/tickets/pending</td><td>Pending human approvals</td></tr><tr><td>GET /metrics</td><td>Prometheus metrics</td></tr><tr><td>GET /health</td><td>Health probe</td></tr></tbody></table></div>
-            <p><a class="text-link" href="https://github.com/krishujeniya/AmberClaw/blob/main/docs/api.md">Full API reference ↗</a></p>
-          </section>
-
-          <section class="doc-section" id="skills" data-doc tabindex="-1">
-            <h3>Skills<a class="anchor" href="#skills" aria-label="Link to Skills">#</a></h3>
-            <p class="lead">Python tools use Pydantic input schemas paired with <code>SKILL.md</code> manifests and runtime policy enforcement.</p>
-            <div class="code"><div class="code-head"><span>example · SKILL.md</span><button class="copy" type="button">Copy code</button></div><pre><code>---
-name: web_researcher
-version: 1.0.0
-description: Approved-source search and summarization.
-capabilities: [network_egress, filesystem_read]
----</code></pre></div>
-            <p><a class="text-link" href="https://github.com/krishujeniya/AmberClaw/blob/main/docs/skills.md">Skill creation guide ↗</a></p>
-          </section>
-
-          <section class="doc-section" id="offline" data-doc tabindex="-1">
-            <h3>Local Inference<a class="anchor" href="#offline" aria-label="Link to Offline">#</a></h3>
-            <p class="lead">Run offline with Ollama and LiteLLM-compatible provider config.</p>
-            <div class="code"><div class="code-head"><span>terminal · bash</span><button class="copy" type="button">Copy code</button></div><pre><code>ollama pull llama3.1
-ollama pull mxbai-embed-large</code></pre></div>
-            <div class="code"><div class="code-head"><span>~/.amberclaw/config.json</span><button class="copy" type="button">Copy code</button></div><pre><code>{
-  "agents": { "defaults": { "model": "ollama/llama3.1", "embedding_model": "ollama/mxbai-embed-large" } },
-  "providers": { "ollama": { "api_base": "http://localhost:11434" } }
-}</code></pre></div>
-            <p><a class="text-link" href="https://github.com/krishujeniya/AmberClaw/blob/main/docs/LOCAL.md">Local deployment guide ↗</a></p>
-          </section>
-
-          <section class="doc-section" id="deployment" data-doc tabindex="-1">
-            <h3>Deployment<a class="anchor" href="#deployment" aria-label="Link to Deployment">#</a></h3>
-            <p class="lead">Docker Compose stacks for production and air-gapped internal networks.</p>
-            <div class="code"><div class="code-head"><span>terminal · bash</span><button class="copy" type="button">Copy code</button></div><pre><code>docker compose -f deploy/docker/docker-compose.prod.yml up -d
-docker compose -f deploy/docker/docker-compose.airgapped.yml up -d</code></pre></div>
-            <div class="chips"><span>Audit logs</span><span>Prometheus</span><span>Operational runbooks</span><span>Docker Compose</span></div>
-          </section>
-
-          <section class="doc-section" id="troubleshooting" data-doc tabindex="-1">
-            <h3>Troubleshooting<a class="anchor" href="#troubleshooting" aria-label="Link to Troubleshooting">#</a></h3>
-            <div class="faqs">
-              <details><summary>Provider request fails</summary><p>Verify the provider key, model name, base URL, and upstream rate limits.</p></details>
-              <details><summary>Port already in use</summary><p>Bind Uvicorn to an available port via <code>--port</code>.</p></details>
-              <details><summary>Ollama refuses connection or runs slowly</summary><p>Ensure Ollama is serving on the configured base URL and check <code>ollama ps</code>.</p></details>
-              <details><summary>Messaging integration won't connect</summary><p>Check provider credentials, SDK dependencies, webhooks, and firewall rules.</p></details>
-              <details><summary>How do I run tests?</summary><p>Run <code>uv --directory amberclaw/backend run pytest</code> in your workspace.</p></details>
-            </div>
-            <p><a class="text-link" href="https://github.com/krishujeniya/AmberClaw/blob/main/docs/troubleshooting.md">Troubleshooting notes ↗</a> · <a class="text-link" href="https://github.com/krishujeniya/AmberClaw/issues">Open an issue ↗</a></p>
           </section>
         </div>
       </div>
