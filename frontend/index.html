@@ -265,8 +265,9 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
 .footer-links a{font:700 10px/1.4 var(--body);letter-spacing:.2em;text-transform:uppercase;color:#a3a3a3;border-bottom:1px solid transparent;padding-bottom:2px;transition:color .2s,border-color .2s}
 .footer-links a:hover{color:#ffffff;border-bottom-color:rgba(255,255,255,.35)}
 .footer-banner{padding:clamp(36px,6vw,78px) 0;display:flex;justify-content:center;align-items:center;user-select:none;overflow:hidden}
-.footer-wordmark{display:flex;align-items:baseline;justify-content:center;font:700 clamp(2.5rem,11.5vw,11.5rem)/.92 var(--display);letter-spacing:-.045em;color:#ffffff;white-space:nowrap;background:linear-gradient(180deg,#ffffff 35%,#737373 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.footer-letter{display:inline-block}
+.footer-wordmark{display:flex;align-items:baseline;justify-content:center;font:700 clamp(2.5rem,11.5vw,11.5rem)/.92 var(--display);letter-spacing:-.045em;color:#ffffff;white-space:nowrap}
+.footer-part{display:inline-flex;align-items:baseline;will-change:transform,opacity}
+.footer-letter{display:inline-block;background:linear-gradient(180deg,#ffffff 35%,#737373 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .footer-float-1{animation:kFloat 4.8s ease-in-out infinite}
 .footer-float-2{animation:kFloat 4.8s ease-in-out .6s infinite}
 .footer-float-3{animation:kFloat 4.8s ease-in-out 1.2s infinite}
@@ -512,7 +513,7 @@ AMBERCLAW_RATE_LIMIT=10</code></pre></div>
 
     <div class="footer-banner">
       <div class="footer-wordmark" aria-label="AmberClaw">
-        <span class="footer-letter">A</span><span class="footer-letter">m</span><span class="footer-letter">b</span><span class="footer-letter">e</span><span class="footer-letter">r</span><span class="footer-letter">C</span><span class="footer-letter footer-float-1">l</span><span class="footer-letter footer-float-2">a</span><span class="footer-letter footer-float-3">w</span>
+        <span class="footer-part" id="footer-amber"><span class="footer-letter">A</span><span class="footer-letter">m</span><span class="footer-letter">b</span><span class="footer-letter">e</span><span class="footer-letter">r</span></span><span class="footer-part" id="footer-claw"><span class="footer-letter">C</span><span class="footer-letter footer-float-1">l</span><span class="footer-letter footer-float-2">a</span><span class="footer-letter footer-float-3">w</span></span>
       </div>
     </div>
 
@@ -578,6 +579,22 @@ document.querySelectorAll('.copy').forEach(function(b){b.addEventListener('click
 document.querySelectorAll('.copy-inline').forEach(function(b){b.addEventListener('click',function(){var cmd=b.getAttribute('data-cmd');if(!cmd)return;copyText(cmd,function(ok){if(ok){var prev=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=prev},1600)}})});});
 var topBtn=document.getElementById('back-to-top');
 if(topBtn)topBtn.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'})});
+var footerEl=document.querySelector('.site-footer'),amberEl=document.getElementById('footer-amber'),clawEl=document.getElementById('footer-claw'),fRaf=0;
+function updateFooterWordmark(){
+  fRaf=0;
+  if(!footerEl||!amberEl||!clawEl)return;
+  var r=footerEl.getBoundingClientRect(),vh=window.innerHeight||800,span=Math.max(160,Math.min(r.height*0.55,vh*0.45));
+  var raw=(vh-r.top)/span,t=Math.max(0,Math.min(1,raw)),e=1-Math.pow(1-t,3),dist=(1-e)*32;
+  amberEl.style.transform='translate3d('+(-dist).toFixed(2)+'vw,0,0)';
+  clawEl.style.transform='translate3d('+dist.toFixed(2)+'vw,0,0)';
+  amberEl.style.opacity=clawEl.style.opacity=e.toFixed(3);
+}
+if(footerEl&&amberEl&&clawEl&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+  var queueFooter=function(){if(!fRaf)fRaf=requestAnimationFrame(updateFooterWordmark)};
+  addEventListener('scroll',queueFooter,{passive:true});
+  addEventListener('resize',queueFooter,{passive:true});
+  updateFooterWordmark();
+}
 })();
 </script>
 </body>
