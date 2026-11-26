@@ -1,0 +1,81 @@
+# AmberClaw — Full Technical Documentation for LLMs
+
+> Canonical URL: https://amberclaw.pages.dev/
+> Author & Maintainer: Krish Ujeniya (@krishujeniya) — https://krishujeniya.pages.dev/
+> Repository: https://github.com/krishujeniya/AmberClaw
+> License: MIT | Current Version: 2026.0.1
+
+## 1. Executive Summary
+
+AmberClaw is an open-source, self-hosted, zero-trust AI agent runtime engineered by Krish Ujeniya (`krishujeniya`). Unlike orchestration libraries requiring external telemetry SaaS or ad-hoc chat wrappers, AmberClaw provides a hardened runtime combining:
+
+1. Unified canonical `ChatRuntime` routing across CLI, REST/SSE API (`FastAPI`), Mission Control Web UI, and 9 native messaging channels.
+2. Kernel-level execution isolation using Linux Landlock LSM, seccomp filters, Bubblewrap, Docker, WASM/MicroPython, or cloud sandboxes (Daytona, Modal, E2B, Vercel).
+3. Tamper-evident SHA-256 Merkle/hash-chained JSONL audit logs (`security/audit.py`) with `flock` synchronization.
+4. Persistent session state (`SQLite SessionDB` with FTS5 WAL), vector RAG (`Chroma` / `LanceDB`), and temporal Knowledge Graph memory with GDPR cross-store deletion.
+5. LiteLLM model routing across hosted and air-gapped local providers with pre-execution token/budget reservations.
+
+## 2. Quickstart Guide
+
+### Step 1: One-Line Installer
+```sh
+curl -fsSL https://amberclaw.pages.dev/install.sh | sh
+```
+This clones `https://github.com/krishujeniya/AmberClaw.git`, copies `amberclaw/backend/.env.example` to `amberclaw/backend/.env`, and installs Python dependencies via `uv` (or falls back to `python3 -m venv`).
+
+### Step 2: Environment Configuration (`.env`)
+Configure at least one LLM provider alongside workspace and security settings:
+```dotenv
+AMBERCLAW_ENV=development
+AMBERCLAW_WORKSPACE_DIR=./data/workspace
+AMBERCLAW_SECRET_KEY=your-32-byte-secret-key
+
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+OLLAMA_API_BASE=http://localhost:11434
+
+AMBERCLAW_AUTH_ENABLED=true
+AMBERCLAW_RATE_LIMIT=10
+```
+
+### Step 3: System Diagnostics (`doctor`)
+```bash
+uv run amberclaw doctor
+```
+Verifies config schema validity, workspace write permissions, provider API keys, and sandbox runtime readiness.
+
+### Step 4: Launch Modes
+- Interactive CLI: `uv run amberclaw agent`
+- FastAPI Gateway & Web Dashboard SPA: `uv run uvicorn amberclaw.api.main:app --host 0.0.0.0 --port 8000 --reload` (`http://localhost:8000`)
+- Guided Onboarding Wizard: `uv run amberclaw onboard`
+
+## 3. Seven Core Architectural Invariants
+
+1. **Kernel-Level Confinement & Network Egress Firewall**: Agent tools run inside unprivileged Linux Landlock LSM sandboxes and seccomp filters, blocking arbitrary outbound sockets by default.
+2. **Tamper-Evident SHA-256 Audit Trails**: Every privileged tool invocation, credential access, and policy evaluation appends a hash-chained JSONL event.
+3. **Unified Execution Runtime (`ChatRuntime`)**: CLI, REST API, Web UI, and chat adapters traverse one identical policy, memory, and audit boundary (ADR-0005).
+4. **Durable Execution & Side-Effect Safety**: Deterministic checkpointed step graphs resume crashed workers cleanly without duplicating side effects, preserving pending approval tickets across restarts (ADR-0007).
+5. **Reviewable Human Approvals (`ApprovalTicket`)**: High-risk filesystem writes, outbound network actions, or shell execution route to a WCAG 2.2 AA review queue before dispatch.
+6. **Trustworthy Grounded Retrieval**: Returns exact line-level citations and abstains cleanly when evidence is missing or chronologically conflicting.
+7. **Hard Spend & Token Accounting**: Pre-execution budget reservations with a 5% in-flight settlement grace and full cost tracking for retries/failures.
+
+## 4. Supported Models & Messaging Channels
+
+- **Model Providers (LiteLLM)**: OpenAI, Anthropic, Ollama (local models e.g. `qwen2.5:7b` minimum 8 GB RAM / 8,192 context recommended), Google Gemini, OpenRouter.
+- **Messaging Channels**: Telegram (`python-telegram-bot`), Discord, Matrix (E2EE via `matrix-nio`), Email (IMAP4/SSL & SMTP), Feishu / Lark, DingTalk, MoChat, WhatsApp, Slack (`slack-sdk`).
+
+## 5. Third-Party Plugin Isolation & Operational SLAs
+
+Extensions declare capabilities (`filesystem_read`, `filesystem_write`, `network_access`, `env_read`) via `plugin.yaml`, enforced by the sandbox supervisor and intercepted by `ToolApprovalManager` for elevated risks.
+Documented disaster recovery drills (`DeploymentLifecycleManager`): RPO `2.5 minutes` (target <=15m), RTO `4.2 minutes` (target <=30m), 99.9% monthly availability target.
+
+## 6. Author & Ecosystem Links
+
+- **Author**: Krish Ujeniya (`@krishujeniya`) — AI Researcher, Data Scientist & AI Systems Architect
+- **Portfolio**: https://krishujeniya.pages.dev/
+- **GitHub**: https://github.com/krishujeniya
+- **AmberClaw Docs**: https://amberclaw.pages.dev/
+- **AmberClaw Repo**: https://github.com/krishujeniya/AmberClaw
+- **AGYOS Docs**: https://agyos.pages.dev/
+- **AGYOS Repo**: https://github.com/krishujeniya/AGYOS
+- **Sponsors**: https://github.com/sponsors/krishujeniya

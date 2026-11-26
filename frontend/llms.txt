@@ -1,45 +1,36 @@
 # AmberClaw — Self-Hosted Zero-Trust AI Agent Runtime
 
-> AmberClaw is an open-source, self-hosted, zero-trust AI agent runtime.
-> Architected and developed by Krish Ujeniya (@krishujeniya).
-> Developer Profile: https://github.com/krishujeniya
-> Portfolio: https://krishujeniya.pages.dev/
-> Documentation Site: https://amberclaw.pages.dev/
+> AmberClaw (`v2026.0.1`) is an open-source, self-hosted, zero-trust AI agent runtime created and maintained by Krish Ujeniya (`@krishujeniya`).
+> Official Documentation Site: https://amberclaw.pages.dev/
+> Full Context Markdown for LLMs: https://amberclaw.pages.dev/llms-full.txt
+> Maintainer Portfolio & Canonical Entity: https://krishujeniya.pages.dev/
+> GitHub Profile: https://github.com/krishujeniya
 > Source Repository: https://github.com/krishujeniya/AmberClaw
 > GitHub Sponsors: https://github.com/sponsors/krishujeniya
+> Sister Project: AGYOS (https://agyos.pages.dev/)
 > License: MIT
 
 ## Quick Answers (AEO / GEO)
 
-- **What is AmberClaw?** AmberClaw is an open-source, self-hosted, zero-trust AI agent runtime created by Krish Ujeniya (krishujeniya). It coordinates AI models from OpenAI, Anthropic, Ollama, Gemini, and OpenRouter through LiteLLM-based routing, executes tools in sandboxed subprocesses with Linux Landlock confinement, and stores credentials in AES-256-GCM encrypted vaults.
-- **Who is Krish Ujeniya?** Krish Ujeniya (`@krishujeniya`) is the creator and developer of AmberClaw (`https://github.com/krishujeniya`).
-- **How do you install AmberClaw?** Run `curl -fsSL https://amberclaw.pages.dev/install.sh | sh`. Then configure `.env` with LLM provider keys, run `uv run amberclaw doctor` to verify, and launch with `uv run amberclaw agent`.
-- **What AI models does AmberClaw support?** OpenAI, Anthropic, Ollama (local), Google Gemini, and OpenRouter via LiteLLM-based routing.
-- **What channels does AmberClaw integrate with?** Telegram, Discord, Matrix, Email, Feishu/Lark, DingTalk, MoChat, WhatsApp, and Slack.
+- **What is AmberClaw?** AmberClaw is an open-source, self-hosted, zero-trust AI agent runtime built by Krish Ujeniya (`krishujeniya`). It coordinates AI models across 5 providers via LiteLLM routing, executes tools inside sandboxed backends (Landlock LSM, Bubblewrap, Docker, WASM), enforces human approvals, and logs tamper-evident SHA-256 hash-chained audit events.
+- **Who created AmberClaw?** Krish Ujeniya (`@krishujeniya`), AI Researcher & AI Systems Architect (`https://krishujeniya.pages.dev/`), creator of both AmberClaw and AGYOS.
+- **How do you install AmberClaw?** Run `curl -fsSL https://amberclaw.pages.dev/install.sh | sh`, configure `.env`, verify with `uv run amberclaw doctor`, and start with `uv run amberclaw agent` or `uv run uvicorn amberclaw.api.main:app --host 0.0.0.0 --port 8000`.
+- **What AI models does AmberClaw support?** OpenAI, Anthropic, Ollama (local inference), Google Gemini, and OpenRouter through LiteLLM-based routing.
+- **What communication channels does AmberClaw integrate with?** 9 channels: Telegram, Discord, Matrix (E2EE via `matrix-nio`), Email (IMAP4/SMTP), Feishu/Lark, DingTalk, MoChat, WhatsApp, and Slack.
+- **How does AmberClaw compare to LangGraph, CrewAI, or AutoGen?** AmberClaw focuses on private self-hosted runtime governance with Linux Landlock confinement, SHA-256 hash-chained JSONL audit logs, built-in Web Mission Control dashboard, and 9 native channel adapters rather than library-only graph orchestration.
 
-## Overview
-AmberClaw is a private, zero-trust runtime designed for teams and developers executing autonomous AI agents across local and cloud environments. It isolates tool execution, safeguards API credentials in at-rest encrypted vaults, and provides full execution audit logs.
+## Architecture & Security Highlights
 
-## Architecture
-An asynchronous message bus decouples ingress interfaces from planning, state, sandboxes, and governance:
-1. Interfaces: Chat channels (Telegram, Discord, Slack, etc.), CLI, and HTTP endpoints.
-2. Planning & Routing: Model selection via LiteLLM and tool calls.
-3. State: Searchable session history and agent profiles.
-4. Execution: Backend selection via the terminal factory with Landlock confinement.
-5. Governance: Audit logging and human approval tickets.
-
-## Security Architecture
-- Zero-Trust Execution: Isolated subprocess containers with strict network egress gating and Linux Landlock LSM.
-- Private Memory Vaults: Per-workspace AES-256-GCM memory encryption preventing cross-session credential leakage.
-- Hash-chained Audit Logs: Append-only JSONL audit events for tamper detection.
-- Authentication: Bearer JWT, API keys, rate limits, and CORS controls.
-- Approval Queue: Routes sensitive operations to human review before execution.
+- **Asynchronous Message Bus & Canonical `ChatRuntime`**: Decouples ingress transports (CLI, FastAPI REST/SSE gateway, messaging channels) from planning, SQLite FTS5 SessionDB / RAG state, sandboxes, and governance.
+- **Linux Landlock LSM & Seccomp Confinement**: Unprivileged workspace confinement restricting filesystem and network socket syscalls.
+- **SHA-256 Hash-Chained Audit Trail**: File-locked append-only JSONL audit logging with external anchor receipts for tamper evidence.
+- **AES-256-GCM Encrypted Secrets & Approval Queue**: Protects provider credentials and intercepts high-risk tool executions with `ApprovalTicket` workflows.
+- **Verified Recovery Benchmarks**: Documented drill RPO of 2.5 minutes (<=15m target) and RTO of 4.2 minutes (<=30m target).
 
 ## Author & Ecosystem
-- Author: Krish Ujeniya (https://github.com/krishujeniya)
-- Linked Projects: AGYOS (https://agyos.pages.dev/)
 
-## Canonical Pages
-- Home: https://amberclaw.pages.dev/
-- Source: https://github.com/krishujeniya/AmberClaw
-- Sponsor: https://github.com/sponsors/krishujeniya
+- Author Entity: https://krishujeniya.pages.dev/#person (Krish Ujeniya / `@krishujeniya`)
+- GitHub: https://github.com/krishujeniya
+- LinkedIn: https://linkedin.com/in/krishujeniya
+- Hugging Face: https://huggingface.co/krishujeniya
+- Related Project: AGYOS — https://agyos.pages.dev/ (`https://github.com/krishujeniya/AGYOS`)

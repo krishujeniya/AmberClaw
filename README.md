@@ -6,11 +6,15 @@
 
 [![Version](https://img.shields.io/badge/version-2026.0.1-blue.svg)](pyproject.toml)
 [![Verification](https://img.shields.io/badge/current_worktree-unverified-yellow.svg)](AI_HANDOFF.md)
+[![Documentation](https://img.shields.io/badge/docs-amberclaw.pages.dev-black.svg)](https://amberclaw.pages.dev/)
+[![Author](https://img.shields.io/badge/author-krishujeniya-black.svg)](https://krishujeniya.pages.dev/)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/security-policy-red.svg)](SECURITY.md)
 
-AmberClaw is an open-source, self-hosted agent runtime and operating system built for engineering and operations teams that require private execution, verifiable audit trails, hard spend boundaries, and human oversight.
+**Official Documentation:** [amberclaw.pages.dev](https://amberclaw.pages.dev/) · **Author:** [Krish Ujeniya (`@krishujeniya`)](https://krishujeniya.pages.dev/) · **GitHub:** [krishujeniya/AmberClaw](https://github.com/krishujeniya/AmberClaw)
+
+AmberClaw is an open-source, self-hosted agent runtime and operating system built by [Krish Ujeniya (`krishujeniya`)](https://github.com/krishujeniya) for engineering and operations teams that require private execution, verifiable audit trails, hard spend boundaries, and human oversight.
 
 The repository contains historical evidence records for the 28-item competitive leadership backlog, tied to the `9ece8c0` checkpoint. The current worktree has uncommitted changes, and no GitHub Actions run has verified this revision. Historical test and quality results are documented in [AI_HANDOFF.md](AI_HANDOFF.md); they do not establish current verification.
 
