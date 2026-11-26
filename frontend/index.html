@@ -345,8 +345,6 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.7 var(--mono
 .result-item p{margin:5px 0 0;font-size:12px;color:var(--muted);line-height:1.55}
 .search-dialog-footer{border-top:1px solid var(--border);padding:12px 18px;display:flex;gap:22px;font-size:11px;color:var(--muted)}
 .search-dialog-footer kbd{font:10px var(--mono);border:1px solid var(--border);border-radius:4px;padding:2px 5px;margin-right:4px}
-.toast{position:fixed;bottom:24px;left:50%;z-index:150;padding:10px 19px;transform:translate(-50%,24px);opacity:0;pointer-events:none;border-radius:10px;background:var(--ink);color:var(--on-accent);font-weight:700;font-size:12px;transition:opacity .2s,transform .2s}
-.toast.on{opacity:1;transform:translate(-50%,0)}
 
 @media(min-width:680px){
   .double-grid{grid-template-columns:repeat(2,1fr);gap:14px}
@@ -956,8 +954,6 @@ docker compose -f deploy/docker/docker-compose.airgapped.yml up -d</code></pre><
   </div>
 </dialog>
 
-<div class="toast" id="toast" aria-live="polite" role="status">Copied</div>
-
 <script>
 (function(){
 'use strict';
@@ -965,7 +961,7 @@ document.getElementById('year').textContent=String(new Date().getFullYear());
 var root=document.documentElement,mql=window.matchMedia('(prefers-color-scheme: dark)'),themeBtn=document.getElementById('theme-toggle');
 function currentTheme(){var t=root.getAttribute('data-theme');return(t==='dark'||t==='light')?t:(mql.matches?'dark':'light')}
 function syncTheme(){var t=currentTheme();themeBtn.setAttribute('aria-pressed',String(t==='dark'));document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute('content',t==='dark'?'#000000':'#ffffff')})}
-themeBtn.addEventListener('click',function(){var next=currentTheme()==='dark'?'light':'dark';root.setAttribute('data-theme',next);try{localStorage.setItem('ac-theme',next)}catch(e){}syncTheme();notify(next==='dark'?'Black monochrome':'White monochrome')});
+themeBtn.addEventListener('click',function(){var next=currentTheme()==='dark'?'light':'dark';root.setAttribute('data-theme',next);try{localStorage.setItem('ac-theme',next)}catch(e){}syncTheme()});
 syncTheme();
 
 var menu=document.getElementById('menu-toggle'),mobile=document.getElementById('mobile-nav');
@@ -1007,11 +1003,9 @@ if('IntersectionObserver' in window){
   sections.forEach(function(s){spy.observe(s)});
 }
 
-var toast=document.getElementById('toast'),timer;
-function notify(t){toast.textContent=t;toast.classList.add('on');clearTimeout(timer);timer=setTimeout(function(){toast.classList.remove('on')},1700)}
 function copyText(text,cb){if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(function(){cb(true)}).catch(function(){cb(false)})}else{var t=document.createElement('textarea');t.value=text;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.select();var ok=false;try{ok=document.execCommand('copy')}catch(e){}t.remove();cb(ok)}}
-document.querySelectorAll('.copy').forEach(function(b){b.addEventListener('click',function(){var v=b.closest('.code').querySelector('code').textContent;copyText(v,function(ok){notify(ok?'Copied to clipboard':'Copy failed');if(ok){b.textContent='Copied';setTimeout(function(){b.textContent='Copy code'},1600)}})})});
-document.querySelectorAll('.copy-inline').forEach(function(b){b.addEventListener('click',function(){var cmd=b.getAttribute('data-cmd');if(!cmd)return;copyText(cmd,function(ok){notify(ok?'Copied install command':'Copy failed');if(ok){var prev=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=prev},1600)}})})});
+document.querySelectorAll('.copy').forEach(function(b){b.addEventListener('click',function(){var v=b.closest('.code').querySelector('code').textContent;copyText(v,function(ok){if(ok){b.textContent='Copied';setTimeout(function(){b.textContent='Copy code'},1600)}})});});
+document.querySelectorAll('.copy-inline').forEach(function(b){b.addEventListener('click',function(){var cmd=b.getAttribute('data-cmd');if(!cmd)return;copyText(cmd,function(ok){if(ok){var prev=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=prev},1600)}})});});
 
 var dlg=document.getElementById('search-dialog'),mInput=document.getElementById('modal-search-input'),mRes=document.getElementById('modal-search-results'),sel=0,matches=[];
 var docsIndex=sections.map(function(s){var h=s.querySelector('h3'),l=s.querySelector('.lead');return{id:s.id,title:h?h.textContent:s.id,desc:l?l.textContent:'',text:s.textContent.toLowerCase()}});
