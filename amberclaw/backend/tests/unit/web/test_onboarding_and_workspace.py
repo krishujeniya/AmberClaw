@@ -183,5 +183,38 @@ def test_dashboard_monochrome_tokens_and_reduced_motion():
     assert "@media (prefers-reduced-motion: reduce)" in content
 
 
+def test_frontend_monochrome_tokens_and_reduced_motion():
+    """Verify frontend/index.html uses monochrome neutral tokens with light/dark & reduced-motion support."""
+    html_path = Path(__file__).resolve().parents[5] / "frontend" / "index.html"
+    content = html_path.read_text(encoding="utf-8")
+
+    for token in (
+        "--bg-base",
+        "--bg-surface",
+        "--bg-elevated",
+        "--bg-selected",
+        "--bg-disabled",
+        "--text-primary",
+        "--text-secondary",
+        "--text-muted",
+        "--text-subtle",
+        "--text-disabled",
+        "--border",
+        "--border-strong",
+        "--border-selected",
+        "--border-disabled",
+        "--focus-ring",
+    ):
+        assert token in content
+
+    assert "@media(prefers-color-scheme:light)" in content or "@media (prefers-color-scheme: light)" in content
+    assert '[data-theme="light"]' in content
+    assert "@media(prefers-reduced-motion:reduce)" in content or "@media (prefers-reduced-motion: reduce)" in content
+    assert ":focus-visible" in content
+
+    for legacy_amber in ("#efa955", "#ffcf8a", "#d9773f", "#100d0b"):
+        assert legacy_amber not in content.lower()
+
+
 if __name__ == "__main__":
     pytest.main(["-v", __file__])
