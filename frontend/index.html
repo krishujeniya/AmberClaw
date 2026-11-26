@@ -344,7 +344,7 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
     </div>
   </div>
   <nav class="mobile-nav" id="mobile-nav" aria-label="Mobile">
-    <a href="#configuration">Configuration</a>
+    <a href="#quickstart">Quickstart</a>
     <a href="#architecture">Architecture</a>
     <a href="#security">Security</a>
     <a href="https://www.buymeacoffee.com/krishujeniya" target="_blank" rel="noopener noreferrer">Buy me a coffee ↗</a>
@@ -369,26 +369,6 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
     </div>
   </section>
 
-  <section class="statement-section section-pad" id="capabilities">
-    <div class="container">
-      <div class="section-label reveal">What AmberClaw Enables<span class="label-rule"></span></div>
-      <div class="statement-layout">
-        <h2 class="statement-title reveal">More than a wrapper.<br><span>A zero-trust agent runtime.</span></h2>
-        <div class="statement-aside reveal">
-          <p>Autonomous agents need real boundaries. AmberClaw combines asynchronous message routing, Landlock &amp; container isolation, human approval tickets, and tamper-evident audit logs.</p>
-        </div>
-      </div>
-      <div class="feature-lines">
-        <a href="#configuration" class="feature-line reveal"><span class="feature-no">01</span><span class="feature-name">Inspect the runtime</span><span class="feature-desc">Async Python kernel with CLI, FastAPI gateway, and web dashboard.</span><span class="feature-arrow" aria-hidden="true">↗</span></a>
-        <a href="#architecture" class="feature-line reveal"><span class="feature-no">02</span><span class="feature-name">Decouple every layer</span><span class="feature-desc">Route inputs through an async message bus to planning, state, and tools.</span><span class="feature-arrow" aria-hidden="true">↗</span></a>
-        <a href="#security" class="feature-line reveal"><span class="feature-no">03</span><span class="feature-name">Enforce zero-trust boundaries</span><span class="feature-desc">Landlock LSM, JWT/API auth, approval tickets, and SHA-256 audit chains.</span><span class="feature-arrow" aria-hidden="true">↗</span></a>
-        <a href="#sandboxes" class="feature-line reveal"><span class="feature-no">04</span><span class="feature-name">Isolate tool execution</span><span class="feature-desc">Nine sandbox backends from local Landlock to Docker, WASM, and E2B.</span><span class="feature-arrow" aria-hidden="true">↗</span></a>
-        <a href="#models" class="feature-line reveal"><span class="feature-no">05</span><span class="feature-name">Route hosted or local models</span><span class="feature-desc">LiteLLM abstraction supporting OpenAI, Anthropic, Ollama, and vLLM.</span><span class="feature-arrow" aria-hidden="true">↗</span></a>
-        <a href="#channels" class="feature-line reveal"><span class="feature-no">06</span><span class="feature-name">Connect across channels</span><span class="feature-desc">Telegram, Discord, Slack, WhatsApp, Matrix, Email, and enterprise integrations.</span><span class="feature-arrow" aria-hidden="true">↗</span></a>
-      </div>
-    </div>
-  </section>
-
   <section class="docs" aria-label="Documentation">
     <div class="container">
       <div class="layout">
@@ -400,7 +380,7 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
           <output class="search-status" id="search-status" aria-live="polite"></output>
           <nav class="side-nav" aria-label="Sections">
             <div class="nav-heading">Get Started</div>
-            <a href="#configuration" data-nav>Configuration</a>
+            <a href="#quickstart" data-nav>Quickstart</a>
             <div class="nav-heading">Runtime</div>
             <a href="#architecture" data-nav>Architecture</a>
             <a href="#security" data-nav>Security</a>
@@ -414,8 +394,8 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
         <div class="doc-main">
           <div class="empty" id="no-results" role="status">No matching sections. Try a different term or clear the filter.</div>
 
-          <section class="doc-section" id="configuration" data-doc tabindex="-1">
-            <h3>Configuration<a class="anchor" href="#configuration" aria-label="Link to Configuration">#</a></h3>
+          <section class="doc-section" id="quickstart" data-doc tabindex="-1">
+            <h3>Quickstart<a class="anchor" href="#quickstart" aria-label="Link to Quickstart">#</a></h3>
             <p class="lead">Install AmberClaw, configure your environment, verify subsystems with <code>doctor</code>, and launch.</p>
 
             <h4>Step 1: One-line install (sh)</h4>
@@ -517,17 +497,6 @@ AMBERCLAW_RATE_LIMIT=10</code></pre></div>
             <div class="chips"><span>Telegram</span><span>Discord</span><span>Matrix</span><span>Email</span><span>Feishu / Lark</span><span>DingTalk</span><span>MoChat</span><span>WhatsApp</span><span>Slack</span></div>
           </section>
         </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="final-cta">
-    <div class="container cta-inner">
-      <div class="section-label light-label">Start Building<span class="label-rule"></span></div>
-      <h2>Make the runtime<br><em>yours.</em></h2>
-      <div class="cta-bottom">
-        <p>Read the source, understand the boundaries, and contribute a fix or a new capability.</p>
-        <a class="cta-button" href="https://github.com/krishujeniya/AmberClaw" target="_blank" rel="noopener noreferrer">Explore AmberClaw ↗</a>
       </div>
     </div>
   </section>
