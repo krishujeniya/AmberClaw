@@ -266,7 +266,9 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
 .footer-links a:hover{color:#ffffff;border-bottom-color:rgba(255,255,255,.35)}
 .footer-banner{padding:clamp(36px,6vw,78px) 0;display:flex;justify-content:center;align-items:center;user-select:none;overflow:hidden}
 .footer-wordmark{display:flex;align-items:baseline;justify-content:center;font:700 clamp(2.5rem,11.5vw,11.5rem)/.92 var(--display);letter-spacing:-.045em;color:#ffffff;white-space:nowrap}
-.footer-part{display:inline-flex;align-items:baseline;will-change:transform,opacity}
+.footer-part{display:inline-flex;align-items:baseline;will-change:transform,opacity;transition:transform .22s var(--ease),opacity .22s ease-out}
+.has-motion .doc-section{opacity:0;transform:translateY(20px);transition:opacity .55s var(--ease),transform .55s var(--ease)}
+.has-motion .doc-section.is-in{opacity:1;transform:translateY(0)}
 .footer-letter{display:inline-block;background:linear-gradient(180deg,#ffffff 35%,#737373 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .footer-float-1{animation:kFloat 4.8s ease-in-out infinite}
 .footer-float-2{animation:kFloat 4.8s ease-in-out .6s infinite}
@@ -590,10 +592,17 @@ function updateFooterWordmark(){
   amberEl.style.opacity=clawEl.style.opacity=e.toFixed(3);
 }
 if(footerEl&&amberEl&&clawEl&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+  root.classList.add('has-motion');
   var queueFooter=function(){if(!fRaf)fRaf=requestAnimationFrame(updateFooterWordmark)};
   addEventListener('scroll',queueFooter,{passive:true});
   addEventListener('resize',queueFooter,{passive:true});
   updateFooterWordmark();
+  if('IntersectionObserver' in window){
+    var docObs=new IntersectionObserver(function(entries){entries.forEach(function(e){e.target.classList.toggle('is-in',e.isIntersecting)})},{rootMargin:'0px 0px -8% 0px',threshold:0.06});
+    sections.forEach(function(s){docObs.observe(s)});
+  }else{
+    sections.forEach(function(s){s.classList.add('is-in')});
+  }
 }
 })();
 </script>
