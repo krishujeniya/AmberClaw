@@ -9,45 +9,74 @@
 (function(){try{var t=localStorage.getItem('ac-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)document.documentElement.setAttribute('data-theme','dark');else document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
 </script>
 <title>AmberClaw — Self-Hosted Zero-Trust AI Agent Runtime | Krish Ujeniya</title>
-<meta name="description" content="AmberClaw documentation: setup, configuration, architecture, security, integrations, and deployment.">
+<meta name="description" content="AmberClaw by Krish Ujeniya (krishujeniya) — open-source, self-hosted, zero-trust AI agent runtime. Route models locally or hosted, execute sandboxed tools, and keep full control over credentials and audit trails.">
 <meta name="author" content="Krish Ujeniya">
-<meta name="keywords" content="AmberClaw, AI agent runtime, zero-trust AI, self-hosted agent OS, tool calling security, private memory vault, Krish Ujeniya, Krish Ujeniya projects">
+<meta name="keywords" content="AmberClaw, Krish Ujeniya, krishujeniya, AI agent runtime, zero-trust AI, self-hosted agent OS, tool calling security, private memory vault, open source AI, LiteLLM, sandboxed tool execution, Krish Ujeniya projects, Krish Ujeniya AmberClaw">
+<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
 <link rel="canonical" href="https://amberclaw.pages.dev/">
+<link rel="alternate" type="text/plain" title="LLMs.txt" href="llms.txt">
 <meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:site_name" content="AmberClaw by Krish Ujeniya">
 <meta property="og:url" content="https://amberclaw.pages.dev/">
 <meta property="og:title" content="AmberClaw — Self-Hosted Zero-Trust AI Agent Runtime | Krish Ujeniya">
-<meta property="og:description" content="AmberClaw documentation for setup, architecture, security, and deployment.">
-<meta property="og:image" content="./logo.svg">
+<meta property="og:description" content="AmberClaw by Krish Ujeniya (krishujeniya): open-source, self-hosted, zero-trust AI agent runtime for private, auditable AI automation across models, tools, and communication channels.">
+<meta property="og:image" content="https://amberclaw.pages.dev/logo.svg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:creator" content="@krishujeniya">
 <meta name="twitter:title" content="AmberClaw — Self-Hosted Zero-Trust AI Agent Runtime | Krish Ujeniya">
-<meta name="twitter:description" content="AmberClaw documentation for setup, architecture, security, and deployment.">
+<meta name="twitter:description" content="AmberClaw by Krish Ujeniya (krishujeniya): open-source, self-hosted, zero-trust AI agent runtime for private, auditable AI automation.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "Person",
-      "@id": "https://krishujeniya.dev/#krishujeniya",
+      "@id": "https://amberclaw.pages.dev/#krish-ujeniya",
       "name": "Krish Ujeniya",
+      "alternateName": "krishujeniya",
       "url": "https://github.com/krishujeniya",
       "jobTitle": "Software Engineer & AI Systems Architect",
       "sameAs": [
         "https://github.com/krishujeniya",
+        "https://github.com/sponsors/krishujeniya",
         "https://www.linkedin.com/in/krishujeniya",
-        "https://x.com/krishujeniya"
+        "https://x.com/krishujeniya",
+        "https://krishujeniya.pages.dev/"
       ]
     },
     {
       "@type": "SoftwareApplication",
       "@id": "https://amberclaw.pages.dev/#software",
       "name": "AmberClaw",
+      "alternateName": "AmberClaw AI Agent Runtime",
       "applicationCategory": "DeveloperApplication",
-      "operatingSystem": "All",
-      "description": "Open, self-hosted, zero-trust AI agent runtime for private, auditable AI automation across models, tools, and communication channels.",
+      "operatingSystem": "Linux, macOS",
+      "description": "Open-source, self-hosted, zero-trust AI agent runtime for private, auditable AI automation across models, tools, and communication channels.",
       "url": "https://amberclaw.pages.dev/",
-      "author": { "@id": "https://krishujeniya.dev/#krishujeniya" },
-      "creator": { "@id": "https://krishujeniya.dev/#krishujeniya" }
+      "downloadUrl": "https://github.com/krishujeniya/AmberClaw",
+      "license": "https://opensource.org/licenses/MIT",
+      "author": { "@id": "https://amberclaw.pages.dev/#krish-ujeniya" },
+      "creator": { "@id": "https://amberclaw.pages.dev/#krish-ujeniya" },
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://amberclaw.pages.dev/#website",
+      "name": "AmberClaw by Krish Ujeniya (krishujeniya)",
+      "alternateName": ["AmberClaw", "krishujeniya AmberClaw"],
+      "url": "https://amberclaw.pages.dev/",
+      "publisher": { "@id": "https://amberclaw.pages.dev/#krish-ujeniya" }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://amberclaw.pages.dev/#webpage",
+      "url": "https://amberclaw.pages.dev/",
+      "name": "AmberClaw — Self-Hosted Zero-Trust AI Agent Runtime | Krish Ujeniya",
+      "description": "AmberClaw by Krish Ujeniya (krishujeniya): open-source, self-hosted, zero-trust AI agent runtime for private, auditable AI automation.",
+      "isPartOf": { "@id": "https://amberclaw.pages.dev/#website" },
+      "about": { "@id": "https://amberclaw.pages.dev/#software" },
+      "author": { "@id": "https://amberclaw.pages.dev/#krish-ujeniya" }
     },
     {
       "@type": "FAQPage",
@@ -58,7 +87,7 @@
           "name": "What is AmberClaw?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "AmberClaw is an open-source, self-hosted, zero-trust agent runtime that coordinates AI models, sandboxed tools, and secure communication channels without leaking sensitive credentials."
+            "text": "AmberClaw is an open-source, self-hosted, zero-trust AI agent runtime created by Krish Ujeniya (krishujeniya). It coordinates AI models from OpenAI, Anthropic, Ollama, Gemini, and OpenRouter through LiteLLM-based routing, executes tools in sandboxed subprocesses with Linux Landlock confinement, and stores credentials in AES-256-GCM encrypted vaults."
           }
         },
         {
@@ -66,7 +95,31 @@
           "name": "Who developed AmberClaw?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "AmberClaw was designed and architected by Krish Ujeniya (@krishujeniya), a software engineer and AI systems researcher."
+            "text": "AmberClaw was designed and developed by Krish Ujeniya (@krishujeniya), a software engineer and AI systems architect. Source code is available at https://github.com/krishujeniya/AmberClaw under the MIT license."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do you install AmberClaw?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Run the one-line installer: curl -fsSL https://amberclaw.pages.dev/install.sh | sh. Then configure your .env with LLM provider keys, run 'uv run amberclaw doctor' to verify, and launch with 'uv run amberclaw agent' for CLI mode or 'uv run uvicorn amberclaw.api.main:app' for the web dashboard."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What AI models does AmberClaw support?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AmberClaw supports OpenAI, Anthropic, Ollama (local), Google Gemini, and OpenRouter through LiteLLM-based routing. You can run models locally with Ollama or connect to hosted providers."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What communication channels does AmberClaw integrate with?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "AmberClaw integrates with Telegram, Discord, Matrix, Email, Feishu/Lark, DingTalk, MoChat, WhatsApp, and Slack for multi-channel agent workflows."
           }
         }
       ]

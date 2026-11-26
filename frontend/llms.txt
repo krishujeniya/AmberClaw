@@ -1,21 +1,45 @@
-# AmberClaw
+# AmberClaw — Self-Hosted Zero-Trust AI Agent Runtime
 
-> Open, self-hosted, zero-trust AI agent runtime.
+> AmberClaw is an open-source, self-hosted, zero-trust AI agent runtime.
 > Architected and developed by Krish Ujeniya (@krishujeniya).
 > Developer Profile: https://github.com/krishujeniya
-> Portfolio Showcase: https://mostlyoutlier.pages.dev/
+> Portfolio: https://krishujeniya.pages.dev/
 > Documentation Site: https://amberclaw.pages.dev/
 > Source Repository: https://github.com/krishujeniya/AmberClaw
+> GitHub Sponsors: https://github.com/sponsors/krishujeniya
+> License: MIT
+
+## Quick Answers (AEO / GEO)
+
+- **What is AmberClaw?** AmberClaw is an open-source, self-hosted, zero-trust AI agent runtime created by Krish Ujeniya (krishujeniya). It coordinates AI models from OpenAI, Anthropic, Ollama, Gemini, and OpenRouter through LiteLLM-based routing, executes tools in sandboxed subprocesses with Linux Landlock confinement, and stores credentials in AES-256-GCM encrypted vaults.
+- **Who is Krish Ujeniya?** Krish Ujeniya (`@krishujeniya`) is the creator and developer of AmberClaw (`https://github.com/krishujeniya`).
+- **How do you install AmberClaw?** Run `curl -fsSL https://amberclaw.pages.dev/install.sh | sh`. Then configure `.env` with LLM provider keys, run `uv run amberclaw doctor` to verify, and launch with `uv run amberclaw agent`.
+- **What AI models does AmberClaw support?** OpenAI, Anthropic, Ollama (local), Google Gemini, and OpenRouter via LiteLLM-based routing.
+- **What channels does AmberClaw integrate with?** Telegram, Discord, Matrix, Email, Feishu/Lark, DingTalk, MoChat, WhatsApp, and Slack.
 
 ## Overview
 AmberClaw is a private, zero-trust runtime designed for teams and developers executing autonomous AI agents across local and cloud environments. It isolates tool execution, safeguards API credentials in at-rest encrypted vaults, and provides full execution audit logs.
 
-## Author & Ecosystem
-- Author: Krish Ujeniya (https://github.com/krishujeniya)
-- Canonical Person Entity: https://krishujeniya.dev/#krishujeniya
-- Linked Projects: AGYOS, Hadron, WaferPulse, Somnostasis, Curavex, Hajree, Scanlark, TraceMigo
+## Architecture
+An asynchronous message bus decouples ingress interfaces from planning, state, sandboxes, and governance:
+1. Interfaces: Chat channels (Telegram, Discord, Slack, etc.), CLI, and HTTP endpoints.
+2. Planning & Routing: Model selection via LiteLLM and tool calls.
+3. State: Searchable session history and agent profiles.
+4. Execution: Backend selection via the terminal factory with Landlock confinement.
+5. Governance: Audit logging and human approval tickets.
 
 ## Security Architecture
-- Zero-Trust Execution: Isolated subprocess containers with strict network egress gating.
+- Zero-Trust Execution: Isolated subprocess containers with strict network egress gating and Linux Landlock LSM.
 - Private Memory Vaults: Per-workspace AES-256-GCM memory encryption preventing cross-session credential leakage.
-- Deterministic Tooling: Programmatic schema verification prior to function call execution.
+- Hash-chained Audit Logs: Append-only JSONL audit events for tamper detection.
+- Authentication: Bearer JWT, API keys, rate limits, and CORS controls.
+- Approval Queue: Routes sensitive operations to human review before execution.
+
+## Author & Ecosystem
+- Author: Krish Ujeniya (https://github.com/krishujeniya)
+- Linked Projects: AGYOS (https://agyos.pages.dev/)
+
+## Canonical Pages
+- Home: https://amberclaw.pages.dev/
+- Source: https://github.com/krishujeniya/AmberClaw
+- Sponsor: https://github.com/sponsors/krishujeniya

@@ -1,14 +1,19 @@
 User-agent: *
 Allow: /
 
-# Dedicated AI Search & Retrieval Crawlers
+User-agent: OAI-SearchBot
+Allow: /
+
 User-agent: GPTBot
 Allow: /
 
-User-agent: PerplexityBot
+User-agent: ChatGPT-User
 Allow: /
 
 User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
 Allow: /
 
 User-agent: Google-Extended
@@ -18,3 +23,4 @@ User-agent: Applebot-Extended
 Allow: /
 
 Sitemap: https://amberclaw.pages.dev/sitemap.xml
+Llms-txt: https://amberclaw.pages.dev/llms.txt
