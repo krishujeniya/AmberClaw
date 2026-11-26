@@ -329,11 +329,6 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
       <span>amberclaw</span>
     </a>
     <div class="header-actions">
-      <button type="button" class="search-trigger" id="search-open" aria-label="Search documentation">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-        <span>Search</span>
-        <kbd>⌘K</kbd>
-      </button>
       <button type="button" class="theme-button" id="theme-toggle" aria-label="Toggle black and white theme" title="Toggle theme">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18Z" fill="currentColor" stroke="none"/></svg>
       </button>
@@ -374,11 +369,6 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
     <div class="container">
       <div class="layout">
         <aside class="sidebar" aria-label="Documentation navigation">
-          <div class="search">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
-            <input id="search" type="search" autocomplete="off" placeholder="Filter docs..." aria-label="Filter documentation sections">
-          </div>
-          <output class="search-status" id="search-status" aria-live="polite"></output>
           <nav class="side-nav" aria-label="Sections">
             <div class="nav-heading">Get Started</div>
             <a href="#quickstart" data-nav>Quickstart</a>
@@ -391,7 +381,6 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
         </aside>
 
         <div class="doc-main">
-          <div class="empty" id="no-results" role="status">No matching sections. Try a different term or clear the filter.</div>
 
           <section class="doc-section" id="quickstart" data-doc tabindex="-1">
             <h3>Quickstart<a class="anchor" href="#quickstart" aria-label="Link to Quickstart">#</a></h3>
@@ -526,22 +515,6 @@ AMBERCLAW_RATE_LIMIT=10</code></pre></div>
   </div>
 </footer>
 
-<dialog class="search-dialog" id="search-dialog" aria-label="Search documentation">
-  <div class="search-dialog-head">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-    <input id="modal-search-input" type="search" placeholder="Search documentation sections, endpoints, sandboxes..." autocomplete="off">
-    <button type="button" id="search-close">ESC</button>
-  </div>
-  <div class="search-results" id="modal-search-results" role="listbox">
-    <p class="search-hint">Type to jump to any AmberClaw documentation section.</p>
-  </div>
-  <div class="search-dialog-footer">
-    <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
-    <span><kbd>Enter</kbd> Open</span>
-    <span><kbd>Esc</kbd> Close</span>
-  </div>
-</dialog>
-
 <script>
 (function(){
 'use strict';
@@ -581,10 +554,7 @@ var bar=document.getElementById('progress');
 function onScroll(){var s=document.documentElement.scrollHeight-innerHeight;bar.style.transform='scaleX('+(s>0?Math.max(0,Math.min(1,scrollY/s)):0)+')'}
 addEventListener('scroll',onScroll,{passive:true});addEventListener('resize',onScroll,{passive:true});onScroll();
 
-var search=document.getElementById('search'),sections=Array.prototype.slice.call(document.querySelectorAll('[data-doc]')),links=Array.prototype.slice.call(document.querySelectorAll('[data-nav]')),status=document.getElementById('search-status'),empty=document.getElementById('no-results');
-function filter(){var q=search.value.trim().toLowerCase(),c=0;sections.forEach(function(s){var ok=!q||s.textContent.toLowerCase().includes(q);s.hidden=!ok;if(ok)c++});links.forEach(function(a){a.hidden=document.querySelector(a.getAttribute('href')).hidden});empty.style.display=c?'none':'block';status.classList.toggle('on',Boolean(q));status.textContent=q?c+' matching section'+(c===1?'':'s'):''}
-search.addEventListener('input',filter);
-links.forEach(function(a){a.addEventListener('click',function(){if(search.value){search.value='';filter()}})});
+var sections=Array.prototype.slice.call(document.querySelectorAll('[data-doc]')),links=Array.prototype.slice.call(document.querySelectorAll('[data-nav]'));
 
 if('IntersectionObserver' in window){
   var spy=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting){links.forEach(function(a){var on=a.getAttribute('href')==='#'+e.target.id;a.classList.toggle('active',on);if(on)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current')})}})},{rootMargin:'-12% 0px -72% 0px'});
@@ -594,29 +564,6 @@ if('IntersectionObserver' in window){
 function copyText(text,cb){if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(function(){cb(true)}).catch(function(){cb(false)})}else{var t=document.createElement('textarea');t.value=text;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.select();var ok=false;try{ok=document.execCommand('copy')}catch(e){}t.remove();cb(ok)}}
 document.querySelectorAll('.copy').forEach(function(b){b.addEventListener('click',function(){var v=b.closest('.code').querySelector('code').textContent;copyText(v,function(ok){if(ok){b.textContent='Copied';setTimeout(function(){b.textContent='Copy code'},1600)}})});});
 document.querySelectorAll('.copy-inline').forEach(function(b){b.addEventListener('click',function(){var cmd=b.getAttribute('data-cmd');if(!cmd)return;copyText(cmd,function(ok){if(ok){var prev=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=prev},1600)}})});});
-
-var dlg=document.getElementById('search-dialog'),mInput=document.getElementById('modal-search-input'),mRes=document.getElementById('modal-search-results'),sel=0,matches=[];
-var docsIndex=sections.map(function(s){var h=s.querySelector('h3'),l=s.querySelector('.lead');return{id:s.id,title:h?h.textContent:s.id,desc:l?l.textContent:'',text:s.textContent.toLowerCase()}});
-function renderModal(q){
-  var term=q.trim().toLowerCase();
-  if(!term){matches=[];mRes.innerHTML='<p class="search-hint">Type to jump to any AmberClaw documentation section.</p>';return}
-  matches=docsIndex.filter(function(d){return d.text.includes(term)}).slice(0,8);
-  sel=0;
-  mRes.innerHTML=matches.length?matches.map(function(d,i){return'<a class="result-item" role="option" aria-selected="'+(i===0)+'" href="#'+d.id+'"><strong>'+d.title+'</strong><small>#'+d.id+'</small><p>'+d.desc.slice(0,140)+'</p></a>'}).join(''):'<p class="search-hint">No matching documentation sections found.</p>';
-}
-document.getElementById('search-open').addEventListener('click',function(){if(dlg.showModal){dlg.showModal();mInput.value='';renderModal('');mInput.focus()}});
-document.getElementById('search-close').addEventListener('click',function(){dlg.close()});
-mInput.addEventListener('input',function(){renderModal(mInput.value)});
-mRes.addEventListener('click',function(e){if(e.target.closest('a'))dlg.close()});
-dlg.addEventListener('click',function(e){if(e.target===dlg)dlg.close()});
-document.addEventListener('keydown',function(e){
-  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(dlg.open)dlg.close();else{dlg.showModal();mInput.value='';renderModal('');mInput.focus()}}
-  if(!dlg.open||!matches.length)return;
-  if(e.key==='ArrowDown'){e.preventDefault();sel=(sel+1)%matches.length}
-  else if(e.key==='ArrowUp'){e.preventDefault();sel=(sel-1+matches.length)%matches.length}
-  else if(e.key==='Enter'){e.preventDefault();var a=mRes.querySelectorAll('.result-item')[sel];if(a){dlg.close();location.hash=a.getAttribute('href')}}
-  mRes.querySelectorAll('.result-item').forEach(function(el,i){el.setAttribute('aria-selected',String(i===sel))});
-});
 })();
 </script>
 </body>
