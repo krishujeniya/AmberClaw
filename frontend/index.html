@@ -253,30 +253,28 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
 .cta-bottom p{font-size:16px;color:#b5b5b5;max-width:360px;margin:0}
 .cta-button{display:inline-flex;align-items:center;gap:24px;border-radius:100px;padding:17px 26px;background:linear-gradient(135deg,#ffffff 0%,#e0e0e0 100%);color:#000000;font:700 13px var(--body);transition:transform .25s var(--ease)}
 .cta-button:hover{transform:translateY(-2px)}
-.site-footer{padding:58px 0 28px;background:var(--paper);border-top:1px solid var(--border)}
-.footer-inner,.footer-bottom{max-width:var(--max);margin:auto;padding:0 clamp(20px,5.1vw,88px);display:flex;justify-content:space-between;gap:24px}
-.footer-brand{font:700 24px var(--body);letter-spacing:-.05em}
-.footer-inner p{font-size:13px;color:var(--muted);margin:8px 0 0}
-.footer-links{display:flex;gap:24px;align-items:start;flex-wrap:wrap}
-.footer-links a{font-size:12.5px;color:var(--muted)}.footer-links a:hover{color:var(--ink)}
-.footer-bottom{border-top:1px solid var(--border);margin-top:48px;padding-top:22px;font:11px var(--mono);color:var(--muted)}
-
-/* Search Modal & Toast */
-.search-dialog{border:1px solid var(--border);border-radius:20px;box-shadow:0 30px 100px rgba(0,0,0,.35);background:var(--white);color:var(--ink);width:min(620px,calc(100vw - 32px));max-height:min(78vh,680px);padding:0;position:fixed;inset:0;margin:auto}
-.search-dialog::backdrop{background:rgba(0,0,0,.58);backdrop-filter:blur(7px)}
-.search-dialog-head{display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border);padding:15px 18px}
-.search-dialog-head svg{height:19px;width:19px;fill:none;stroke:var(--muted);stroke-width:1.8}
-.search-dialog input{background:transparent;border:0;outline:0;font-size:16px;flex:1;color:var(--ink);min-width:0}
-.search-dialog-head button{background:var(--soft);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:5px 9px}
-.search-results{min-height:140px;max-height:calc(70vh - 140px);overflow:auto;padding:10px}
-.search-hint{text-align:center;color:var(--muted);padding:38px 10px;font-size:13px}
-.result-item{display:block;padding:12px 15px;border-radius:10px}
-.result-item:hover,.result-item[aria-selected="true"]{background:var(--soft)}
-.result-item strong{display:block;font-size:14px;color:var(--ink)}
-.result-item small{color:var(--muted);font-size:11px}
-.result-item p{margin:5px 0 0;font-size:12px;color:var(--muted);line-height:1.55}
-.search-dialog-footer{border-top:1px solid var(--border);padding:12px 18px;display:flex;gap:22px;font-size:11px;color:var(--muted)}
-.search-dialog-footer kbd{font:10px var(--mono);border:1px solid var(--border);border-radius:4px;padding:2px 5px;margin-right:4px}
+.site-footer{padding:clamp(56px,7vw,96px) 0 42px;background:linear-gradient(180deg,#050505 0%,#000000 100%);color:#fafafa;border-top:1px solid rgba(255,255,255,.08);position:relative;overflow:hidden}
+.site-footer::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 50% at 50% 100%,rgba(255,255,255,.05),transparent 70%)}
+.footer-shell{max-width:var(--max);margin:auto;padding-inline:clamp(20px,5.1vw,88px);position:relative;z-index:1}
+.footer-top{display:flex;align-items:center;justify-content:space-between;gap:20px 32px;flex-wrap:wrap;padding-bottom:clamp(32px,4vw,52px);border-bottom:1px solid rgba(255,255,255,.08)}
+.footer-tagline{font:800 10.5px/1.6 var(--body);letter-spacing:.26em;text-transform:uppercase;color:#a3a3a3}
+.footer-links{display:flex;flex-wrap:wrap;align-items:center;gap:18px 28px}
+.footer-links a{font:800 10px/1.4 var(--body);letter-spacing:.2em;text-transform:uppercase;color:#a3a3a3;border-bottom:1px solid transparent;padding-bottom:2px;transition:color .2s,border-color .2s}
+.footer-links a:hover{color:#ffffff;border-bottom-color:rgba(255,255,255,.35)}
+.footer-banner{padding:clamp(36px,6vw,78px) 0;display:flex;justify-content:center;align-items:center;user-select:none;overflow:hidden}
+.footer-wordmark{display:flex;align-items:baseline;justify-content:center;font:800 clamp(2.5rem,11.5vw,11.5rem)/.92 var(--display);letter-spacing:-.045em;color:#ffffff;white-space:nowrap;background:linear-gradient(180deg,#ffffff 35%,#737373 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.footer-letter{display:inline-block}
+.footer-float-1{animation:kFloat 4.8s ease-in-out infinite}
+.footer-float-2{animation:kFloat 4.8s ease-in-out .6s infinite}
+.footer-float-3{animation:kFloat 4.8s ease-in-out 1.2s infinite}
+@keyframes kFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.footer-bottom{padding-top:clamp(24px,3vw,36px);border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.footer-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font:800 10px/1.5 var(--body);letter-spacing:.22em;text-transform:uppercase;color:#a3a3a3}
+.footer-sep{color:rgba(255,255,255,.22)}
+.back-top{display:inline-flex;align-items:center;gap:12px;background:none;border:0;padding:0;font:800 10px/1 var(--body);letter-spacing:.24em;text-transform:uppercase;color:#a3a3a3;transition:color .2s}
+.back-top:hover{color:#ffffff}
+.back-top-circle{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);display:grid;place-items:center;transition:border-color .2s,background .2s,transform .2s var(--ease)}
+.back-top:hover .back-top-circle{border-color:rgba(255,255,255,.38);background:rgba(255,255,255,.1);transform:translateY(-2px)}
 
 @media(min-width:680px){
   .double-grid{grid-template-columns:repeat(2,1fr);gap:14px}
@@ -496,22 +494,39 @@ AMBERCLAW_RATE_LIMIT=10</code></pre></div>
 </main>
 
 <footer class="site-footer">
-  <div class="footer-inner">
-    <div>
-      <a class="footer-brand" href="/">amberclaw</a>
-      <p>Self-hosted zero-trust AI agent runtime · © <span id="year">2026</span> AmberClaw contributors</p>
+  <div class="footer-shell">
+    <div class="footer-top">
+      <div class="footer-tagline">© <span id="year">2026</span> · SELF-HOSTED ZERO-TRUST AI AGENT RUNTIME</div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="https://github.com/krishujeniya/AmberClaw/blob/main/README.md">README</a>
+        <a href="https://github.com/krishujeniya/AmberClaw/blob/main/.github/SECURITY.md">Security</a>
+        <a href="https://github.com/krishujeniya/AmberClaw/blob/main/.github/CONTRIBUTING.md">Contribute</a>
+        <a href="https://github.com/krishujeniya/AmberClaw/blob/main/LICENSE">MIT License</a>
+        <a href="https://github.com/sponsors/krishujeniya" target="_blank" rel="noopener noreferrer">Sponsor</a>
+      </nav>
     </div>
-    <nav class="footer-links" aria-label="Footer">
-      <a href="https://github.com/krishujeniya/AmberClaw/blob/main/README.md">README</a>
-      <a href="https://github.com/krishujeniya/AmberClaw/blob/main/.github/SECURITY.md">Security</a>
-      <a href="https://github.com/krishujeniya/AmberClaw/blob/main/.github/CONTRIBUTING.md">Contribute</a>
-      <a href="https://github.com/krishujeniya/AmberClaw/blob/main/LICENSE">MIT license</a>
-      <a href="https://github.com/sponsors/krishujeniya" target="_blank" rel="noopener noreferrer">Sponsor</a>
-    </nav>
-  </div>
-  <div class="footer-bottom">
-    <span>AMBERCLAW · ZERO-TRUST RUNTIME</span>
-    <span>BUILT BY KRISH UJENIYA</span>
+
+    <div class="footer-banner">
+      <div class="footer-wordmark" aria-label="AMBERCLAW">
+        <span class="footer-letter">A</span><span class="footer-letter">M</span><span class="footer-letter">B</span><span class="footer-letter">E</span><span class="footer-letter">R</span><span class="footer-letter">C</span><span class="footer-letter footer-float-1">L</span><span class="footer-letter footer-float-2">A</span><span class="footer-letter footer-float-3">W</span>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="footer-meta">
+        <span>AMBERCLAW</span>
+        <span class="footer-sep">/</span>
+        <span>BY KRISH UJENIYA</span>
+        <span class="footer-sep">/</span>
+        <span>OPEN SOURCE · MIT</span>
+      </div>
+      <button type="button" class="back-top" id="back-to-top" aria-label="Back to top">
+        <span>Back to Top</span>
+        <span class="back-top-circle" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+        </span>
+      </button>
+    </div>
   </div>
 </footer>
 
@@ -564,6 +579,8 @@ if('IntersectionObserver' in window){
 function copyText(text,cb){if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(function(){cb(true)}).catch(function(){cb(false)})}else{var t=document.createElement('textarea');t.value=text;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.select();var ok=false;try{ok=document.execCommand('copy')}catch(e){}t.remove();cb(ok)}}
 document.querySelectorAll('.copy').forEach(function(b){b.addEventListener('click',function(){var v=b.closest('.code').querySelector('code').textContent;copyText(v,function(ok){if(ok){b.textContent='Copied';setTimeout(function(){b.textContent='Copy code'},1600)}})});});
 document.querySelectorAll('.copy-inline').forEach(function(b){b.addEventListener('click',function(){var cmd=b.getAttribute('data-cmd');if(!cmd)return;copyText(cmd,function(ok){if(ok){var prev=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=prev},1600)}})});});
+var topBtn=document.getElementById('back-to-top');
+if(topBtn)topBtn.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'})});
 })();
 </script>
 </body>
