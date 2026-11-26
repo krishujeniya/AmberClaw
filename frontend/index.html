@@ -444,17 +444,45 @@ uv --directory amberclaw/backend run amberclaw agent</code></pre></div>
 
           <section class="doc-section" id="configuration" data-doc tabindex="-1">
             <h3>Configuration<a class="anchor" href="#configuration" aria-label="Link to Configuration">#</a></h3>
-            <p class="lead">Copy <code>.env.example</code>, supply at least one provider key, and verify with <code>amberclaw doctor</code>.</p>
-            <div class="code"><div class="code-head"><span>example · .env</span><button class="copy" type="button">Copy code</button></div><pre><code>AMBERCLAW_ENV=development
-AMBERCLAW_WORKSPACE_DIR=./data/workspace
-AMBERCLAW_SECRET_KEY=replace-with-a-private-secret
-AMBERCLAW_AUTH_ENABLED=true
-AMBERCLAW_RATE_LIMIT=10
+            <p class="lead">Configure your environment, verify subsystems with <code>doctor</code>, and launch AmberClaw.</p>
 
-# OPENAI_API_KEY=...
-# ANTHROPIC_API_KEY=...
-# OLLAMA_API_BASE=http://localhost:11434</code></pre></div>
-            <p>Run <code>uv --directory amberclaw/backend run amberclaw onboard</code> for guided setup. See <a class="text-link" href="https://github.com/krishujeniya/AmberClaw/blob/main/amberclaw/backend/.env.example">.env.example ↗</a>.</p>
+            <h4>Step 2: Environment Configuration</h4>
+            <p>Edit <code>.env</code> to configure your LLM providers and secrets (see <a class="text-link" href="https://github.com/krishujeniya/AmberClaw/blob/main/amberclaw/backend/.env.example">.env.example ↗</a>):</p>
+            <div class="code"><div class="code-head"><span>.env</span><button class="copy" type="button">Copy code</button></div><pre><code># Core Configuration
+AMBERCLAW_ENV=development
+AMBERCLAW_WORKSPACE_DIR=./data/workspace
+AMBERCLAW_SECRET_KEY=your-32-byte-secret-key
+
+# LLM Providers (Configure at least one)
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+OLLAMA_API_BASE=http://localhost:11434
+
+# Security Controls
+AMBERCLAW_AUTH_ENABLED=true
+AMBERCLAW_RATE_LIMIT=10</code></pre></div>
+
+            <h4>Step 3: Run System Diagnostics (<code>doctor</code>)</h4>
+            <p>AmberClaw includes an automated <code>doctor</code> command that verifies configuration paths, provider keys, sandbox dependencies, and permissions:</p>
+            <div class="code"><div class="code-head"><span>terminal · bash</span><button class="copy" type="button">Copy code</button></div><pre><code>uv run amberclaw doctor</code></pre></div>
+            <p>Output highlights verified subsystems:</p>
+            <ul>
+              <li>✓ Config file valid</li>
+              <li>✓ Workspace directory writable</li>
+              <li>✓ Provider keys detected</li>
+              <li>✓ Execution backend dependencies ready</li>
+            </ul>
+
+            <h4>Step 4: Launch AmberClaw</h4>
+            <p><b>Option A: Interactive CLI Mode</b></p>
+            <div class="code"><div class="code-head"><span>terminal · bash</span><button class="copy" type="button">Copy code</button></div><pre><code>uv run amberclaw agent</code></pre></div>
+
+            <p><b>Option B: FastAPI Gateway &amp; Web Dashboard</b></p>
+            <div class="code"><div class="code-head"><span>terminal · bash</span><button class="copy" type="button">Copy code</button></div><pre><code>uv run uvicorn amberclaw.api.main:app --host 0.0.0.0 --port 8000 --reload</code></pre></div>
+            <p>Navigate to <code>http://localhost:8000</code> to access the Web Dashboard SPA.</p>
+
+            <p><b>Option C: Guided Onboarding Wizard</b></p>
+            <div class="code"><div class="code-head"><span>terminal · bash</span><button class="copy" type="button">Copy code</button></div><pre><code>uv run amberclaw onboard</code></pre></div>
           </section>
 
           <section class="doc-section" id="architecture" data-doc tabindex="-1">
