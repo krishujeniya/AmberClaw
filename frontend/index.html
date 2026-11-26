@@ -140,10 +140,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{o
 .theme-button svg{width:17px;height:17px}
 .sponsor-pill{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:100px;background:var(--grad-dark);color:#ffffff;border:1px solid #2e2e2e;font:700 12px var(--body);white-space:nowrap;transition:transform .2s var(--ease),opacity .2s}
 .sponsor-pill:hover{transform:translateY(-1px);opacity:.9}
-.menu-button{display:none;width:40px;height:40px;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:10px;background:var(--grad-surface);color:var(--ink)}
-.mobile-nav{display:none;border-top:1px solid var(--border);padding:12px 20px 20px;background:var(--paper)}
-.mobile-nav.on{display:block}
-.mobile-nav a{display:block;padding:12px 4px;border-bottom:1px solid var(--border);font-size:13px;color:var(--muted)}
+.menu-button{display:none;border:0;background:none;padding:8px;flex-shrink:0}
+.menu-button span{display:block;width:22px;height:2px;background:var(--ink);margin:5px 0;transition:transform .2s var(--ease),opacity .2s}
+.mobile-nav{display:none;position:absolute;top:76px;left:0;right:0;flex-direction:column;background:var(--white);padding:15px 26px;border-bottom:1px solid var(--border);z-index:79}
+.mobile-nav.on{display:flex}
+.mobile-nav a{padding:15px;font-size:14px;font-weight:600;color:var(--muted);border-bottom:1px solid var(--border)}
+.mobile-nav a:last-child{border-bottom:0}
+.mobile-nav a:hover{color:var(--ink)}
 
 /* Typography & labels */
 .section-label{display:flex;align-items:center;gap:22px;font:600 12px var(--body);color:var(--muted);margin-bottom:36px}
@@ -297,21 +300,26 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
   .side-nav>a.active,.side-nav>a[aria-current="location"]{border-bottom-color:var(--ink)}
 }
 @media(max-width:680px){
-  .topbar-inner{height:64px;padding:0 16px;gap:10px}
-  .search-trigger{min-width:0;width:38px;height:38px;padding:0;justify-content:center}
-  .search-trigger span,.search-trigger kbd{display:none}
-  .sponsor-pill{display:none}
-  .menu-button{display:flex}
+  .topbar-inner{height:64px;padding:0 14px;gap:8px;width:100%}
+  .wordmark{font-size:16px;gap:7px}
+  .wordmark img{width:24px;height:24px}
+  .header-actions{margin-left:auto;gap:6px;min-width:0;flex-shrink:1}
+  .theme-button{width:34px;height:34px;padding:0}
+  .sponsor-pill{padding:6px 10px;font-size:11px;gap:5px}
+  .header-github{display:none}
+  .menu-button{display:block;padding:6px}
+  .mobile-nav{top:64px}
   .feature-line{grid-template-columns:36px 1fr 22px;gap:10px;padding:20px 0}
   .feature-desc{grid-column:2;grid-row:2}
   .feature-arrow{grid-column:3;grid-row:1}
-  .pod-item{grid-template-columns:46px 1fr 20px;gap:12px}
-  .pod-item p{grid-column:2;grid-row:2}
-  .pod-symbol{grid-column:3;grid-row:1}
-  .gate-track,.doc-preview-grid,.feature-grid{grid-template-columns:1fr}
-  .subgraph-sub{margin-left:0;width:100%}
-  .cycle-track{grid-template-columns:1fr;justify-content:stretch}
-  .cycle-arrow{transform:rotate(90deg);text-align:center}
+  .feature-grid{grid-template-columns:1fr}
+}
+@media(max-width:440px){
+  .sponsor-pill{width:34px;height:34px;padding:0;justify-content:center}
+  .sponsor-pill span{display:none}
+  .sponsor-pill svg{width:14px;height:14px}
+  .hero-install{padding:6px 8px 6px 12px;gap:8px}
+  .hero-install pre{font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}.reveal{opacity:1;transform:none}.progress{display:none}}
 </style>
@@ -331,10 +339,8 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18Z" fill="currentColor" stroke="none"/></svg>
       </button>
       <a class="sponsor-pill" href="https://github.com/sponsors/krishujeniya" target="_blank" rel="noopener noreferrer" aria-label="Sponsor on GitHub"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.5-9.5-9A5.5 5.5 0 0 1 12 6.5 5.5 5.5 0 0 1 21.5 12C19 16.5 12 21 12 21Z"/></svg><span>Sponsor</span></a>
-      <a class="sponsor-pill" href="https://github.com/krishujeniya/AmberClaw" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
-      <button class="menu-button" id="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-nav">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-      </button>
+      <a class="sponsor-pill header-github" href="https://github.com/krishujeniya/AmberClaw" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+      <button class="menu-button" id="menu-toggle" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="mobile-nav"><span></span><span></span></button>
     </div>
   </div>
   <nav class="mobile-nav" id="mobile-nav" aria-label="Mobile">
