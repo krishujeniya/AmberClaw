@@ -386,8 +386,6 @@ td{color:var(--muted)}td:first-child{color:var(--ink);font:12.5px/1.65 var(--mon
             <a href="#architecture" data-nav>Architecture</a>
             <a href="#security" data-nav>Security</a>
             <a href="#models" data-nav>Models</a>
-            <a href="#sandboxes" data-nav>Sandboxes</a>
-            <a href="#memory" data-nav>Memory</a>
             <a href="#channels" data-nav>Channels</a>
           </nav>
         </aside>
@@ -485,17 +483,6 @@ AMBERCLAW_RATE_LIMIT=10</code></pre></div>
               <span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c.4 5.4 4.6 9.6 10 10-5.4.4-9.6 4.6-10 10-.4-5.4-4.6-9.6-10-10 5.4-.4 9.6-4.6 10-10Z"/></svg>Gemini</span>
               <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.5 12h4.2l4.8-4.8M11.7 12l4.8 4.8"/></svg>OpenRouter</span>
             </div>
-          </section>
-
-          <section class="doc-section" id="sandboxes" data-doc tabindex="-1">
-            <h3>Sandboxes<a class="anchor" href="#sandboxes" aria-label="Link to Sandboxes">#</a></h3>
-            <p class="lead">Nine execution backends routed through <code>amberclaw/backend/src/amberclaw/terminal/factory.py</code>.</p>
-            <div class="table-wrap"><table><thead><tr><th>Backend</th><th>Execution context</th></tr></thead><tbody><tr><td>Local</td><td>Local subprocesses with Landlock where supported</td></tr><tr><td>Docker</td><td>Containerized execution</td></tr><tr><td>SSH</td><td>Remote shell execution</td></tr><tr><td>Daytona</td><td>Cloud development workspaces</td></tr><tr><td>Singularity</td><td>HPC container workloads</td></tr><tr><td>Modal</td><td>Serverless containers</td></tr><tr><td>Vercel</td><td>Cloud execution integration</td></tr><tr><td>WASM</td><td>Wasmtime fuel-bounded execution</td></tr><tr><td>E2B</td><td>MicroVM-backed tasks</td></tr></tbody></table></div>
-          </section>
-
-          <section class="doc-section" id="memory" data-doc tabindex="-1">
-            <h3>Memory<a class="anchor" href="#memory" aria-label="Link to Memory">#</a></h3>
-            <p class="lead">SessionDB uses SQLite with WAL journaling, FTS5 full-text indexing, persistent agent profiles, and session deletion APIs.</p>
           </section>
 
           <section class="doc-section" id="channels" data-doc tabindex="-1">
