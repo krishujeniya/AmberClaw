@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.4
-FROM python:3.11-slim as builder
+FROM python:3.11-slim@sha256:61e01f72680f86a5279ad510818ab7b2ee9f049822589d4e34e33e044360356c as builder
 
 # Install uv for fast dependency resolution
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
@@ -19,7 +19,7 @@ COPY amberclaw/backend/pyproject.toml amberclaw/backend/uv.lock amberclaw/backen
 RUN uv sync --frozen --no-install-project --no-dev
 
 # ---------------------------------------------------
-FROM python:3.11-slim as runtime
+FROM python:3.11-slim@sha256:61e01f72680f86a5279ad510818ab7b2ee9f049822589d4e34e33e044360356c as runtime
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

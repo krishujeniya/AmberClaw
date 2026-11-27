@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   amberclaw-gateway:
     build:
@@ -17,6 +15,13 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=50m
     volumes:
       - ./data/amberclaw:/app/data
     depends_on:
@@ -29,6 +34,10 @@ services:
   chromadb:
     image: chromadb/chroma:0.4.22
     container_name: amberclaw_memory_db
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ./data/chroma:/chroma/chroma
     environment:

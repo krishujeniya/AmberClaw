@@ -1,28 +1,33 @@
 name: Production Cloudflare Pages Deployment
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
-    paths:
-      - 'frontend/**'
-      - 'wrangler.jsonc'
-      - '.github/workflows/cloudflare-deploy.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+  deployments: write
 
 concurrency:
-  group: cloudflare-deploy-${{ github.ref }}
-  cancel-in-progress: true
+  group: cloudflare-deploy-main
+  cancel-in-progress: false
 
 jobs:
   deploy:
     name: Deploy frontend to Cloudflare Pages
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://amberclaw.pages.dev
     steps:
       - name: Checkout Source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Check Cloudflare secrets
         id: check-secrets
@@ -39,7 +44,7 @@ jobs:
 
       - name: Deploy frontend to Cloudflare Pages
         if: steps.check-secrets.outputs.has_secrets == 'true'
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@953926a2e2182532811c01a25e53647d93bf07c0 # v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
