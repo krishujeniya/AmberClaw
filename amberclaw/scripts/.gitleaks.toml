@@ -276,7 +276,7 @@ regexes = ["(?s)^xoxb\\-1234567890\\-1234567890123$"]
 id = "curl-auth-header"
 
 [[rules.allowlists]]
-description = "Documentation curl example in frontend/index.html"
+description = "Documentation curl example in frontend/index.html and docs-site/index.html"
 condition = "AND"
-commits = ["0a693cc9faa46fdcb15c304e6ffa340fe26b7125"]
-paths = ["^frontend/index\\.html$"]
+commits = ["0a693cc9faa46fdcb15c304e6ffa340fe26b7125", "26c033d174f76ae21f0c678a7ce0bf015f056cae"]
+paths = ["^(frontend|docs-site)/index\\.html$"]
