@@ -271,3 +271,12 @@ condition = "AND"
 paths = ["^tests/unit/security/test_dlp\\.py$"]
 regexTarget = "secret"
 regexes = ["(?s)^xoxb\\-1234567890\\-1234567890123$"]
+
+[[rules]]
+id = "curl-auth-header"
+
+[[rules.allowlists]]
+description = "Documentation curl example in frontend/index.html"
+condition = "AND"
+commits = ["0a693cc9faa46fdcb15c304e6ffa340fe26b7125"]
+paths = ["^frontend/index\\.html$"]
