@@ -749,8 +749,13 @@ if('IntersectionObserver' in window){
 function copyText(text,cb){if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(function(){cb(true)}).catch(function(){cb(false)})}else{var t=document.createElement('textarea');t.value=text;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.select();var ok=false;try{ok=document.execCommand('copy')}catch(e){}t.remove();cb(ok)}}
 document.querySelectorAll('.copy').forEach(function(b){b.addEventListener('click',function(){var v=b.closest('.code').querySelector('code').textContent;copyText(v,function(ok){if(ok){b.textContent='Copied';setTimeout(function(){b.textContent='Copy code'},1600)}})});});
 document.querySelectorAll('.copy-inline').forEach(function(b){b.addEventListener('click',function(){var cmd=b.getAttribute('data-cmd');if(!cmd)return;copyText(cmd,function(ok){if(ok){var prev=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=prev},1600)}})});});
+function stripHash(){if(window.location.hash&&history.replaceState){history.replaceState(null,'',window.location.pathname+window.location.search)}}
+function scrollToTarget(hash){var id=hash?hash.slice(1):'';if(!id||id==='top'){window.scrollTo({top:0,behavior:'smooth'});stripHash();return}var el=document.getElementById(id);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});stripHash()}}
+document.addEventListener('click',function(e){var a=e.target.closest('a[href^="#"]');if(!a)return;e.preventDefault();scrollToTarget(a.getAttribute('href'))});
+if(window.location.hash){scrollToTarget(window.location.hash)}
+addEventListener('hashchange',function(){if(window.location.hash)scrollToTarget(window.location.hash)});
 var topBtn=document.getElementById('back-to-top');
-if(topBtn)topBtn.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'})});
+if(topBtn)topBtn.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});stripHash()});
 var wordmarkEl=document.getElementById('footer-wordmark'),fRaf=0;
 function updateFooterWordmark(){
   fRaf=0;
